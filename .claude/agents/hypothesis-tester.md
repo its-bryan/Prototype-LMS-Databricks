@@ -7,13 +7,13 @@ Orchestrating agent that systematically tests a hypothesis from `docs/hypotheses
 Automates the full hypothesis testing workflow:
 1. Parse hypothesis requirements
 2. Load and validate relevant data
-2b. **Create required features** (feature-engineer skill)
+2b. **Create required features** (engineering-features skill)
 3. Select appropriate statistical test
 4. Generate and execute analysis code
 5. Execute analysis
 6. **Validate results** (built-in sanity checks)
 7. Interpret results
-7b. **Discover sub-hypotheses** (if weak effect - hypothesis-discovery skill)
+7b. **Discover sub-hypotheses** (if weak effect - discovering-hypotheses skill)
 8. Generate visualization
 9. Update hypothesis status in tracking doc
 
@@ -39,21 +39,21 @@ Automates the full hypothesis testing workflow:
 │                                                                  │
 │  2. VALIDATE DATA                                                │
 │     ├─ Check required columns exist                              │
-│     ├─ Call type-detector skill for variable types               │
-│     ├─ Call quality-checker skill for data issues                │
+│     ├─ Call detecting-types skill for variable types               │
+│     ├─ Call checking-quality skill for data issues                │
 │     └─ Flag if data insufficient                                 │
 │                                                                  │
-│  2b. CREATE FEATURES (feature-engineer skill) ◄── NEW            │
+│  2b. CREATE FEATURES (engineering-features skill) ◄── NEW            │
 │      ├─ Parse hypothesis for required derived features           │
 │      ├─ Check which features exist                               │
 │      ├─ Create missing features (urgency, channel flags, etc.)   │
 │      └─ Return enriched DataFrame                                │
 │                                                                  │
-│  3. SELECT TEST (stat-test-selector skill)                       │
+│  3. SELECT TEST (selecting-tests skill)                       │
 │     ├─ Input: predictor type, outcome type, question type        │
 │     └─ Output: recommended test, assumptions, effect size metric │
 │                                                                  │
-│  4. GENERATE CODE (analysis-coder skill)                         │
+│  4. GENERATE CODE (coding-analysis skill)                         │
 │     ├─ Input: hypothesis, test type, columns                     │
 │     └─ Output: Python function for the analysis                  │
 │                                                                  │
@@ -70,18 +70,18 @@ Automates the full hypothesis testing workflow:
 │     ├─ Multiple comparisons: need Bonferroni correction?         │
 │     └─ If issues found → flag warnings, suggest alternatives     │
 │                                                                  │
-│  7. INTERPRET RESULTS (results-interpreter skill)                │
+│  7. INTERPRET RESULTS (interpreting-results skill)                │
 │     ├─ Input: test type, statistical output, validation flags    │
 │     └─ Output: plain English finding, verdict, recommendation    │
 │                                                                  │
-│  7b. DISCOVER SUB-HYPOTHESES (hypothesis-discovery) ◄── NEW      │
+│  7b. DISCOVER SUB-HYPOTHESES (discovering-hypotheses) ◄── NEW      │
 │      ├─ TRIGGER: p>0.05 OR effect<0.15 OR confidence=low/medium  │
-│      ├─ Call hypothesis-discovery skill                          │
+│      ├─ Call discovering-hypotheses skill                          │
 │      ├─ Run decision tree to find interaction effects            │
 │      ├─ Present suggested sub-hypotheses to user                 │
 │      └─ Optionally add to hypotheses.md and test recursively     │
 │                                                                  │
-│  8. VISUALIZE (viz-generator skill)                              │
+│  8. VISUALIZE (generating-visualizations skill)                              │
 │     ├─ Select appropriate chart type                             │
 │     ├─ Execute in notebook or generate code                      │
 │     └─ Save to reports/figures/                                  │
@@ -113,13 +113,75 @@ hypothesis = {
 }
 ```
 
+**IMPORTANT - Conversion Outcome Variable**:
+- Hypotheses reference the outcome variable as `rental` for readability
+- Actual column name in raw data: `RENT_IND` (may have `\n` prefix: `\nRENT_IND`)
+- When loading data, normalize column names by stripping whitespace: `df.columns = df.columns.str.strip()`
+- Always use `RENT_IND` as the outcome variable for conversion analysis
+- `RENT_IND = 1` means converted (rental occurred), `RENT_IND = 0` means did not convert
+
 ### Step 2: Validate Data Availability
 
+**Data Loading Strategy**: Always prefer processed data over raw data for token efficiency.
+
 ```python
-# Check columns exist
+import os
+import pandas as pd
+
+# STEP -1: Determine data source (prefer processed parquet over raw Excel/CSV)
+# Assumes data has been profiled and processed using /data-profiler agent
+table_name = 'hles_conversion'  # or 'creser', 'cra001', 'csplit', 'translog'
+processed_path = f'data/processed/{table_name}_processed.parquet'
+raw_path = f'data/raw/{table_name}.xlsx'  # Adjust extension as needed
+
+if os.path.exists(processed_path):
+    # Load processed parquet (fast, efficient, pre-cleaned)
+    df = pd.read_parquet(processed_path)
+    print(f"✓ Loaded processed data: {processed_path}")
+    print(f"  Shape: {df.shape[0]} rows × {df.shape[1]} columns")
+else:
+    # Fallback to raw data with warning
+    print(f"⚠️  Processed data not found at: {processed_path}")
+    print(f"⚠️  Loading raw data instead. This is less efficient.")
+    print(f"⚠️  RECOMMENDATION: Run '/data-profiler {table_name}' first to generate processed version.")
+
+    # Load raw data
+    if raw_path.endswith('.xlsx') or raw_path.endswith('.xls'):
+        df = pd.read_excel(raw_path)
+    elif raw_path.endswith('.csv'):
+        df = pd.read_csv(raw_path)
+    else:
+        raise ValueError(f"Unsupported file type: {raw_path}")
+
+    # STEP 0: Normalize column names (strip whitespace/newlines from raw Excel data)
+    df.columns = df.columns.str.strip()
+    print(f"  Column names normalized (whitespace stripped)")
+
+# Continue with hypothesis testing using df...
+
+# STEP 1: Map hypothesis column names to actual data column names
+column_mapping = {
+    'rental': 'RENT_IND',  # Hypothesis docs use 'rental' for readability
+    'res_id': 'RES_ID',
+    'contact_range': 'CONTACT RANGE',  # Note: has space in raw data
+    # Add other common mappings as needed
+}
+
+# Check columns exist (try both hypothesis name and mapped name)
 required_cols = hypothesis['data_needed']
 available_cols = df.columns.tolist()
-missing = [c for c in required_cols if c not in available_cols]
+missing = []
+final_cols = {}
+
+for col in required_cols:
+    # Try exact match first
+    if col in available_cols:
+        final_cols[col] = col
+    # Try mapped name
+    elif col in column_mapping and column_mapping[col] in available_cols:
+        final_cols[col] = column_mapping[col]
+    else:
+        missing.append(col)
 
 if missing:
     # Try to find similar columns
@@ -127,19 +189,19 @@ if missing:
     raise DataError(f"Missing columns: {missing}. Did you mean: {suggestions}?")
 
 # Check data quality
-for col in required_cols:
-    null_pct = df[col].isna().mean()
+for col_alias, col_actual in final_cols.items():
+    null_pct = df[col_actual].isna().mean()
     if null_pct > 0.5:
-        warn(f"Column {col} has {null_pct:.0%} null values")
+        warn(f"Column {col_actual} has {null_pct:.0%} null values")
 ```
 
 ### Step 2b: Create Required Features
 
-Call `feature-engineer` skill to create any derived features needed for the hypothesis:
+Call `engineering-features` skill to create any derived features needed for the hypothesis:
 
 ```python
-# Call feature-engineer skill
-feature_result = call_skill('feature-engineer',
+# Call engineering-features skill
+feature_result = call_skill('engineering-features',
                             hypothesis=hypothesis,
                             df=df)
 
@@ -162,14 +224,14 @@ Common features that may be created:
 
 ### Step 3: Select Statistical Test
 
-Call `stat-test-selector` skill with:
-- Predictor type (from type-detector)
+Call `selecting-tests` skill with:
+- Predictor type (from detecting-types)
 - Outcome type (binary for conversion)
 - Question type (difference/association)
 
 ### Step 4: Generate Analysis Code
 
-Call `analysis-coder` skill with:
+Call `coding-analysis` skill with:
 - Hypothesis ID
 - Selected test
 - Column names
@@ -290,7 +352,7 @@ results['validation'] = {
 
 ### Step 7: Interpret Results
 
-Call `results-interpreter` skill with statistical output AND validation flags.
+Call `interpreting-results` skill with statistical output AND validation flags.
 
 Expected output:
 ```markdown
@@ -335,8 +397,8 @@ should_discover = (
 if should_discover:
     print("⚠️ Weak or inconclusive effect. Running sub-hypothesis discovery...")
 
-    # Call hypothesis-discovery skill
-    discovery_result = call_skill('hypothesis-discovery',
+    # Call discovering-hypotheses skill
+    discovery_result = call_skill('discovering-hypotheses',
                                    hypothesis_id=hypothesis['id'],
                                    df=df_enriched,
                                    predictor_col=predictor_col,
@@ -389,12 +451,12 @@ else:  # choice == 3
 **Output Includes**:
 - List of discovered sub-hypotheses with importance scores
 - Interaction effects identified
-- Feature code needed (from feature-engineer)
+- Feature code needed (from engineering-features)
 - Suggested statistical tests for each
 
 ### Step 8: Visualize
 
-Call `viz-generator` skill with appropriate chart type.
+Call `generating-visualizations` skill with appropriate chart type.
 
 ### Step 9: Update Documentation
 
@@ -469,15 +531,15 @@ execute_mode: auto  # auto, notebook, code-only
 ## Dependencies
 
 **Skills used**:
-- `feature-engineer` - Create derived features (Step 2b)
-- `stat-test-selector` - Test selection
-- `analysis-coder` - Code generation
-- `results-interpreter` - Results translation
-- `viz-generator` - Visualization
-- `type-detector` - Variable type inference
-- `quality-checker` - Data validation
-- `sanity-checker` - On-demand detailed validation (optional)
-- `hypothesis-discovery` - ML-driven sub-hypothesis discovery (Step 7b, conditional)
+- `engineering-features` - Create derived features (Step 2b)
+- `selecting-tests` - Test selection
+- `coding-analysis` - Code generation
+- `interpreting-results` - Results translation
+- `generating-visualizations` - Visualization
+- `detecting-types` - Variable type inference
+- `checking-quality` - Data validation
+- `checking-sanity` - On-demand detailed validation (optional)
+- `discovering-hypotheses` - ML-driven sub-hypothesis discovery (Step 7b, conditional)
 
 **Built-in validation** (Step 6):
 - Sample size checks

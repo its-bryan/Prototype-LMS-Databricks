@@ -1,3 +1,8 @@
+---
+name: engineering-features
+description: Creates derived features needed for hypothesis testing from raw data columns. Use when creating urgency metrics, channel flags, timing features, or when hypotheses require computed variables.
+---
+
 # feature-engineer
 
 Shared skill that creates derived features needed for hypothesis testing or ML discovery.

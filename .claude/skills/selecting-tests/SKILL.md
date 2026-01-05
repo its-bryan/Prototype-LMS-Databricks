@@ -1,3 +1,8 @@
+---
+name: selecting-tests
+description: Recommends appropriate statistical test based on predictor type, outcome type, and question. Use when choosing between chi-square, t-test, ANOVA, or regression for hypothesis testing.
+---
+
 # stat-test-selector
 
 Select the appropriate statistical test for a hypothesis based on variable types and research question.

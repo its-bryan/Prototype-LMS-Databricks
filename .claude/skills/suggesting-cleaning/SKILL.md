@@ -1,3 +1,8 @@
+---
+name: suggesting-cleaning
+description: Recommends data cleaning steps based on quality issues. Use when analyzing data quality problems, suggesting data transformations, or when the user asks how to clean or prepare messy data.
+---
+
 # cleaning-suggester
 
 Recommend data cleaning transformations based on quality issues detected.

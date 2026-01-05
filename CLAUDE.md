@@ -23,10 +23,21 @@ This project analyzes Hertz's insurance replacement business segment to **improv
 ### Key Fields
 - **Composite Key**: `confirmation_number + initial_date` (confirmation numbers recycled ~6 months)
 - **KNUM**: Reservation → rental agreement number (H-prefix = converted)
-- **Conversion**: `rental / res_id` within 90-day window
+
+### **Conversion Outcome Variable** (PRIMARY OPTIMIZATION TARGET)
+- **Variable Name**: `RENT_IND` (raw data: `\nRENT_IND` due to Excel formatting)
+- **Definition**: Binary indicator where `1` = lead converted to rental, `0` = did not convert
+- **Conversion Formula**: `Conversion Rate = (sum of RENT_IND) / (sum of RES_ID) × 100%`
+- **Measurement Window**: 90 days from initial_date (though most conversions occur within first week)
+- **Mutually Exclusive Outcomes**: Each lead has exactly one of three states:
+  - `RENT_IND = 1`: Converted to rental (**TARGET TO MAXIMIZE**)
+  - `CANCEL_ID = 1`: Cancelled by customer
+  - `UNUSED_IND = 1`: Reservation expired unused
+- **Data Source**: HLES Conversion table (aggregated from CRESER → CRA001 → CSPLIT)
+- **Note**: Documentation may reference this as `rental` for readability, but actual column is `RENT_IND`
 
 ### Key Metrics
-- Lead conversion rate (current: 67-70%, target: 80%+)
+- **Lead conversion rate (current: 67-70%, target: 80%+)** ← PRIMARY PROJECT GOAL
 - Time-to-first-contact (contact_range, hours_difference)
 - Conversion by channel (Counter vs HRD vs MMR self-service)
 - Conversion by insurance partner (cdp_name)
@@ -36,26 +47,18 @@ This project analyzes Hertz's insurance replacement business segment to **improv
 ```
 HertzDataAnalysis/
 ├── .claude/
-│   ├── agents/        # Multi-step orchestrator agents
-│   ├── skills/        # Single-step building block skills
-│   └── README.md      # Agent/skill documentation
+│   ├── agents/        # Custom agents (hypothesis-tester, data-profiler)
+│   └── skills/        # Custom skills (selecting-tests, coding-analysis, etc.)
 ├── configs/           # Configuration files
 ├── data/
 │   ├── raw/           # Original data files (never modify)
 │   ├── processed/     # Cleaned and transformed data
 │   └── external/      # External reference data
 ├── docs/
-│   ├── context/
-│   │   ├── emails/              # Email correspondence
-│   │   ├── Hertz_context_docs/  # Source docs from Hertz
-│   │   ├── meeting_transcripts/ # Stakeholder meeting notes
-│   │   ├── data_README.md       # Data documentation
-│   │   └── project_scope.md     # Project scope & objectives
-│   ├── hypotheses.md            # Conversion failure hypotheses
-│   └── outstanding_questions.md # Pending data questions
+│   └── context/       # Project context and requirements
 ├── notebooks/         # Jupyter notebooks for exploration
 ├── reports/
-│   └── figures/       # Generated charts and visuals
+│   └── figures/       # Generated visualizations and charts
 ├── src/
 │   ├── data/          # Data loading and transformation
 │   ├── features/      # Feature engineering
@@ -151,12 +154,14 @@ See `.claude/README.md` for full documentation.
 
 | Skill | Usage | Purpose |
 |-------|-------|---------|
-| `stat-test-selector` | `/stat-test-selector categorical → binary` | Recommend statistical test |
-| `analysis-coder` | `/analysis-coder H1 chi-square` | Generate Python analysis code |
-| `results-interpreter` | `/results-interpreter <stats>` | Translate results to plain English |
-| `viz-generator` | `/viz-generator bar conversion by X` | Generate/execute visualization |
-| `sanity-checker` | `/sanity-checker H1 results` | Validate results, check assumptions |
-| `type-detector` | `/type-detector df` | Infer semantic column types |
-| `quality-checker` | `/quality-checker df` | Find data quality issues |
-| `join-validator` | `/join-validator df1.key df2.key` | Test join compatibility |
-| `cleaning-suggester` | `/cleaning-suggester df` | Recommend cleaning steps |
+| `selecting-tests` | `/selecting-tests categorical → binary` | Recommend statistical test |
+| `coding-analysis` | `/coding-analysis H1 chi-square` | Generate Python analysis code |
+| `interpreting-results` | `/interpreting-results <stats>` | Translate results to plain English |
+| `generating-visualizations` | `/generating-visualizations bar conversion by X` | Generate/execute visualization |
+| `checking-sanity` | `/checking-sanity H1 results` | Validate results, check assumptions |
+| `detecting-types` | `/detecting-types df` | Infer semantic column types |
+| `checking-quality` | `/checking-quality df` | Find data quality issues |
+| `validating-joins` | `/validating-joins df1.key df2.key` | Test join compatibility |
+| `suggesting-cleaning` | `/suggesting-cleaning df` | Recommend cleaning steps |
+| `engineering-features` | `/engineering-features df hypothesis` | Create derived features for testing |
+| `discovering-hypotheses` | `/discovering-hypotheses weak_result` | Discover sub-hypotheses from weak effects |

@@ -1,3 +1,8 @@
+---
+name: interpreting-results
+description: Translates statistical test results into plain English findings with business context. Use when explaining chi-square, t-test, regression results, or when the user asks what statistical output means.
+---
+
 # results-interpreter
 
 Translate statistical test results into plain English findings with business context.

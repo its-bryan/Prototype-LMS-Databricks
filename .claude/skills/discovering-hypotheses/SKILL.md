@@ -1,25 +1,48 @@
-# hypothesis-discovery
+---
+name: discovering-hypotheses
+description: Discovers new hypotheses or sub-hypotheses using decision tree analysis. Use standalone to explore interaction effects and uncover patterns, or automatically when a hypothesis shows weak effects (p-value > 0.05, effect size < 0.15).
+---
 
-ML-driven skill that discovers sub-hypotheses when a main hypothesis shows weak or inconclusive effects.
+# discovering-hypotheses
+
+ML-driven skill that discovers new hypotheses by identifying interaction effects and data segments with differentiated outcomes.
 
 ## Purpose
 
-Uses decision tree analysis to identify interaction effects and segment the data into sub-groups where the hypothesis may show stronger effects. Called by `hypothesis-tester` agent when results are weak (Step 7b).
+Uses decision tree analysis to:
+- **Standalone**: Explore a dataset to generate new hypothesis ideas based on significant interaction patterns
+- **Sub-hypothesis discovery**: When an existing hypothesis shows weak effects, identify specific segments where effects are stronger
+- **Automatic**: Called by `hypothesis-tester` agent when results are inconclusive (Step 7b)
+
+Can be invoked anytime to explore patterns in your data, not just for weak hypothesis results.
 
 ## Invocation
 
+### Standalone - Explore new hypotheses
 ```
-/hypothesis-discovery H1
-/hypothesis-discovery H1 --dataframe df_conversion
-/hypothesis-discovery "test if contact speed affects conversion"
+/discovering-hypotheses
+/discovering-hypotheses --dataframe df_conversion
+/discovering-hypotheses --focus conversion
 ```
 
-## Trigger Conditions
+### Sub-hypothesis discovery - Refine existing hypothesis
+```
+/discovering-hypotheses H1
+/discovering-hypotheses H1 --dataframe df_conversion
+/discovering-hypotheses "test if contact speed affects conversion"
+```
 
-Called by `hypothesis-tester` when ANY of:
-- p-value > 0.05 (not statistically significant)
-- effect size < 0.15 (weak practical effect)
-- confidence = "Low" or "Medium"
+## Use Cases
+
+**1. Standalone exploration**: Generate new hypothesis ideas from data patterns
+- "What factors drive conversion differences?"
+- "Where are the biggest opportunities?"
+
+**2. Sub-hypothesis discovery**: Refine weak/inconclusive results
+- Automatically triggered by `hypothesis-tester` when:
+  - p-value > 0.05 (not statistically significant)
+  - effect size < 0.15 (weak practical effect)
+  - confidence = "Low" or "Medium"
 
 ## Inputs
 
@@ -234,19 +257,38 @@ The skill explores these interaction candidates:
 
 ## Example Usage
 
-### Called by hypothesis-tester (Step 7b)
+### Standalone - Generate new hypotheses
 
 ```
-User: /hypothesis-tester H1
+User: /discovering-hypotheses
 
-Agent: [Steps 1-7 complete]
-       Result: p=0.08, effect=0.12
+Agent: Analyzing df_conversion for patterns...
 
-       ⚠️ Weak effect. Calling hypothesis-discovery...
+       📊 Top Interaction Patterns Found:
 
-       [hypothesis-discovery runs]
+       H_NEW1: Counter locations + weekend pickups → 81% conversion vs 68% baseline
+               Importance: 0.42
 
-       📊 Suggested Sub-Hypotheses:
+       H_NEW2: StateFarm leads + <2hr contact → 76% vs 62% for slower contact
+               Importance: 0.35
+
+       H_NEW3: Body shop pickups + business hours → 72% vs 58% after hours
+               Importance: 0.28
+
+       Would you like me to:
+       1. Add these to hypotheses.md and test now?
+       2. Add to hypotheses.md for later?
+       3. Explore further?
+```
+
+### Sub-hypothesis discovery - Refine weak result
+
+```
+User: /discovering-hypotheses H1
+
+Agent: Analyzing H1 for interaction effects...
+
+       📊 Suggested Sub-Hypotheses for H1:
 
        H1a: Fast contact + urgent rental (≤3 days) → 82% vs 61%
             Importance: 0.38
@@ -254,18 +296,19 @@ Agent: [Steps 1-7 complete]
        H1b: Fast contact effect strongest at Counter
             Counter+fast: 78% vs HRD+fast: 68%
             Importance: 0.24
-
-       Would you like me to:
-       1. Add these to hypotheses.md and test now?
-       2. Add to hypotheses.md for later?
-       3. Skip?
 ```
 
-### Standalone usage
+### Auto-triggered by hypothesis-tester
 
 ```
-User: /hypothesis-discovery H1
+User: /hypothesis-tester H1
 
-Agent: [Runs discovery on H1]
-       [Returns sub-hypothesis suggestions]
+Agent: [Steps 1-7 complete]
+       Result: p=0.08, effect=0.12
+
+       ⚠️ Weak effect. Calling discovering-hypotheses...
+
+       [discovering-hypotheses runs automatically]
+
+       📊 Suggested Sub-Hypotheses: [output as above]
 ```

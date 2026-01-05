@@ -2,6 +2,13 @@
 
 Track all hypotheses about what drives conversion success/failure. Each hypothesis will be systematically tested with statistical analysis.
 
+## Important: Conversion Outcome Variable
+- **Variable Reference**: Hypotheses refer to the outcome variable as `rental` for readability
+- **Actual Column Name**: `RENT_IND` in the HLES Conversion data (raw: `\nRENT_IND`)
+- **Definition**: `RENT_IND = 1` indicates a lead converted to a rental (this is what we're trying to maximize)
+- **Formula**: `Conversion Rate = (sum of RENT_IND) / (sum of RES_ID) × 100%`
+- See CLAUDE.md for full definition and data specifications
+
 ## Status Legend
 - 🔴 Not Started
 - 🟡 In Progress

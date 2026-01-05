@@ -1,3 +1,8 @@
+---
+name: coding-analysis
+description: Generates Python analysis code for hypothesis testing. Use when generating statistical test code, creating analysis functions, or when the user requests analysis code for chi-square tests, t-tests, or logistic regression.
+---
+
 # analysis-coder
 
 Generate Python code for statistical analysis based on hypothesis, data columns, and test type.

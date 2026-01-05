@@ -1,3 +1,8 @@
+---
+name: validating-joins
+description: Tests join compatibility between DataFrames by checking key overlap and data types. Use when planning to merge or join tables, or when the user asks if two datasets can be joined.
+---
+
 # join-validator
 
 Test if proposed join keys work across HLES tables. Validates cardinality, match rates, and orphan records.

@@ -1,3 +1,8 @@
+---
+name: generating-visualizations
+description: Creates appropriate charts for hypothesis test results including bar charts, time series, heatmaps, and distributions. Use when visualizing conversion rates, trends, or statistical analysis results.
+---
+
 # viz-generator
 
 Generate and optionally execute visualizations for hypothesis test results and data exploration.

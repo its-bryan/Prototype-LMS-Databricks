@@ -63,21 +63,7 @@ The general approach for this project will be as follows:
 
 **Systematically test each conversion failure hypothesis**
 
-Work through hypotheses documented in `@docs/hypotheses.md`, writing Python analysis code for each:
-
-| Hypothesis | Analysis Approach |
-|------------|-------------------|
-| Long time between lead receipt and first call → lower conversion | Correlation analysis: hours_difference vs rental indicator |
-| Customer requests specific car type → lower conversion | Compare conversion rates by vehicle type requested |
-| Missing customer attributes → lower conversion | Identify which missing fields correlate with non-conversion |
-| No contact made → lower conversion | Compare no_contact flag vs conversion outcome |
-| Weekend/after-hours leads → lower conversion | Segment by initial_date day/time |
-
-For each hypothesis:
-1. Write exploratory analysis code
-2. Calculate statistical significance where applicable
-3. Quantify the conversion gap (e.g., "leads contacted within 30 min convert at 75% vs 55% for 3+ hours")
-4. Document in Jupyter notebook with visualizations
+Work through hypotheses documented in `@docs/hypotheses.md` using the hypothesis tester agent.
 
 ### Phase 4: Insights Synthesis
 

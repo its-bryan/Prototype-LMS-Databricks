@@ -1,3 +1,8 @@
+---
+name: checking-sanity
+description: Validates statistical results with sanity checks for assumptions, sample size, and business sense. Use when reviewing analysis results, checking test validity, or when validating hypothesis test outputs.
+---
+
 # sanity-checker
 
 On-demand validation skill for statistical analysis results and data quality. Use when something looks off or for detailed review of important findings.

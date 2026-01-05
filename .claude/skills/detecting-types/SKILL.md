@@ -1,3 +1,8 @@
+---
+name: detecting-types
+description: Infers semantic column types (categorical, numeric, date, ID) from DataFrame columns. Use when profiling new data, understanding column types, or before selecting statistical tests.
+---
+
 # type-detector
 
 Infer semantic data types beyond pandas dtypes for columns in a DataFrame.

@@ -1,3 +1,8 @@
+---
+name: checking-quality
+description: Identifies data quality issues including nulls, outliers, invalid values, and duplicates. Use when profiling data, investigating data problems, or when the user asks about data quality.
+---
+
 # quality-checker
 
 Detect data quality issues in a DataFrame: nulls, duplicates, outliers, invalid values.
