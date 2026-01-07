@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Outstanding Questions for Hertz - Insurance Replacement Analysis</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 8.5in;
+            margin: 0 auto;
+            padding: 1in;
+        }
+        h1 {
+            color: #1a1a1a;
+            border-bottom: 3px solid #4285f4;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+        h1 + p {
+            margin-top: 5px;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #1a1a1a;
+            margin-top: 35px;
+            margin-bottom: 15px;
+            padding-top: 15px;
+            padding-bottom: 8px;
+            border-top: 1px solid #d0d0d0;
+            border-bottom: 1px solid #d0d0d0;
+        }
+        h3 {
+            color: #333;
+            margin-top: 25px;
+            margin-bottom: 12px;
+            font-size: 1.1em;
+        }
+        ol {
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+        ol > li {
+            margin-bottom: 15px;
+        }
+        ul {
+            margin-top: 8px;
+            margin-bottom: 8px;
+            margin-left: 20px;
+        }
+        ul li {
+            margin-bottom: 6px;
+        }
+        strong {
+            color: #1a1a1a;
+        }
+        .context {
+            background-color: #f5f5f5;
+            padding: 12px 15px;
+            border-left: 4px solid #4285f4;
+            margin: 15px 0;
+            line-height: 1.5;
+        }
+        .context p {
+            margin: 8px 0;
+        }
+        .context ul {
+            margin-top: 5px;
+            margin-bottom: 5px;
+        }
+        .highlight {
+            background-color: #fff3cd;
+            padding: 2px 4px;
+        }
+        .strikethrough {
+            text-decoration: line-through;
+        }
+        .sub-question {
+            margin-top: 20px;
+            margin-bottom: 15px;
+        }
+        .sub-question-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Outstanding Questions for Hertz</h1>
+<p><em>Insurance Replacement Lead Conversion Analysis - Data Clarification</em></p>
+
+<h2>Digital Self-Service / Interactions</h2>
+
+<ol>
+    <li>You mentioned digital self-service interactions are in place. Can you translate MSG10 MMR completion? Is it correct to say that if MSG10 = "accepted," then MMR is completed?</li>
+</ol>
+
+<h2>HLES Conversion</h2>
+
+<ol>
+    <li>Is there a mapping between BODYSHOP and BODYSHOPID? Other tables have BODYSHOPID, but this table only has BODYSHOP.</li>
+    <li>Is RENT_LOC = the HLE/branch location?</li>
+    <li>How do I know if the customer filled out the self-service MMR link? Is it when CONTACT_GROUP = "NO CONTACT" (instead of HRD or Counter) or is this data captured in TRANSLOG?</li>
+</ol>
+
+<h2>CRESER</h2>
+
+<ol>
+    <li>I am looking at the columns "DATE_OUT", "EXP_DATE", and "DATE_BOOKED". Can you please confirm the definition of each of them? As an example, for KNUM: 037-9143094:
+        <ul>
+            <li>DATE_OUT = 202411220937</li>
+            <li>EXP_DATE = 202411220937 (exactly the same)</li>
+            <li>DATE_BOOKED = 202411220737 (2 hours earlier)</li>
+            <li>OPEN_DATE = 202411220637 (1 hour earlier)</li>
+            <li>The minutes (:37) are all exactly the same, is this a coincidence?</li>
+        </ul>
+    </li>
+    <li>Is CONFIRMATION the same as CONFIRM_NUM in other tables?</li>
+    <li>What is SOURCE? (values are 1,2,3)</li>
+    <li>Why is PICKUPSERVICE all null? Is it because at this point there is no visibility of whether the customer needs pick up or not?</li>
+</ol>
+
+<h2>CSPLIT</h2>
+
+<ol>
+    <li>PERCENTPAY: if it's 100%, what does that mean? Insurance pays 100% of the bill?</li>
+    <li>AMTPERDAYAUTH: Is this the amount per day authorised by the Insurance?</li>
+    <li>MAXPAY: Is this the maximum the customer is going to pay for the rental? How is this different from MAXCUSTPAY and RENTEROWES? One entry's MAXCUSTPAY is 19.99 and RENTEROWES is 138.18 (KNUM: H41219264). Is MAXCUSTPAY = daily figure, RENTEROWES = total amount renter/customer has to pay for the rental duration?</li>
+    <li>What is INVOICE? Is it an amount? Or is that an Invoice ID?</li>
+    <li>REPAIRLOC: Is this the same as BODYSHOP in HLES Conversion Data?</li>
+</ol>
+
+<h2>CRA001</h2>
+
+<ol>
+    <li>Is CONFIRMATION the same as CONFIRM_NUM in other tables?</li>
+    <li>Is my understanding correct for:
+        <ul>
+            <li>DATE_OUT = when the car is taken off by the customer</li>
+            <li>EXP_DATE = (I'm unsure of what this is - expiry?)</li>
+            <li>DATE_IN = When the car is returned</li>
+        </ul>
+    </li>
+    <li>What is DBR_DATE?</li>
+</ol>
+
+<h2>TRANSLOG</h2>
+
+<ol>
+    <li>What are the different EventType (1,2,3,4,etc.) and BGN01 (42) values mean?</li>
+    <li>What is EXT? Value is either null or "InsCall"</li>
+    <li>Is MMR activity recorded here? e.g. open rate, click through rate, completion rate</li>
+</ol>
+
+<h2>HLES NOI.docx</h2>
+
+<ol>
+    <li>"Most customers either drop their car or go to a body shop". Can I confirm:
+        <ul>
+            <li>"Drop their car" = drop their car at Hertz, so they can pick up a rental car right away, and Hertz will pass on their owned car to be repaired at a body shop partner</li>
+            <li>What variable(s) in the tables show whether the customer dropped their car, get picked up, or went to a bodyshop?</li>
+        </ul>
+    </li>
+    <li>The document seems unfinished, is this the latest version or is there an amended/completed version?</li>
+    <li>Can I confirm that the format/columns of these data tables won't change in the Jan 5 version?</li>
+</ol>
+
+<h2>HRD Call Recording Data (CIDsHRDrecording.xlsx)</h2>
+
+<div class="context">
+    <p><strong>Context:</strong> Received 1,000 call records (Nov 1-7, 2025). Analysis revealed critical data gaps.</p>
+</div>
+
+<h3>Data Quality & Completeness</h3>
+
+<ol>
+    <li><strong>Why are disposition codes not populated in OutboundHRD sheet?</strong>
+        <ul>
+            <li><strong>OutboundHRD sheet:</strong> primaryDispositionId, secondaryDispositionId, dispositionNotes are all <span class="highlight">100% null (1,000/1,000 records)</span></li>
+            <li><strong>InboundHRD sheet:</strong> dispositionNotes has 94.4% populated (944/1,000 records), but primaryDispositionId and secondaryDispositionId are still 100% null</li>
+            <li>Why is OutboundHRD dispositionNotes completely empty while InboundHRD has data?</li>
+            <li>Are outbound agents not using the disposition system?</li>
+            <li>Is this a data export configuration issue?</li>
+            <li>What disposition codes are available in the system? (e.g., "Rental Confirmed", "Customer Declined", "No Answer", "Will Call Back")</li>
+        </ul>
+    </li>
+    <li><strong>Can we enable disposition code tracking going forward?</strong>
+        <ul>
+            <li>Without disposition codes, cannot identify which calls resulted in bookings</li>
+            <li>Recommend agents log call outcomes: successful booking, customer declined, callback scheduled, etc.</li>
+            <li>This would enable direct measurement of call → conversion effectiveness</li>
+        </ul>
+    </li>
+    <li><strong>How are call transfers tracked?</strong>
+        <ul>
+            <li>transferIndicatorId = 0 for all 1,000 calls (no transfers recorded)</li>
+            <li>Hypothesis H14 suggests transfers from HRD to local branches are common</li>
+            <li>Are transfers happening but not logged in this dataset?</li>
+            <li>Is transfer data in a different table/system?</li>
+        </ul>
+    </li>
+    <li><strong>Can we add join keys to link calls to reservations?</strong>
+        <ul>
+            <li>Current data has no confirmation_number, reservation_id, or KNUM</li>
+            <li>When an agent confirms a booking, can we capture the confirmation number in call records?</li>
+            <li>This would enable direct analysis of call quality → conversion rates</li>
+        </ul>
+    </li>
+    <li><strong>Is customer phone number available in HLES data?</strong>
+        <ul>
+            <li>Call data has toAddr (customer phone number)</li>
+            <li>If HLES tables have phone numbers, we could link calls to conversions indirectly</li>
+            <li>Which HLES table(s) contain customer phone numbers?</li>
+        </ul>
+    </li>
+</ol>
+
+<h3>InboundHRD dispositionNotes Standardization</h3>
+
+<div class="context">
+    <p><strong>Context:</strong> InboundHRD sheet has dispositionNotes populated (944/1,000 records, 97 unique values), but data quality analysis reveals significant inconsistencies due to free-text entry.</p>
+    <p><strong>Data Quality Issues Found:</strong></p>
+    <ul>
+        <li>Case inconsistencies: 'cx' vs 'CX' vs 'Cx' (reduced from 113 to 97 unique values after normalization)</li>
+        <li>Multiple abbreviations for same concept: 'cx' (389), 'cust' (61), 'cst' (51) all appear to mean "customer"</li>
+        <li>Typos: 'beilling' (billing), 'adju' (adj), 'sgent' (agent)</li>
+        <li>Inconsistent formatting: 'cxloc' vs 'cx loc' vs 'cxloc AZGIL06'</li>
+    </ul>
+    <p><strong>Distribution Summary:</strong></p>
+    <ul>
+        <li>Customer-related: 58.3% (cx, cust, cst variations)</li>
+        <li>Adjuster-related: 22.1% (adj variations)</li>
+        <li>Location/Store: 4.5% (cxloc, cx loc)</li>
+        <li>Agent/Rep: 3.1%</li>
+        <li>SPOC: 1.5%</li>
+        <li>Other: Escalation, billing, uber, roadside, etc.</li>
+    </ul>
+</div>
+
+<div class="sub-question">
+    <div class="sub-question-title">5a. What are the official disposition note codes/values that InboundHRD agents should use?</div>
+    <ul>
+        <li>Is there a standardized list agents should select from, or is this meant to be free-text?</li>
+        <li>Recommend implementing dropdown with predefined categories for better data quality</li>
+    </ul>
+</div>
+
+<div class="sub-question">
+    <div class="sub-question-title">5b. What do the following abbreviations officially mean?</div>
+    <ul>
+        <li><strong>CX</strong> (389 occurrences) - Customer? Customer experience?</li>
+        <li><strong>CST</strong> (51 occurrences) - Customer? Different from cx?</li>
+        <li><strong>CUST</strong> (61 occurrences) - Customer? Why 3 different abbreviations?</li>
+        <li><strong>ADJ</strong> (210 occurrences) - Adjuster?</li>
+        <li><strong>CXLOC</strong> (26 occurrences) - Customer calling location?</li>
+        <li><strong>SPOC</strong> (15 occurrences) - Single Point of Contact?</li>
+        <li><strong>REP</strong> (12 occurrences) - Representative? Different from agent?</li>
+        <li><strong>AGENT</strong> (18 occurrences) - Agent-to-agent calls? Or calls about agents?</li>
+        <li><strong>ESCALATION</strong> (9 occurrences) - What triggers escalation classification?</li>
+    </ul>
+</div>
+
+<div class="sub-question">
+    <div class="sub-question-title">5c. Why are there three different abbreviations for 'customer' (cx, cust, cst)?</div>
+    <ul>
+        <li>Do these represent different types of customer calls?</li>
+        <li>Or is this just inconsistent agent preference?</li>
+        <li>Recommend standardizing to single abbreviation</li>
+    </ul>
+</div>
+
+<div class="sub-question">
+    <div class="sub-question-title">5d. Why do some dispositionNotes include specific location codes (e.g., 'cxloc AZGIL06', 'cxlocAMAC12')?</div>
+    <ul>
+        <li>Is this capturing which Hertz location the customer is calling about?</li>
+        <li>Should location code be a separate structured field instead of free-text note?</li>
+        <li>Format is inconsistent: 'cxloc AZGIL06' vs 'cxlocAMAC12' (no space)</li>
+    </ul>
+</div>
+
+<div class="sub-question">
+    <div class="sub-question-title">5e. What does 'rep' vs 'agent' indicate?</div>
+    <ul>
+        <li>Are these agent-to-agent calls, or calls about agent/representative information?</li>
+        <li>Is there a meaningful distinction between the two, or should they be consolidated?</li>
+    </ul>
+</div>
+
+<div class="sub-question">
+    <div class="sub-question-title">5f. Recommendation: Implement structured disposition code dropdown</div>
+    <ul>
+        <li>Current free-text approach creates data quality issues</li>
+        <li>Suggest standardized categories:
+            <ul>
+                <li>CUSTOMER_GENERAL (replaces: cx, cust, cst)</li>
+                <li>CUSTOMER_LOCATION (replaces: cxloc, cx loc) + separate field for location code</li>
+                <li>ADJUSTER_GENERAL (replaces: adj, adjuster)</li>
+                <li>ADJUSTER_SPECIFIC (for cases like 'adju geico') + separate field for insurance company</li>
+                <li>AGENT_REP (replaces: agent, rep)</li>
+                <li>SPOC</li>
+                <li>ESCALATION</li>
+                <li>BILLING</li>
+                <li>UBER_RIDESHARE</li>
+                <li>ROADSIDE</li>
+                <li>GENERAL_INQUIRY</li>
+                <li>OTHER</li>
+            </ul>
+        </li>
+        <li>Would this standardization be feasible to implement?</li>
+    </ul>
+</div>
+
+<h3>Call Attempt Policies</h3>
+
+<ol start="6">
+    <li><strong>What is the policy on maximum call attempts per customer?</strong>
+        <ul>
+            <li>Data shows 93 customers (12.5%) received 2+ calls in one week</li>
+            <li><span class="highlight">One customer received 63 calls in 7 days</span> (phone: 8447051298)</li>
+            <li>Is this intentional? Data error? Compliance concern?</li>
+            <li>What are the guardrails to prevent customer harassment?</li>
+        </ul>
+    </li>
+    <li><strong>Why did customer 8447051298 receive 63 calls?</strong>
+        <ul>
+            <li>Is this a VIP customer requiring special handling?</li>
+            <li>A data duplication error?</li>
+            <li>A problematic case stuck in the system?</li>
+            <li>What was the outcome of these 63 calls?</li>
+        </ul>
+    </li>
+</ol>
+
+<h3>Agent Performance & Training</h3>
+
+<ol start="8">
+    <li><strong>What explains the 4.6x variance in agent performance?</strong>
+        <ul>
+            <li>Top agent: 87% call completion rate (agent-ended calls)</li>
+            <li>Bottom agent: 19% call completion rate</li>
+            <li>Top 5 agents average 82% completion; bottom 5 average 30%</li>
+            <li>Are there known training, experience, or process differences?</li>
+            <li>Can we interview top performers to document best practices?</li>
+        </ul>
+    </li>
+    <li><strong>What does team ROUPE do differently than team ROSS?</strong>
+        <ul>
+            <li>Team ROUPE: 64.6% agent-ended calls</li>
+            <li>Team ROSS: 59.5% agent-ended calls (+5.1pp difference)</li>
+            <li>ROUPE has slightly longer hold times but higher completion</li>
+            <li>Different training? Scripts? Processes? Team structure?</li>
+        </ul>
+    </li>
+    <li><strong>What happens during hour 13 (1pm UTC) that causes performance drop?</strong>
+        <ul>
+            <li>Hour 13 shows <span class="highlight">54% customer hang-ups</span> (worst performance)</li>
+            <li>Hours 12, 21-22 show 73-77% agent completion (best performance)</li>
+            <li>Is hour 13 a shift change? Lunch break? Staff shortage?</li>
+            <li>Can call volume be shifted away from hour 13?</li>
+        </ul>
+    </li>
+</ol>
+
+<h3>Technical Infrastructure</h3>
+
+<ol start="11">
+    <li><strong>What causes the 6.7% agent phone disconnect rate?</strong>
+        <ul>
+            <li>67 of 1,000 calls (6.7%) ended due to "Agent Phone Disconnected"</li>
+            <li>Suggests telephony infrastructure or reliability issues</li>
+            <li>Is this a known problem?</li>
+            <li>Are there system logs we can review?</li>
+            <li>What redundancy/failover mechanisms exist?</li>
+        </ul>
+    </li>
+    <li><strong>Are there alerts for excessive hold times?</strong>
+        <ul>
+            <li>4 calls had holds >5 minutes (max: 10.3 minutes)</li>
+            <li>18.1% of calls included holds</li>
+            <li>Customer-ended calls average 19.7s hold vs agent-ended 12.5s hold</li>
+            <li>Do agents receive alerts when customers are on hold too long?</li>
+        </ul>
+    </li>
+</ol>
+
+<h3>Data Requests</h3>
+
+<ol start="13">
+    <li><strong>Can we get full call recording dataset (3-6 months)?</strong>
+        <ul>
+            <li>Current sample: 1,000 calls over 1 week (Nov 1-7, 2025)</li>
+            <li>Need larger sample for robust analysis</li>
+            <li>Ideally: Nov 2024 - Jan 2025 (3 months minimum)</li>
+        </ul>
+    </li>
+    <li><strong>Can we get actual call transcripts or recordings?</strong>
+        <ul>
+            <li>Current data only has metadata (duration, end reason, hold times)</li>
+            <li>Actual transcript text would enable:
+                <ul>
+                    <li>Common customer objections identification</li>
+                    <li>Effective vs ineffective agent language</li>
+                    <li>Customer confusion points (coverage, pricing, process)</li>
+                    <li>Evidence of spam flagging concerns (H15)</li>
+                </ul>
+            </li>
+            <li>Even 10-20 sample transcripts would be valuable for qualitative insights</li>
+        </ul>
+    </li>
+    <li><strong>Can we get Counter (local branch) call center data?</strong>
+        <ul>
+            <li>Current dataset is HRD only (centralized outbound desk)</li>
+            <li>H4 hypothesis requires comparing Counter vs HRD effectiveness</li>
+            <li>Do local branches use same call recording system?</li>
+        </ul>
+    </li>
+    <li><strong>Are there call center KPI dashboards or SOPs we can review?</strong>
+        <ul>
+            <li>Call attempt limits/routing rules</li>
+            <li>Hold time targets</li>
+            <li>Transfer procedures</li>
+            <li>Agent performance metrics tracked</li>
+            <li>Quality assurance criteria</li>
+        </ul>
+    </li>
+</ol>
+
+<h2>Other Data Sources</h2>
+
+<ol>
+    <li>Is CPAY data still helpful to have a look at?</li>
+    <li>Is there any way we can see MMR tracking data?</li>
+    <li><span class="strikethrough">Do you have any preliminary transcript/voice recording data you could share? A sample of 5-10 could be sufficient (HRD)</span> <strong>RECEIVED</strong> - See HRD Call Recording Data section above for follow-up questions.</li>
+    <li>Is there any SOP documents re. customer contact queue? e.g. alerts/routing logic/KPIs tracked - <strong>See question 16 in HRD section above</strong></li>
+</ol>
+
+<h2>Others</h2>
+
+<ol>
+    <li>With Statefarm where Hertz is a "co-primary" partner, do we know if they also send the same lead to let's say Enterprise, and we basically have to 'fight' for the lead? Or is there a priority order (e.g. Hertz has the lead for the first X days)?</li>
+    <li>Do the Adjusters check in at all during the process? At what point do they / can they take the lead away to put to their other car rental partners/contacts?</li>
+    <li>Do you have any material on the MMR flow? Curious to see the UX/UI on this.</li>
+    <li>Would it be possible to speak to someone at Hertz that manages bodyshop relationships, or any bodyshop contacts? (to understand bodyshop interference better - re. Vikram's email)</li>
+</ol>
+
+</body>
+</html>

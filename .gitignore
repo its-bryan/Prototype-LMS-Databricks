@@ -36,9 +36,9 @@ ENV/
 *.swo
 .DS_Store
 
-# Data files (uncomment if you don't want to track data)
-# data/raw/
-# data/processed/
+# Data files
+data/raw/
+data/processed/
 
 # Environment variables
 .env
