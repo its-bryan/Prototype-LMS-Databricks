@@ -39,6 +39,7 @@ ENV/
 # Data files
 data/raw/
 data/processed/
+data/audio/
 
 # Environment variables
 .env

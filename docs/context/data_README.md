@@ -10,9 +10,6 @@ This document describes the sample data files received from Hertz on December 20
 
 **Description**: Pre-processed conversion metrics data generated from WebFocus (mainframe reporting system).
 
-**Processing Pipeline**:
-- First Job.txt → Second Job.txt → Final Job.txt (WebFocus jobs)
-
 **Key Fields**:
 | Field | Description |
 |-------|-------------|
