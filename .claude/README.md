@@ -29,10 +29,17 @@ Custom skills and agents for the Hertz Insurance Replacement analysis project.
 
 | Skill | Command | Purpose |
 |-------|---------|---------|
+| `data-describer` | `/data-describer df` | Comprehensive descriptive statistics overview |
 | `type-detector` | `/type-detector df_creser` | Infer semantic column types |
 | `quality-checker` | `/quality-checker df` | Find data quality issues |
 | `join-validator` | `/join-validator df1.key df2.key` | Test join compatibility |
 | `cleaning-suggester` | `/cleaning-suggester df` | Recommend cleaning steps |
+
+#### Utility Skills
+
+| Skill | Command | Purpose |
+|-------|---------|---------|
+| `md-to-docx` | `/md-to-docx docs/hypotheses.md` | Convert Markdown to Word format (.docx) |
 
 ## Architecture
 
@@ -123,10 +130,12 @@ Output:
 │   ├── results-interpreter.md
 │   ├── viz-generator.md
 │   ├── sanity-checker.md    # Validation & review
+│   ├── data-describer.md    # Comprehensive descriptive statistics
 │   ├── type-detector.md
 │   ├── quality-checker.md
 │   ├── join-validator.md
-│   └── cleaning-suggester.md
+│   ├── cleaning-suggester.md
+│   └── md-to-docx.md        # Convert Markdown to Word format
 └── agents/
     ├── hypothesis-tester.md  # Full hypothesis testing workflow
     └── data-profiler.md

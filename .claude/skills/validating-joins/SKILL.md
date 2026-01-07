@@ -3,320 +3,62 @@ name: validating-joins
 description: Tests join compatibility between DataFrames by checking key overlap and data types. Use when planning to merge or join tables, or when the user asks if two datasets can be joined.
 ---
 
-# join-validator
+# validating-joins
 
-Test if proposed join keys work across HLES tables. Validates cardinality, match rates, and orphan records.
+[Brief description of what this skill does]
 
-## Usage
+## When to Use
 
-```
-/join-validator <left_df>.<key> <right_df>.<key>
-/join-validator <df1> <df2> --on <key_column>
-```
+Use this skill when:
+- [Scenario 1]
+- [Scenario 2]
+- User asks: "[Example question]"
 
-Or provide context:
-```
-/join-validator can I join df_creser to df_csplit on confirmation_number?
-/join-validator test joining conversion data to translog
-```
+## When NOT to Use
 
-## Validation Checks
+Do not use when:
+- [Exclusion scenario 1]
+- [Exclusion scenario 2]
 
-| Check | Description | What It Reveals |
-|-------|-------------|-----------------|
-| Match rate | % of left keys found in right | Data completeness |
-| Orphan left | Keys in left not in right | Missing downstream records |
-| Orphan right | Keys in right not in left | Missing upstream records |
-| Cardinality | 1:1, 1:many, many:1, many:many | Join behavior |
-| Duplicate keys | Repeated keys in each table | Row multiplication risk |
-| Null keys | Null values in join columns | Rows that won't match |
+## What It Does
 
-## Validation Code
+This skill [high-level description]:
+- **Feature 1** - Brief description
+- **Feature 2** - Brief description
 
-```python
-import pandas as pd
-import numpy as np
+## How It Works
 
-def validate_join(left_df, right_df, left_key, right_key=None,
-                  left_name='left', right_name='right'):
-    """
-    Validate a proposed join between two DataFrames.
+**IMPORTANT**: This skill executes `scripts/run_validating_joins.py`. Do NOT re-implement the logic inline.
 
-    Parameters:
-        left_df: Left DataFrame
-        right_df: Right DataFrame
-        left_key: Column name(s) in left_df (str or list)
-        right_key: Column name(s) in right_df (defaults to left_key)
-        left_name: Display name for left table
-        right_name: Display name for right table
+1. [High-level step 1]
+2. [High-level step 2]
+3. [High-level step 3]
 
-    Returns:
-        dict with validation results
-    """
-    if right_key is None:
-        right_key = left_key
+## How to Run
 
-    # Handle composite keys
-    if isinstance(left_key, str):
-        left_key = [left_key]
-    if isinstance(right_key, str):
-        right_key = [right_key]
+### Execute the Script
 
-    # Extract key values
-    left_keys = left_df[left_key].copy()
-    right_keys = right_df[right_key].copy()
+```bash
+# Basic usage
+python scripts/run_validating_joins.py <input>
 
-    # For composite keys, create tuple representation
-    if len(left_key) > 1:
-        left_values = set(left_keys.apply(tuple, axis=1))
-        right_values = set(right_keys.apply(tuple, axis=1))
-        left_key_series = left_keys.apply(tuple, axis=1)
-        right_key_series = right_keys.apply(tuple, axis=1)
-    else:
-        left_values = set(left_keys[left_key[0]].dropna())
-        right_values = set(right_keys[right_key[0]].dropna())
-        left_key_series = left_keys[left_key[0]]
-        right_key_series = right_keys[right_key[0]]
-
-    # Basic counts
-    results = {
-        'left_table': left_name,
-        'right_table': right_name,
-        'left_key': left_key,
-        'right_key': right_key,
-        'left_rows': len(left_df),
-        'right_rows': len(right_df),
-    }
-
-    # Null keys
-    left_nulls = left_key_series.isna().sum()
-    right_nulls = right_key_series.isna().sum()
-    results['null_keys'] = {
-        'left': int(left_nulls),
-        'left_pct': round(left_nulls / len(left_df) * 100, 2),
-        'right': int(right_nulls),
-        'right_pct': round(right_nulls / len(right_df) * 100, 2),
-    }
-
-    # Unique keys
-    left_unique = len(left_values)
-    right_unique = len(right_values)
-    results['unique_keys'] = {
-        'left': left_unique,
-        'right': right_unique,
-    }
-
-    # Duplicate keys
-    left_dupes = left_key_series.duplicated().sum()
-    right_dupes = right_key_series.duplicated().sum()
-    results['duplicate_keys'] = {
-        'left': int(left_dupes),
-        'left_pct': round(left_dupes / len(left_df) * 100, 2),
-        'right': int(right_dupes),
-        'right_pct': round(right_dupes / len(right_df) * 100, 2),
-    }
-
-    # Match analysis
-    matched = left_values & right_values
-    left_only = left_values - right_values
-    right_only = right_values - left_values
-
-    results['match_rate'] = {
-        'matched_keys': len(matched),
-        'left_match_pct': round(len(matched) / left_unique * 100, 2) if left_unique > 0 else 0,
-        'right_match_pct': round(len(matched) / right_unique * 100, 2) if right_unique > 0 else 0,
-    }
-
-    results['orphans'] = {
-        'left_only': len(left_only),
-        'left_only_pct': round(len(left_only) / left_unique * 100, 2) if left_unique > 0 else 0,
-        'right_only': len(right_only),
-        'right_only_pct': round(len(right_only) / right_unique * 100, 2) if right_unique > 0 else 0,
-    }
-
-    # Sample orphans for debugging
-    if left_only:
-        results['orphans']['left_examples'] = list(left_only)[:5]
-    if right_only:
-        results['orphans']['right_examples'] = list(right_only)[:5]
-
-    # Cardinality
-    left_key_counts = left_key_series.value_counts()
-    right_key_counts = right_key_series.value_counts()
-
-    left_is_unique = (left_key_counts == 1).all()
-    right_is_unique = (right_key_counts == 1).all()
-
-    if left_is_unique and right_is_unique:
-        cardinality = '1:1'
-    elif left_is_unique and not right_is_unique:
-        cardinality = '1:many'
-    elif not left_is_unique and right_is_unique:
-        cardinality = 'many:1'
-    else:
-        cardinality = 'many:many'
-
-    results['cardinality'] = {
-        'type': cardinality,
-        'left_max_dupes': int(left_key_counts.max()),
-        'right_max_dupes': int(right_key_counts.max()),
-    }
-
-    # Row multiplication estimate
-    if cardinality == '1:1':
-        estimated_rows = len(matched)
-    elif cardinality == '1:many':
-        # Each left row matches multiple right rows
-        estimated_rows = len(left_df)  # Upper bound
-    elif cardinality == 'many:1':
-        estimated_rows = len(left_df)
-    else:
-        # many:many - could explode
-        estimated_rows = '⚠️ Risk of row explosion'
-
-    results['join_estimate'] = {
-        'inner_join_rows': len(matched),
-        'left_join_rows': len(left_df),
-        'estimated_result_rows': estimated_rows,
-    }
-
-    # Validation verdict
-    issues = []
-    if results['match_rate']['left_match_pct'] < 90:
-        issues.append(f"Low match rate: only {results['match_rate']['left_match_pct']}% of left keys found in right")
-    if results['null_keys']['left_pct'] > 5:
-        issues.append(f"High null rate in left key: {results['null_keys']['left_pct']}%")
-    if cardinality == 'many:many':
-        issues.append("Many-to-many relationship: risk of row explosion")
-    if results['orphans']['left_only_pct'] > 20:
-        issues.append(f"{results['orphans']['left_only_pct']}% of left keys have no match")
-
-    results['validation'] = {
-        'status': 'pass' if not issues else 'warning' if len(issues) <= 1 else 'fail',
-        'issues': issues,
-        'recommendation': _get_recommendation(results, cardinality, issues)
-    }
-
-    return results
-
-
-def _get_recommendation(results, cardinality, issues):
-    """Generate join recommendation based on validation results."""
-    if not issues:
-        if cardinality == '1:1':
-            return "Clean 1:1 join. Safe to use inner or left join."
-        elif cardinality == '1:many':
-            return "1:many relationship. Left join will preserve all left rows; expect row multiplication."
-        elif cardinality == 'many:1':
-            return "Many:1 relationship. Inner join is safe; rows from left will match one right row."
-        else:
-            return "Many:many relationship. Consider aggregating one side first."
-
-    recommendations = []
-    if 'Low match rate' in str(issues):
-        recommendations.append("Check if key columns are correctly identified. May need composite key.")
-    if 'null rate' in str(issues):
-        recommendations.append("Filter out null keys before joining, or use outer join and handle nulls.")
-    if 'many:many' in str(issues).lower():
-        recommendations.append("Aggregate one DataFrame before joining to avoid row explosion.")
-    if 'no match' in str(issues):
-        recommendations.append("Investigate orphan records. May indicate data quality issue or expected filtering.")
-
-    return " ".join(recommendations)
-
-
-def test_composite_key(df, columns, name='df'):
-    """
-    Test if a set of columns forms a valid composite key.
-    """
-    key = df[columns].apply(tuple, axis=1)
-
-    results = {
-        'columns': columns,
-        'total_rows': len(df),
-        'unique_combinations': key.nunique(),
-        'is_unique_key': key.nunique() == len(df),
-        'duplicate_count': key.duplicated().sum(),
-    }
-
-    if not results['is_unique_key']:
-        dupe_keys = key[key.duplicated(keep=False)]
-        results['duplicate_examples'] = df[key.isin(dupe_keys.unique()[:3])][columns].head(10).to_dict('records')
-
-    return results
+# With options
+python scripts/run_validating_joins.py <input> --format json
 ```
 
-## Output Format
+### Arguments
 
-```markdown
-## Join Validation: `df_creser` → `df_csplit`
+- `input` - [Description of input parameter]
+- `--format` - Output format: `markdown` (default) or `json`
+- `--output` - Save output to file instead of stdout
 
-**Join Key**: `confirmation_number`
+## References
 
-### Summary
-| Metric | Left (CRESER) | Right (CSPLIT) |
-|--------|---------------|----------------|
-| Total rows | 1,000 | 850 |
-| Unique keys | 1,000 | 850 |
-| Null keys | 0 (0%) | 0 (0%) |
-| Duplicate keys | 0 (0%) | 0 (0%) |
+- **[VALIDATIONS.md](./VALIDATIONS.md)** - Rules and thresholds
+- **[OUTPUT.md](./OUTPUT.md)** - Output format specifications
+- **[REFERENCES.md](./REFERENCES.md)** - Integration documentation
 
-### Match Analysis
-- **Matched keys**: 820 (82% of left, 96.5% of right)
-- **Left orphans**: 180 keys not found in CSPLIT
-- **Right orphans**: 30 keys not found in CRESER
+## Used By
 
-### Cardinality
-- **Relationship**: 1:1
-- **Max duplicates**: Left=1, Right=1
-
-### Join Estimate
-- Inner join: ~820 rows
-- Left join: 1,000 rows (180 with null right columns)
-
-### Validation
-**Status**: ⚠️ Warning
-
-**Issues**:
-- 18% of left keys have no match (expected for non-converted reservations)
-
-**Recommendation**: Use left join to preserve all reservations. Non-matches are likely reservations that didn't convert to rentals (expected behavior based on ~70% conversion rate).
-
----
-
-## Composite Key Test: `confirmation_number + initial_date`
-
-| Metric | Value |
-|--------|-------|
-| Unique combinations | 1,000 |
-| Total rows | 1,000 |
-| Is unique key | ✅ Yes |
-| Duplicates | 0 |
-
-**Verdict**: Valid composite primary key
-```
-
-## Common HLES Join Patterns
-
-```markdown
-### Recommended Joins for HLES Tables
-
-| From | To | Key | Expected Cardinality | Notes |
-|------|-----|-----|---------------------|-------|
-| CRESER | CRA001 | confirmation_number | 1:1 | Not all CRESER records will have CRA001 |
-| CRESER | CSPLIT | confirmation_number | 1:1 | Only converted rentals in CSPLIT |
-| CRESER | TRANSLOG | confirmation_number | 1:many | Multiple transactions per reservation |
-| Conversion | CRESER | confirmation_number + initial_date | 1:1 | Use composite key |
-
-### Key Column Reference
-- `confirmation_number`: Static ID from insurance partner
-- `initial_date`: Reservation receipt date (needed for uniqueness)
-- `knum`: Changes on conversion (H-prefix = rental)
-```
-
-## Integration
-
-Called by:
-- `data-profiler` agent when profiling related tables
-- Directly when planning table joins
-- Before any merge operation to validate assumptions
+- [Agent/skill that uses this skill]
+- Can be called directly for [use case]

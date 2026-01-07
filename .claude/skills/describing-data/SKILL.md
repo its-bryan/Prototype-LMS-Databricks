@@ -1,9 +1,9 @@
 ---
-name: checking-sanity
-description: Validates statistical results with sanity checks for assumptions, sample size, and business sense. Use when reviewing analysis results, checking test validity, or when validating hypothesis test outputs.
+name: describing-data
+description: Generates comprehensive descriptive statistics for a dataset including column info, value distributions, row counts, duplicates, and basic data quality checks. Use when getting initial overview of a new dataset.
 ---
 
-# checking-sanity
+# describing-data
 
 [Brief description of what this skill does]
 
@@ -28,7 +28,7 @@ This skill [high-level description]:
 
 ## How It Works
 
-**IMPORTANT**: This skill executes `scripts/run_checking_sanity.py`. Do NOT re-implement the logic inline.
+**IMPORTANT**: This skill executes `scripts/run_describing_data.py`. Do NOT re-implement the logic inline.
 
 1. [High-level step 1]
 2. [High-level step 2]
@@ -40,10 +40,10 @@ This skill [high-level description]:
 
 ```bash
 # Basic usage
-python scripts/run_checking_sanity.py <input>
+python scripts/run_describing_data.py <input>
 
 # With options
-python scripts/run_checking_sanity.py <input> --format json
+python scripts/run_describing_data.py <input> --format json
 ```
 
 ### Arguments
@@ -54,7 +54,6 @@ python scripts/run_checking_sanity.py <input> --format json
 
 ## References
 
-- **[VALIDATIONS.md](./VALIDATIONS.md)** - Rules and thresholds
 - **[OUTPUT.md](./OUTPUT.md)** - Output format specifications
 - **[REFERENCES.md](./REFERENCES.md)** - Integration documentation
 

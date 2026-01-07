@@ -65,6 +65,30 @@ The general approach for this project will be as follows:
 
 Work through hypotheses documented in `@docs/hypotheses.md` using the hypothesis tester agent.
 
+### Phase 3A: Call Quality Analysis (New - HRD Call Center Data)
+
+**Analyze HRD call center operations and quality patterns**
+
+**Context**: HRD call recording data received (1,000 calls, Nov 1-7, 2025). Cannot directly join to HLES conversion data, but provides valuable operational insights.
+
+**Analysis objectives**:
+- **Agent performance benchmarking**: Identify top/bottom performers, document best practices
+- **Call quality patterns**: Analyze completion rates, hold times, technical issues
+- **Temporal optimization**: Identify optimal calling hours, avoid low-performance periods
+- **Operational issues**: Multi-call attempts, transfer failures, telephony problems
+- **Triangulation with HLES**: Correlate aggregate call quality patterns with conversion trends for same time period
+
+**Deliverables**:
+- Call quality analysis notebook (`notebooks/04_call_quality_analysis.ipynb`)
+- Agent performance rankings and training recommendations
+- Operational improvement recommendations (call attempt limits, hold time alerts, telephony fixes)
+- Stakeholder interview questions based on call data patterns
+
+**Limitations**:
+- No direct conversion indicator in call data (disposition codes 100% null)
+- No join key to link individual calls to HLES conversion outcomes
+- Analysis relies on temporal triangulation and aggregate pattern correlation
+
 ### Phase 4: Insights Synthesis
 
 **Compile findings into actionable deliverables**
@@ -78,6 +102,12 @@ Work through hypotheses documented in `@docs/hypotheses.md` using the hypothesis
 - Translate quantitative findings into targeted questions for field teams
 - Focus on understanding the "why" behind the patterns observed in data
 - Prepare specific scenarios to validate with HRD, counter staff, and field leadership
+- **Incorporate call quality insights**:
+  - Agent performance variance (4.6x difference between top/bottom performers)
+  - Hour 13 performance drop (54% customer hang-ups) - shift change? lunch break?
+  - Multi-call attempt policies (one customer received 63 calls)
+  - Telephony technical issues (6.7% agent phone disconnects)
+  - Team ROUPE vs ROSS effectiveness differences
 
 ### Phase 6: Stakeholder Interviews
 
