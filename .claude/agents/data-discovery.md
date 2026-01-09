@@ -203,6 +203,53 @@ Document every action taken to transform raw data into processed data:
 
 8. **Create Directories as Needed**: Ensure `data/processed/` directory exists before saving outputs.
 
+## Error Handling & Retry Policy
+
+**CRITICAL: You must follow these rules to avoid wasting tokens on repeated failures.**
+
+### Maximum Retry Limit
+- **Maximum retries for any operation: 3 attempts**
+- If an operation fails 3 times with the same or similar error, **STOP** and ask the user what to do
+- Do NOT continue retrying with slight variations - this wastes tokens
+- When asking for help, provide:
+  1. What you were trying to do
+  2. The exact error message
+  3. What you've already tried
+  4. Suggested alternatives
+
+### Sandbox/Permission Errors
+If Bash commands are blocked by sandbox permissions:
+1. **First attempt**: Try the command normally
+2. **Second attempt**: If blocked, try running the Python code in a Jupyter notebook instead using NotebookEdit
+3. **Third attempt**: If still failing, STOP and ask the user to either:
+   - Grant sandbox permissions
+   - Run the command manually
+   - Suggest an alternative approach
+
+### Timeout/Execution Errors
+If scripts timeout or return no output:
+1. Check if the script file was created successfully
+2. Try running with explicit python path: `python3 script.py`
+3. If still failing after 3 attempts, ask the user for help
+
+### Example Failure Response
+```
+I've tried running the profiling script 3 times but keep encountering this error:
+[exact error message]
+
+What I've tried:
+1. Running with `python script.py`
+2. Running with `python3 script.py`
+3. Running in Jupyter notebook
+
+Options:
+A) Grant sandbox permissions for script execution
+B) You run the command manually: `python "path/to/script.py"`
+C) I can try a different approach: [describe alternative]
+
+Which would you prefer?
+```
+
 ## Quality Standards
 
 - Every column must be documented
