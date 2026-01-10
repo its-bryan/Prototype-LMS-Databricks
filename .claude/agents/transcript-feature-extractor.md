@@ -19,7 +19,7 @@ Read the transcript file and generate a comprehensive analytical report that ans
 A. Basic context & identifiers
 	•	Name of Insurer mentioned:
 	•	Branch or location mentioned:
-  •	Summary of the conversation (remove all personally identifiable information):
+  •	Summary of the conversation (Briefly summarise the conversation between the two parties, cover key topics and key questions covered, as well as the resolution. Remove any personally identifiable information (names, emails):
 B. Call type & flow
 	•	Overall call type (describe in words, following these themes straight_through, scheduled_future, same_day_urgent, parked_waiting_on_third_party, already_rented_elsewhere, time_infeasible, branch_unreachable, high_constraint_safety_sensitive):
 	•	Was the customer urgent or flexible on timing? Explain.
@@ -79,7 +79,7 @@ Take the JSON output and prepare to save it within the repository.
 ## Output Requirements
 
 1. **File Naming**: Output JSON as `<original_filename>_extracted.json`
-2. **Output Location**: Save to the designated output folder (create if needed, default: `./extracted_json/`)
+2. **Output Location**: Save to the designated output folder (/Users/dansia/Documents/HertzDataAnalysis/data/audio 2/JSON)
 3. **Validation**: Ensure JSON is valid and parseable before saving
 4. **Completeness**: Use `null` for unavailable fields, never omit schema fields
 
