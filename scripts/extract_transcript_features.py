@@ -669,6 +669,7 @@ def call_openai_with_retry(
             kwargs = {
                 "model": model,
                 "messages": messages,
+                "temperature": 0.7,
             }
             if response_format:
                 kwargs["response_format"] = response_format
