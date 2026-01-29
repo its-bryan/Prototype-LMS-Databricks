@@ -1,0 +1,105 @@
+{
+  "A_basic_context_identifiers": {
+    "insurer_name": "HERTZ",
+    "branch_location": "10500 8 Mile West in Ferndale, Michigan",
+    "conversation_summary": "A call between TK from HERTZ and Ms. Tana Harris confirming state law authorization for vehicle rental after her vehicle was stolen. They discussed pickup time and Ms. Harris planned to arrive around 3:00 PM, instructed to call the branch at 2:00 PM to confirm vehicle readiness."
+  },
+  "B_call_type_flow": {
+    "call_type_description": "straight_through",
+    "call_flow_type": null,
+    "customer_urgency": "flexible",
+    "decision_points": [
+      "pickup time",
+      "email confirmation",
+      "vehicle confirmation"
+    ],
+    "call_outcome": "completed"
+  },
+  "C_time_feasibility": {
+    "customer_stated_timing_need": "Today, initially two hours out, then planned for around 3:00 PM.",
+    "customer_time_need_category": "immediate_same_day",
+    "branch_hours_constraints": "Pickup timing was arranged for 'soonest time we can get you in would be about like two or five.'",
+    "request_feasible": true,
+    "infeasibility_reasons": [],
+    "customer_timing_anxiety": false,
+    "stranded_risk_language": false
+  },
+  "D_pickup_delivery_access": {
+    "pickup_requested": false,
+    "delivery_requested": false,
+    "self_pickup_only": true,
+    "agent_said_pickup_not_guaranteed": false,
+    "agent_said_delivery_not_guaranteed": false,
+    "agent_said_branch_discretion": false,
+    "instructed_to_call_branch": true,
+    "option_5_instruction_used": true,
+    "customer_logistics_confusion": false,
+    "customer_logistics_anxiety": false
+  },
+  "E_fleet_vehicle_availability": {
+    "vehicle_class_requested": null,
+    "vehicle_class_category": null,
+    "agent_mentioned_inventory_uncertainty": false,
+    "agent_mentioned_class_not_guaranteed": false,
+    "customer_vehicle_anxiety": false,
+    "hard_constraint_exists": false,
+    "hard_constraint_type": null,
+    "hard_constraint_details": null
+  },
+  "F_insurance_coverage_money": {
+    "coverage_explained_clearly": false,
+    "coverage_understood_by_customer": null,
+    "coverage_partial_or_capped": false,
+    "coverage_cap_amount": null,
+    "deposit_mentioned": false,
+    "deposit_amount": null,
+    "customer_cost_worry": false,
+    "customer_changed_plans_due_to_cost": false
+  },
+  "G_branch_reliability_alternatives": {
+    "agent_attempted_branch_contact": false,
+    "agent_transferred_to_branch": false,
+    "branch_answered": null,
+    "branch_unreachable": false,
+    "prior_bad_branch_experience_mentioned": false,
+    "location_avoidance_requested": false,
+    "competitor_mentioned": false,
+    "competitor_name": null
+  },
+  "H_customer_comprehension_cognitive_load": {
+    "familiar_with_ir_process": true,
+    "familiarity_level": "some_experience",
+    "confusion_expressed": true,
+    "confusion_topics": [
+      "address"
+    ],
+    "repeated_instructions": false,
+    "took_notes": false
+  },
+  "I_emotional_psychological_signals": {
+    "emotional_state_start": "calm",
+    "emotional_state_end": "calm",
+    "distress_signals_present": false,
+    "fear_signals_present": false,
+    "trauma_context_present": true,
+    "safety_concerns_present": false
+  },
+  "J_agent_behavior_clarity": {
+    "agent_polite_professional": true,
+    "agent_expressed_empathy": true,
+    "agent_acknowledged_concerns": true,
+    "agent_summarized_next_steps": true,
+    "next_steps_clarity": "clear"
+  },
+  "K_outcome_customer_effort": {
+    "reservation_status_end": "finalized",
+    "cancellation_during_call": false,
+    "customer_post_call_actions": [
+      "Call the HERTZ branch at around 2:00 PM and press option 5 to confirm vehicle readiness.",
+      "Visit the branch around 3:00 PM with a valid driver's license and major debit or credit card."
+    ],
+    "customer_actions_count": 2,
+    "effort_burden": "low",
+    "effort_burden_explanation": "The steps required are straightforward confirmations and in-person pickup."
+  }
+}

@@ -1,0 +1,104 @@
+{
+  "A_basic_context_identifiers": {
+    "insurer_name": "State Farm",
+    "branch_location": "St. Petersburg, Florida, located at 2525 34th Street North",
+    "conversation_summary": "The call was between Aisha from HERTZ and a customer named Mr. Ty. Aisha informed Mr. Ty that his insurer, State Farm, has authorized a rental car due to his vehicle undergoing repairs. They discussed pickup logistics, the body shop location, and confirmed Mr. Ty's contact details. Mr. Ty was informed about the insurance coverage and asked for a seven-passenger vehicle. The resolution was that Mr. Ty would have a rental setup for pickup on the specified date, accepting any vehicle within the budget authorized by the insurance."
+  },
+  "B_call_type_flow": {
+    "call_type_description": "Scheduled_future",
+    "call_flow_type": "scheduled_future",
+    "customer_urgency": "flexible",
+    "decision_points": [
+      "location for pickup",
+      "verifying contact information",
+      "discussing insurance limits",
+      "desired type of rental vehicle"
+    ],
+    "call_outcome": "completed"
+  },
+  "C_time_feasibility": {
+    "customer_stated_timing_need": "Pickup on Monday around 10 AM",
+    "customer_time_need_category": "unsure",
+    "branch_hours_constraints": "Not explicitly mentioned, but the branch needs an hour's notice before pickup.",
+    "request_feasible": true,
+    "infeasibility_reasons": [],
+    "customer_timing_anxiety": false,
+    "stranded_risk_language": false
+  },
+  "D_pickup_delivery_access": {
+    "pickup_requested": true,
+    "delivery_requested": false,
+    "self_pickup_only": false,
+    "agent_said_pickup_not_guaranteed": false,
+    "agent_said_delivery_not_guaranteed": false,
+    "agent_said_branch_discretion": true,
+    "instructed_to_call_branch": true,
+    "option_5_instruction_used": false,
+    "customer_logistics_confusion": false,
+    "customer_logistics_anxiety": false
+  },
+  "E_fleet_vehicle_availability": {
+    "vehicle_class_requested": "A seven-passenger vehicle",
+    "vehicle_class_category": "special",
+    "agent_mentioned_inventory_uncertainty": true,
+    "agent_mentioned_class_not_guaranteed": true,
+    "customer_vehicle_anxiety": true,
+    "hard_constraint_exists": false,
+    "hard_constraint_type": null,
+    "hard_constraint_details": null
+  },
+  "F_insurance_coverage_money": {
+    "coverage_explained_clearly": true,
+    "coverage_understood_by_customer": true,
+    "coverage_partial_or_capped": true,
+    "coverage_cap_amount": "$50 per day",
+    "deposit_mentioned": false,
+    "deposit_amount": null,
+    "customer_cost_worry": false,
+    "customer_changed_plans_due_to_cost": false
+  },
+  "G_branch_reliability_alternatives": {
+    "agent_attempted_branch_contact": false,
+    "agent_transferred_to_branch": false,
+    "branch_answered": null,
+    "branch_unreachable": false,
+    "prior_bad_branch_experience_mentioned": false,
+    "location_avoidance_requested": false,
+    "competitor_mentioned": false,
+    "competitor_name": null
+  },
+  "H_customer_comprehension_cognitive_load": {
+    "familiar_with_ir_process": true,
+    "familiarity_level": "some_experience",
+    "confusion_expressed": false,
+    "confusion_topics": [],
+    "repeated_instructions": false,
+    "took_notes": false
+  },
+  "I_emotional_psychological_signals": {
+    "emotional_state_start": "calm",
+    "emotional_state_end": "calm",
+    "distress_signals_present": false,
+    "fear_signals_present": false,
+    "trauma_context_present": false,
+    "safety_concerns_present": false
+  },
+  "J_agent_behavior_clarity": {
+    "agent_polite_professional": true,
+    "agent_expressed_empathy": true,
+    "agent_acknowledged_concerns": true,
+    "agent_summarized_next_steps": true,
+    "next_steps_clarity": "clear"
+  },
+  "K_outcome_customer_effort": {
+    "reservation_status_end": "finalized",
+    "cancellation_during_call": false,
+    "customer_post_call_actions": [
+      "Present a valid driver's license and credit or debit card.",
+      "Contact the branch with an hour's notice before pickup."
+    ],
+    "customer_actions_count": 2,
+    "effort_burden": "low",
+    "effort_burden_explanation": "Low; most steps were standard and clearly communicated, with minimal complexity or uncertainty involved."
+  }
+}

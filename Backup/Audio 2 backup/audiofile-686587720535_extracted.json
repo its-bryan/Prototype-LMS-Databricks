@@ -1,0 +1,106 @@
+{
+  "A_basic_context_identifiers": {
+    "insurer_name": "Progressive Insurance",
+    "branch_location": "Jersey City, New Jersey, 49 Mall Drive West",
+    "conversation_summary": "The call involves a representative from HERTZ, Zariah, and a customer, Esther Haisley, discussing a rental authorized by Progressive Insurance. It covers the details of the rental pickup location, the required items for the rental, and setting up a rental appointment. Esther can pick up the rental herself and eventually decides on a non-urgent pickup for the upcoming Monday."
+  },
+  "B_call_type_flow": {
+    "call_type_description": "Scheduled_future",
+    "call_flow_type": "scheduled_future",
+    "customer_urgency": "flexible",
+    "decision_points": [
+      "date and time for the rental pickup",
+      "required items to bring"
+    ],
+    "call_outcome": "completed"
+  },
+  "C_time_feasibility": {
+    "customer_stated_timing_need": "preferred Monday for personal convenience and financial reasons",
+    "customer_time_need_category": "scheduled",
+    "branch_hours_constraints": "Monday through Friday from 8 to 5, Saturday from 9 to 12",
+    "request_feasible": true,
+    "infeasibility_reasons": [],
+    "customer_timing_anxiety": false,
+    "stranded_risk_language": false
+  },
+  "D_pickup_delivery_access": {
+    "pickup_requested": true,
+    "delivery_requested": false,
+    "self_pickup_only": true,
+    "agent_said_pickup_not_guaranteed": false,
+    "agent_said_delivery_not_guaranteed": false,
+    "agent_said_branch_discretion": false,
+    "instructed_to_call_branch": true,
+    "option_5_instruction_used": true,
+    "customer_logistics_confusion": true,
+    "customer_logistics_anxiety": false
+  },
+  "E_fleet_vehicle_availability": {
+    "vehicle_class_requested": "Not specified; implied to be a standard-class vehicle replacement",
+    "vehicle_class_category": null,
+    "agent_mentioned_inventory_uncertainty": false,
+    "agent_mentioned_class_not_guaranteed": false,
+    "customer_vehicle_anxiety": false,
+    "hard_constraint_exists": false,
+    "hard_constraint_type": null,
+    "hard_constraint_details": null
+  },
+  "F_insurance_coverage_money": {
+    "coverage_explained_clearly": false,
+    "coverage_understood_by_customer": false,
+    "coverage_partial_or_capped": false,
+    "coverage_cap_amount": null,
+    "deposit_mentioned": true,
+    "deposit_amount": "$50 to $200",
+    "customer_cost_worry": true,
+    "customer_changed_plans_due_to_cost": false
+  },
+  "G_branch_reliability_alternatives": {
+    "agent_attempted_branch_contact": false,
+    "agent_transferred_to_branch": false,
+    "branch_answered": null,
+    "branch_unreachable": false,
+    "prior_bad_branch_experience_mentioned": false,
+    "location_avoidance_requested": false,
+    "competitor_mentioned": false,
+    "competitor_name": null
+  },
+  "H_customer_comprehension_cognitive_load": {
+    "familiar_with_ir_process": true,
+    "familiarity_level": "some_experience",
+    "confusion_expressed": true,
+    "confusion_topics": [
+      "location details"
+    ],
+    "repeated_instructions": true,
+    "took_notes": false
+  },
+  "I_emotional_psychological_signals": {
+    "emotional_state_start": "calm",
+    "emotional_state_end": "stressed",
+    "distress_signals_present": false,
+    "fear_signals_present": false,
+    "trauma_context_present": false,
+    "safety_concerns_present": false
+  },
+  "J_agent_behavior_clarity": {
+    "agent_polite_professional": true,
+    "agent_expressed_empathy": false,
+    "agent_acknowledged_concerns": false,
+    "agent_summarized_next_steps": true,
+    "next_steps_clarity": "clear"
+  },
+  "K_outcome_customer_effort": {
+    "reservation_status_end": "finalized",
+    "cancellation_during_call": false,
+    "customer_post_call_actions": [
+      "Bring a valid driver's license.",
+      "Present a credit or debit card.",
+      "Pay a security deposit ranging between $50 and $200.",
+      "Call the HERTZ location and select option number five."
+    ],
+    "customer_actions_count": 4,
+    "effort_burden": "low",
+    "effort_burden_explanation": "The call involved clear instructions and straightforward scheduling without complications."
+  }
+}

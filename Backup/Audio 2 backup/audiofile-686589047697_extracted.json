@@ -1,0 +1,103 @@
+{
+  "A_basic_context_identifiers": {
+    "insurer_name": "State Farm",
+    "branch_location": "30507 Woodward Avenue in Royal Oak, Michigan",
+    "conversation_summary": "The conversation involves a representative from Hertz, identified as TK, and a customer named Shirley Warwick. The purpose is to arrange a rental car authorized by State Farm following a vehicle collision. Shirley requires a pickup from her home on Thursday at 3 PM, as the collision shop will collect her car before noon. The customer provides her contact and vehicle information, and the agent explains the financial arrangements, including a $50 deposit. Shirley is instructed to confirm the pickup an hour before her appointment by calling option 5. The conversation concludes with Shirley expressing satisfaction and no further questions."
+  },
+  "B_call_type_flow": {
+    "call_type_description": "scheduled_future",
+    "call_flow_type": "scheduled_future",
+    "customer_urgency": "flexible",
+    "decision_points": [
+      "confirming the pickup location",
+      "deciding on a pickup time"
+    ],
+    "call_outcome": "completed"
+  },
+  "C_time_feasibility": {
+    "customer_stated_timing_need": "Pickup after her car is collected, around 3 PM on Thursday.",
+    "customer_time_need_category": null,
+    "branch_hours_constraints": null,
+    "request_feasible": true,
+    "infeasibility_reasons": [],
+    "customer_timing_anxiety": false,
+    "stranded_risk_language": false
+  },
+  "D_pickup_delivery_access": {
+    "pickup_requested": true,
+    "delivery_requested": false,
+    "self_pickup_only": false,
+    "agent_said_pickup_not_guaranteed": false,
+    "agent_said_delivery_not_guaranteed": false,
+    "agent_said_branch_discretion": true,
+    "instructed_to_call_branch": true,
+    "option_5_instruction_used": true,
+    "customer_logistics_confusion": false,
+    "customer_logistics_anxiety": false
+  },
+  "E_fleet_vehicle_availability": {
+    "vehicle_class_requested": null,
+    "vehicle_class_category": null,
+    "agent_mentioned_inventory_uncertainty": false,
+    "agent_mentioned_class_not_guaranteed": false,
+    "customer_vehicle_anxiety": false,
+    "hard_constraint_exists": false,
+    "hard_constraint_type": null,
+    "hard_constraint_details": null
+  },
+  "F_insurance_coverage_money": {
+    "coverage_explained_clearly": true,
+    "coverage_understood_by_customer": true,
+    "coverage_partial_or_capped": false,
+    "coverage_cap_amount": null,
+    "deposit_mentioned": true,
+    "deposit_amount": "$50",
+    "customer_cost_worry": false,
+    "customer_changed_plans_due_to_cost": false
+  },
+  "G_branch_reliability_alternatives": {
+    "agent_attempted_branch_contact": false,
+    "agent_transferred_to_branch": false,
+    "branch_answered": null,
+    "branch_unreachable": false,
+    "prior_bad_branch_experience_mentioned": false,
+    "location_avoidance_requested": false,
+    "competitor_mentioned": false,
+    "competitor_name": null
+  },
+  "H_customer_comprehension_cognitive_load": {
+    "familiar_with_ir_process": true,
+    "familiarity_level": null,
+    "confusion_expressed": false,
+    "confusion_topics": [],
+    "repeated_instructions": false,
+    "took_notes": false
+  },
+  "I_emotional_psychological_signals": {
+    "emotional_state_start": "calm",
+    "emotional_state_end": "stressed",
+    "distress_signals_present": false,
+    "fear_signals_present": false,
+    "trauma_context_present": false,
+    "safety_concerns_present": false
+  },
+  "J_agent_behavior_clarity": {
+    "agent_polite_professional": true,
+    "agent_expressed_empathy": true,
+    "agent_acknowledged_concerns": true,
+    "agent_summarized_next_steps": true,
+    "next_steps_clarity": "clear"
+  },
+  "K_outcome_customer_effort": {
+    "reservation_status_end": "finalized",
+    "cancellation_during_call": false,
+    "customer_post_call_actions": [
+      "Be ready for pickup at 3 PM on Thursday.",
+      "Call the branch one hour prior to the scheduled pickup.",
+      "Present a valid driver's license and a major debit/credit card."
+    ],
+    "customer_actions_count": 3,
+    "effort_burden": "low",
+    "effort_burden_explanation": "Low, as arrangements were straightforward and instructions clearly communicated without any complex tasks for the customer."
+  }
+}

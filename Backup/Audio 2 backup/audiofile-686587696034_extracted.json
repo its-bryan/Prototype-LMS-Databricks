@@ -1,0 +1,103 @@
+{
+  "A_basic_context_identifiers": {
+    "insurer_name": "State Farm Insurance",
+    "branch_location": "Boardman, Ohio, 7735 Market Street",
+    "conversation_summary": "The call is initiated by Zariah, a HERTZ representative, to discuss a rental car authorized by State Farm Insurance for a customer, implied as Sheena. The rental is for the HERTZ location in Boardman, Ohio. Sheena needs a pickup service from her home, but it is not guaranteed by the agent. The rental is needed on the same day with the earliest available times at 10:00, 10:30, or 11:00 AM, with Sheena choosing 11:00 AM. The conversation covers rental details, customer's email, home address, damaged vehicle information, and the repair shop. The call reveals a personal distress situation as Sheena mentions walking to a police station due to domestic violence. The agent attempts to connect her with the local HERTZ branch to finalize arrangements, advising about presenting ID and payment upon car pick-up and the uncertain pickup service."
+  },
+  "B_call_type_flow": {
+    "call_type_description": "high_constraint_safety_sensitive",
+    "call_flow_type": "high_constraint_safety_sensitive",
+    "customer_urgency": "urgent",
+    "decision_points": [
+      "coordinating pickup services",
+      "confirming rental times",
+      "managing the transfer to the local branch"
+    ],
+    "call_outcome": "parked"
+  },
+  "C_time_feasibility": {
+    "customer_stated_timing_need": "Same day rental for October or November 1st, 2025, with the earliest time at 11:00 AM.",
+    "customer_time_need_category": "immediate_same_day",
+    "branch_hours_constraints": null,
+    "request_feasible": true,
+    "infeasibility_reasons": [],
+    "customer_timing_anxiety": true,
+    "stranded_risk_language": false
+  },
+  "D_pickup_delivery_access": {
+    "pickup_requested": true,
+    "delivery_requested": false,
+    "self_pickup_only": false,
+    "agent_said_pickup_not_guaranteed": true,
+    "agent_said_delivery_not_guaranteed": false,
+    "agent_said_branch_discretion": true,
+    "instructed_to_call_branch": true,
+    "option_5_instruction_used": true,
+    "customer_logistics_confusion": false,
+    "customer_logistics_anxiety": true
+  },
+  "E_fleet_vehicle_availability": {
+    "vehicle_class_requested": null,
+    "vehicle_class_category": null,
+    "agent_mentioned_inventory_uncertainty": false,
+    "agent_mentioned_class_not_guaranteed": false,
+    "customer_vehicle_anxiety": false,
+    "hard_constraint_exists": true,
+    "hard_constraint_type": "safety",
+    "hard_constraint_details": "safety concerns due to the personal distress situation."
+  },
+  "F_insurance_coverage_money": {
+    "coverage_explained_clearly": false,
+    "coverage_understood_by_customer": null,
+    "coverage_partial_or_capped": false,
+    "coverage_cap_amount": null,
+    "deposit_mentioned": true,
+    "deposit_amount": null,
+    "customer_cost_worry": false,
+    "customer_changed_plans_due_to_cost": false
+  },
+  "G_branch_reliability_alternatives": {
+    "agent_attempted_branch_contact": true,
+    "agent_transferred_to_branch": false,
+    "branch_answered": true,
+    "branch_unreachable": false,
+    "prior_bad_branch_experience_mentioned": false,
+    "location_avoidance_requested": false,
+    "competitor_mentioned": false,
+    "competitor_name": null
+  },
+  "H_customer_comprehension_cognitive_load": {
+    "familiar_with_ir_process": null,
+    "familiarity_level": null,
+    "confusion_expressed": false,
+    "confusion_topics": [],
+    "repeated_instructions": false,
+    "took_notes": false
+  },
+  "I_emotional_psychological_signals": {
+    "emotional_state_start": "calm",
+    "emotional_state_end": "distressed",
+    "distress_signals_present": true,
+    "fear_signals_present": false,
+    "trauma_context_present": true,
+    "safety_concerns_present": true
+  },
+  "J_agent_behavior_clarity": {
+    "agent_polite_professional": true,
+    "agent_expressed_empathy": true,
+    "agent_acknowledged_concerns": true,
+    "agent_summarized_next_steps": true,
+    "next_steps_clarity": "partial"
+  },
+  "K_outcome_customer_effort": {
+    "reservation_status_end": "provisional",
+    "cancellation_during_call": false,
+    "customer_post_call_actions": [
+      "call the branch",
+      "press option five to discuss pickup logistics"
+    ],
+    "customer_actions_count": 2,
+    "effort_burden": "medium",
+    "effort_burden_explanation": "The customer has to resolve the pickup uncertainty and manage safety concerns, adding complexity to the situation."
+  }
+}

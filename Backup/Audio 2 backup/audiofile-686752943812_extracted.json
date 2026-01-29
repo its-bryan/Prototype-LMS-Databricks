@@ -1,0 +1,102 @@
+{
+  "A_basic_context_identifiers": {
+    "insurer_name": "State Farm",
+    "branch_location": "1053 Guadalupe Street in San Marcos, Texas",
+    "conversation_summary": "The call is initiated by Jennifer from HERTZ to update Tina Smith about her State Farm-authorized rental reservation at the HERTZ branch located at 1053 Guadalupe Street in San Marcos, Texas. Jennifer asks Tina for a good email address and inquires if Tina needs pickup service. Tina requests to delay the reservation and pickup to Friday by 4:30 PM. Jennifer confirms the pickup time and asks additional questions about contact information and details regarding Tina's vehicle, which was stolen. Jennifer advises Tina to contact the branch directly with an hour\u2019s notice on the day of pickup and provides her with instructions on what to bring. The call ends without further questions from Tina."
+  },
+  "B_call_type_flow": {
+    "call_type_description": "Scheduled_future",
+    "call_flow_type": "scheduled_future",
+    "customer_urgency": "flexible",
+    "decision_points": [
+      "Tina requested to delay the reservation to Friday"
+    ],
+    "call_outcome": "completed"
+  },
+  "C_time_feasibility": {
+    "customer_stated_timing_need": "Pickup on Friday by 4:30 PM.",
+    "customer_time_need_category": "scheduled",
+    "branch_hours_constraints": null,
+    "request_feasible": true,
+    "infeasibility_reasons": [],
+    "customer_timing_anxiety": false,
+    "stranded_risk_language": false
+  },
+  "D_pickup_delivery_access": {
+    "pickup_requested": true,
+    "delivery_requested": false,
+    "self_pickup_only": false,
+    "agent_said_pickup_not_guaranteed": false,
+    "agent_said_delivery_not_guaranteed": false,
+    "agent_said_branch_discretion": true,
+    "instructed_to_call_branch": true,
+    "option_5_instruction_used": true,
+    "customer_logistics_confusion": false,
+    "customer_logistics_anxiety": false
+  },
+  "E_fleet_vehicle_availability": {
+    "vehicle_class_requested": "SUV",
+    "vehicle_class_category": null,
+    "agent_mentioned_inventory_uncertainty": false,
+    "agent_mentioned_class_not_guaranteed": false,
+    "customer_vehicle_anxiety": false,
+    "hard_constraint_exists": false,
+    "hard_constraint_type": null,
+    "hard_constraint_details": null
+  },
+  "F_insurance_coverage_money": {
+    "coverage_explained_clearly": false,
+    "coverage_understood_by_customer": false,
+    "coverage_partial_or_capped": false,
+    "coverage_cap_amount": null,
+    "deposit_mentioned": true,
+    "deposit_amount": null,
+    "customer_cost_worry": false,
+    "customer_changed_plans_due_to_cost": false
+  },
+  "G_branch_reliability_alternatives": {
+    "agent_attempted_branch_contact": false,
+    "agent_transferred_to_branch": false,
+    "branch_answered": null,
+    "branch_unreachable": false,
+    "prior_bad_branch_experience_mentioned": false,
+    "location_avoidance_requested": false,
+    "competitor_mentioned": false,
+    "competitor_name": null
+  },
+  "H_customer_comprehension_cognitive_load": {
+    "familiar_with_ir_process": true,
+    "familiarity_level": "some_experience",
+    "confusion_expressed": false,
+    "confusion_topics": [],
+    "repeated_instructions": false,
+    "took_notes": false
+  },
+  "I_emotional_psychological_signals": {
+    "emotional_state_start": "calm",
+    "emotional_state_end": "calm",
+    "distress_signals_present": false,
+    "fear_signals_present": false,
+    "trauma_context_present": true,
+    "safety_concerns_present": false
+  },
+  "J_agent_behavior_clarity": {
+    "agent_polite_professional": true,
+    "agent_expressed_empathy": true,
+    "agent_acknowledged_concerns": true,
+    "agent_summarized_next_steps": true,
+    "next_steps_clarity": "clear"
+  },
+  "K_outcome_customer_effort": {
+    "reservation_status_end": "finalized",
+    "cancellation_during_call": false,
+    "customer_post_call_actions": [
+      "Contact the branch with at least an hour\u2019s notice on the day of pickup.",
+      "Select option 5 when calling the branch.",
+      "Bring a valid driver\u2019s license and debit or credit card."
+    ],
+    "customer_actions_count": 3,
+    "effort_burden": "low",
+    "effort_burden_explanation": "The customer needs only to make a single call to confirm pickup and bring necessary documents."
+  }
+}

@@ -1,0 +1,105 @@
+{
+  "A_basic_context_identifiers": {
+    "insurer_name": null,
+    "branch_location": "HERTZ at 790 Ulster Avenue, Kingston, New York",
+    "conversation_summary": "Jennifer from HERTZ contacts Angelina Tozzi to update her rental reservation. Jennifer confirms that New York Central has authorized Angelina's HERTZ rental. They discuss the hours of the Kingston location and the possibility of pickup service. Angelina provides her email, vehicle details, and repair shop information. Jennifer advises Angelina to contact the branch directly in the morning and instructs her on required documents."
+  },
+  "B_call_type_flow": {
+    "call_type_description": "Scheduled_future",
+    "call_flow_type": "scheduled_future",
+    "customer_urgency": "flexible",
+    "decision_points": [
+      "confirming the pickup time",
+      "providing the repair shop details",
+      "clarifying the correct name of the shop"
+    ],
+    "call_outcome": "completed"
+  },
+  "C_time_feasibility": {
+    "customer_stated_timing_need": "9:00 AM for pickup",
+    "customer_time_need_category": "scheduled",
+    "branch_hours_constraints": "8:00 AM to 5:00 PM",
+    "request_feasible": true,
+    "infeasibility_reasons": [],
+    "customer_timing_anxiety": false,
+    "stranded_risk_language": false
+  },
+  "D_pickup_delivery_access": {
+    "pickup_requested": true,
+    "delivery_requested": null,
+    "self_pickup_only": true,
+    "agent_said_pickup_not_guaranteed": false,
+    "agent_said_delivery_not_guaranteed": false,
+    "agent_said_branch_discretion": false,
+    "instructed_to_call_branch": true,
+    "option_5_instruction_used": true,
+    "customer_logistics_confusion": false,
+    "customer_logistics_anxiety": false
+  },
+  "E_fleet_vehicle_availability": {
+    "vehicle_class_requested": "A replacement rental due to vehicle repair",
+    "vehicle_class_category": null,
+    "agent_mentioned_inventory_uncertainty": false,
+    "agent_mentioned_class_not_guaranteed": false,
+    "customer_vehicle_anxiety": false,
+    "hard_constraint_exists": false,
+    "hard_constraint_type": null,
+    "hard_constraint_details": null
+  },
+  "F_insurance_coverage_money": {
+    "coverage_explained_clearly": null,
+    "coverage_understood_by_customer": null,
+    "coverage_partial_or_capped": false,
+    "coverage_cap_amount": null,
+    "deposit_mentioned": true,
+    "deposit_amount": null,
+    "customer_cost_worry": false,
+    "customer_changed_plans_due_to_cost": false
+  },
+  "G_branch_reliability_alternatives": {
+    "agent_attempted_branch_contact": false,
+    "agent_transferred_to_branch": false,
+    "branch_answered": null,
+    "branch_unreachable": false,
+    "prior_bad_branch_experience_mentioned": false,
+    "location_avoidance_requested": false,
+    "competitor_mentioned": false,
+    "competitor_name": null
+  },
+  "H_customer_comprehension_cognitive_load": {
+    "familiar_with_ir_process": true,
+    "familiarity_level": "some_experience",
+    "confusion_expressed": true,
+    "confusion_topics": [
+      "Gerber vs. Herbert"
+    ],
+    "repeated_instructions": false,
+    "took_notes": false
+  },
+  "I_emotional_psychological_signals": {
+    "emotional_state_start": "anxious",
+    "emotional_state_end": "calm",
+    "distress_signals_present": false,
+    "fear_signals_present": false,
+    "trauma_context_present": false,
+    "safety_concerns_present": false
+  },
+  "J_agent_behavior_clarity": {
+    "agent_polite_professional": true,
+    "agent_expressed_empathy": false,
+    "agent_acknowledged_concerns": false,
+    "agent_summarized_next_steps": true,
+    "next_steps_clarity": "clear"
+  },
+  "K_outcome_customer_effort": {
+    "reservation_status_end": "finalized",
+    "cancellation_during_call": false,
+    "customer_post_call_actions": [
+      "Contact the branch in advance",
+      "Bring necessary documents"
+    ],
+    "customer_actions_count": 2,
+    "effort_burden": "low",
+    "effort_burden_explanation": "Minimal steps required with clear instructions provided."
+  }
+}

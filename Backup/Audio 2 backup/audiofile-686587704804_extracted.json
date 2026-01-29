@@ -1,0 +1,103 @@
+{
+  "A_basic_context_identifiers": {
+    "insurer_name": "State Farm Insurance",
+    "branch_location": "Townsend, Maryland, 1763 East Joppa Road",
+    "conversation_summary": "The agent, Zariah from Hertz, contacted Brian Bentz regarding an authorized rental by State Farm Insurance. Brian clarified his availability, stating he could not reach the Hertz location until Monday due to a wedding in Western Maryland. The branch's operating hours and scheduling were discussed, and arrangements were made for Brian to pick up the rental at 9 AM on Monday. Brian confirmed his email, address, and details about his damaged vehicle. The agent informed him to call the location before arrival and ensured no further questions were left unanswered."
+  },
+  "B_call_type_flow": {
+    "call_type_description": "Overall call type",
+    "call_flow_type": "straight_through",
+    "customer_urgency": "flexible",
+    "decision_points": [
+      "scheduling the pickup time",
+      "verifying information"
+    ],
+    "call_outcome": "completed"
+  },
+  "C_time_feasibility": {
+    "customer_stated_timing_need": "Monday at 9 AM",
+    "customer_time_need_category": "scheduled",
+    "branch_hours_constraints": "Branch open from 9 AM to 4 PM",
+    "request_feasible": true,
+    "infeasibility_reasons": [],
+    "customer_timing_anxiety": false,
+    "stranded_risk_language": false
+  },
+  "D_pickup_delivery_access": {
+    "pickup_requested": true,
+    "delivery_requested": false,
+    "self_pickup_only": true,
+    "agent_said_pickup_not_guaranteed": false,
+    "agent_said_delivery_not_guaranteed": false,
+    "agent_said_branch_discretion": false,
+    "instructed_to_call_branch": true,
+    "option_5_instruction_used": true,
+    "customer_logistics_confusion": false,
+    "customer_logistics_anxiety": false
+  },
+  "E_fleet_vehicle_availability": {
+    "vehicle_class_requested": null,
+    "vehicle_class_category": null,
+    "agent_mentioned_inventory_uncertainty": false,
+    "agent_mentioned_class_not_guaranteed": false,
+    "customer_vehicle_anxiety": false,
+    "hard_constraint_exists": false,
+    "hard_constraint_type": null,
+    "hard_constraint_details": null
+  },
+  "F_insurance_coverage_money": {
+    "coverage_explained_clearly": null,
+    "coverage_understood_by_customer": null,
+    "coverage_partial_or_capped": false,
+    "coverage_cap_amount": null,
+    "deposit_mentioned": false,
+    "deposit_amount": null,
+    "customer_cost_worry": false,
+    "customer_changed_plans_due_to_cost": false
+  },
+  "G_branch_reliability_alternatives": {
+    "agent_attempted_branch_contact": false,
+    "agent_transferred_to_branch": false,
+    "branch_answered": null,
+    "branch_unreachable": false,
+    "prior_bad_branch_experience_mentioned": false,
+    "location_avoidance_requested": false,
+    "competitor_mentioned": false,
+    "competitor_name": null
+  },
+  "H_customer_comprehension_cognitive_load": {
+    "familiar_with_ir_process": true,
+    "familiarity_level": null,
+    "confusion_expressed": false,
+    "confusion_topics": [],
+    "repeated_instructions": false,
+    "took_notes": false
+  },
+  "I_emotional_psychological_signals": {
+    "emotional_state_start": "calm",
+    "emotional_state_end": "calm",
+    "distress_signals_present": false,
+    "fear_signals_present": false,
+    "trauma_context_present": false,
+    "safety_concerns_present": false
+  },
+  "J_agent_behavior_clarity": {
+    "agent_polite_professional": true,
+    "agent_expressed_empathy": true,
+    "agent_acknowledged_concerns": true,
+    "agent_summarized_next_steps": true,
+    "next_steps_clarity": "clear"
+  },
+  "K_outcome_customer_effort": {
+    "reservation_status_end": "finalized",
+    "cancellation_during_call": false,
+    "customer_post_call_actions": [
+      "Go to the Hertz location by 9 AM on Monday",
+      "Call the branch within the hour in advance and select option 5",
+      "Present a valid driver's license and payment card"
+    ],
+    "customer_actions_count": 3,
+    "effort_burden": "low",
+    "effort_burden_explanation": "as all necessary information and steps were clearly explained and scheduled conveniently for the customer."
+  }
+}

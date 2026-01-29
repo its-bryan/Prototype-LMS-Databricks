@@ -1,0 +1,105 @@
+{
+  "A_basic_context_identifiers": {
+    "insurer_name": "Safety Insurance",
+    "branch_location": "911 Main Street, Norwood, Massachusetts",
+    "conversation_summary": "The conversation is between Jennifer from HERTZ and the customer, Sylvia, regarding an auto rental authorized by Safety Insurance. Jennifer is updating Sylvia on the reservation details. The key topics discussed include email verification, whether Sylvia will need a pickup service, and the arrangements regarding pick-up at the rental location. Sylvia confirms she will visit the location for pick-up but is unsure of the time, as she needs to confirm with her husband. It is reiterated that she can pick up the car between 9 am and 4 pm. Sylvia asks if someone else can pick up the car on her behalf, but it must be her because the reservation is under her name."
+  },
+  "B_call_type_flow": {
+    "call_type_description": "straight_through",
+    "call_flow_type": "straight_through",
+    "customer_urgency": "flexible",
+    "decision_points": [
+      "need for pickup service",
+      "exact timing for car pick-up"
+    ],
+    "call_outcome": "completed"
+  },
+  "C_time_feasibility": {
+    "customer_stated_timing_need": "Flexible, pending confirmation with her husband, intended for the next day.",
+    "customer_time_need_category": "unsure",
+    "branch_hours_constraints": "Pick-up is possible any time between 9 am and 4 pm.",
+    "request_feasible": true,
+    "infeasibility_reasons": [],
+    "customer_timing_anxiety": false,
+    "stranded_risk_language": false
+  },
+  "D_pickup_delivery_access": {
+    "pickup_requested": false,
+    "delivery_requested": false,
+    "self_pickup_only": true,
+    "agent_said_pickup_not_guaranteed": false,
+    "agent_said_delivery_not_guaranteed": false,
+    "agent_said_branch_discretion": true,
+    "instructed_to_call_branch": true,
+    "option_5_instruction_used": true,
+    "customer_logistics_confusion": false,
+    "customer_logistics_anxiety": false
+  },
+  "E_fleet_vehicle_availability": {
+    "vehicle_class_requested": null,
+    "vehicle_class_category": null,
+    "agent_mentioned_inventory_uncertainty": false,
+    "agent_mentioned_class_not_guaranteed": false,
+    "customer_vehicle_anxiety": false,
+    "hard_constraint_exists": false,
+    "hard_constraint_type": null,
+    "hard_constraint_details": null
+  },
+  "F_insurance_coverage_money": {
+    "coverage_explained_clearly": false,
+    "coverage_understood_by_customer": null,
+    "coverage_partial_or_capped": false,
+    "coverage_cap_amount": null,
+    "deposit_mentioned": false,
+    "deposit_amount": null,
+    "customer_cost_worry": false,
+    "customer_changed_plans_due_to_cost": false
+  },
+  "G_branch_reliability_alternatives": {
+    "agent_attempted_branch_contact": false,
+    "agent_transferred_to_branch": false,
+    "branch_answered": null,
+    "branch_unreachable": false,
+    "prior_bad_branch_experience_mentioned": false,
+    "location_avoidance_requested": false,
+    "competitor_mentioned": false,
+    "competitor_name": null
+  },
+  "H_customer_comprehension_cognitive_load": {
+    "familiar_with_ir_process": true,
+    "familiarity_level": "some_experience",
+    "confusion_expressed": true,
+    "confusion_topics": [
+      "which address was needed"
+    ],
+    "repeated_instructions": false,
+    "took_notes": false
+  },
+  "I_emotional_psychological_signals": {
+    "emotional_state_start": "calm",
+    "emotional_state_end": "calm",
+    "distress_signals_present": false,
+    "fear_signals_present": false,
+    "trauma_context_present": false,
+    "safety_concerns_present": false
+  },
+  "J_agent_behavior_clarity": {
+    "agent_polite_professional": true,
+    "agent_expressed_empathy": false,
+    "agent_acknowledged_concerns": true,
+    "agent_summarized_next_steps": true,
+    "next_steps_clarity": "clear"
+  },
+  "K_outcome_customer_effort": {
+    "reservation_status_end": "finalized",
+    "cancellation_during_call": false,
+    "customer_post_call_actions": [
+      "Confirm pick-up time with her husband.",
+      "Call the branch directly to confirm timing.",
+      "Bring a valid driver's license and debit/credit card when picking up the car."
+    ],
+    "customer_actions_count": 3,
+    "effort_burden": "low",
+    "effort_burden_explanation": "Low, as Sylvia only needs to confirm a timing detail and make a phone call."
+  }
+}

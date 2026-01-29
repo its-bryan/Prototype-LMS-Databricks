@@ -1,0 +1,106 @@
+{
+  "A_basic_context_identifiers": {
+    "insurer_name": "State Farm",
+    "branch_location": "Freeport, New York; 235 West Sunrise Highway; 55 Sunrise Highway, Limbrook",
+    "conversation_summary": "The conversation involves Lyric from Hertz calling Jerry Valentine about a rental authorized by State Farm. There was some confusion over the location as Jerry was at 55 Sunrise Highway, a Budget and Avis location, while the Hertz branch was at 235 West Sunrise Highway. Jerry mentioned having made a reservation prior to the call. He was concerned about a $50 deposit being charged for the rental vehicle, which Lyric explained was a standard procedure in case of vehicle damages. The conversation ended with Jerry needing to call back for further arrangements."
+  },
+  "B_call_type_flow": {
+    "call_type_description": "Same_day_urgent",
+    "call_flow_type": "scheduled_future",
+    "customer_urgency": "urgent",
+    "decision_points": [
+      "Confirmation of the location",
+      "Discussion about the deposit",
+      "Understanding of insurance coverage",
+      "Need for further contact"
+    ],
+    "call_outcome": "parked"
+  },
+  "C_time_feasibility": {
+    "customer_stated_timing_need": null,
+    "customer_time_need_category": "unsure",
+    "branch_hours_constraints": null,
+    "request_feasible": null,
+    "infeasibility_reasons": [],
+    "customer_timing_anxiety": true,
+    "stranded_risk_language": false
+  },
+  "D_pickup_delivery_access": {
+    "pickup_requested": false,
+    "delivery_requested": false,
+    "self_pickup_only": true,
+    "agent_said_pickup_not_guaranteed": false,
+    "agent_said_delivery_not_guaranteed": false,
+    "agent_said_branch_discretion": false,
+    "instructed_to_call_branch": true,
+    "option_5_instruction_used": false,
+    "customer_logistics_confusion": true,
+    "customer_logistics_anxiety": false
+  },
+  "E_fleet_vehicle_availability": {
+    "vehicle_class_requested": null,
+    "vehicle_class_category": null,
+    "agent_mentioned_inventory_uncertainty": false,
+    "agent_mentioned_class_not_guaranteed": false,
+    "customer_vehicle_anxiety": false,
+    "hard_constraint_exists": false,
+    "hard_constraint_type": null,
+    "hard_constraint_details": null
+  },
+  "F_insurance_coverage_money": {
+    "coverage_explained_clearly": true,
+    "coverage_understood_by_customer": false,
+    "coverage_partial_or_capped": false,
+    "coverage_cap_amount": "50",
+    "deposit_mentioned": true,
+    "deposit_amount": "50",
+    "customer_cost_worry": true,
+    "customer_changed_plans_due_to_cost": false
+  },
+  "G_branch_reliability_alternatives": {
+    "agent_attempted_branch_contact": false,
+    "agent_transferred_to_branch": false,
+    "branch_answered": null,
+    "branch_unreachable": false,
+    "prior_bad_branch_experience_mentioned": false,
+    "location_avoidance_requested": false,
+    "competitor_mentioned": true,
+    "competitor_name": "Budget and Avis"
+  },
+  "H_customer_comprehension_cognitive_load": {
+    "familiar_with_ir_process": true,
+    "familiarity_level": "some_experience",
+    "confusion_expressed": true,
+    "confusion_topics": [
+      "location",
+      "unexpected deposit"
+    ],
+    "repeated_instructions": false,
+    "took_notes": false
+  },
+  "I_emotional_psychological_signals": {
+    "emotional_state_start": "anxious",
+    "emotional_state_end": "anxious",
+    "distress_signals_present": true,
+    "fear_signals_present": false,
+    "trauma_context_present": false,
+    "safety_concerns_present": false
+  },
+  "J_agent_behavior_clarity": {
+    "agent_polite_professional": true,
+    "agent_expressed_empathy": true,
+    "agent_acknowledged_concerns": true,
+    "agent_summarized_next_steps": true,
+    "next_steps_clarity": "clear"
+  },
+  "K_outcome_customer_effort": {
+    "reservation_status_end": null,
+    "cancellation_during_call": false,
+    "customer_post_call_actions": [
+      "Call back the provided number for clarity on the reservation and deposit"
+    ],
+    "customer_actions_count": 1,
+    "effort_burden": "medium",
+    "effort_burden_explanation": "The customer needs to follow up to resolve location and deposit issues, which may require multiple steps and additional time."
+  }
+}

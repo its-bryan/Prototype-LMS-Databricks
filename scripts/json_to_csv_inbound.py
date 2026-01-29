@@ -37,21 +37,16 @@ DEFAULT_OUTPUT_FILE = "combined_extractions_inbound.csv"
 
 # Expected top-level sections in INBOUND transcript extraction JSON
 EXPECTED_SECTIONS = [
-    "A_identity_routing",
-    "B_intent_first_contact",
-    "C_reservation_stage",
+    "A_call_answer_status",
+    "B_identity_routing",
+    "C_intent",
     "D_issue_diagnostics",
     "E_change_requests",
-    "F_time_feasibility",
-    "G_pickup_delivery",
-    "H1_coverage",
-    "H2_deposit_payment",
-    "I_extensions",
-    "J_transfers_reachability",
-    "K_outcome_effort",
-    "L_branch_history",
-    "M_competitive_landscape",
-    "N_complaints",
+    "F_pickup_delivery",
+    "G_transfers_escalations",
+    "H_outcome",
+    "I_complaints",
+    "J_hold_experience",
 ]
 
 

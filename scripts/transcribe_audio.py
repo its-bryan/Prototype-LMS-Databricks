@@ -45,8 +45,8 @@ TRANSCRIPTION_PROMPT = (
 
 # Paths
 PROJECT_ROOT = Path(__file__).parent.parent
-RAW_AUDIO_DIR = PROJECT_ROOT / "data" / "audio" / "raw"
-TRANSCRIPTIONS_DIR = PROJECT_ROOT / "data" / "audio" / "transcriptions"
+RAW_AUDIO_DIR = PROJECT_ROOT / "data" / "audio 2" / "raw"
+TRANSCRIPTIONS_DIR = PROJECT_ROOT / "data" / "audio 2" / "Transcription_Inbound"
 METADATA_FILE = TRANSCRIPTIONS_DIR / "metadata.csv"
 
 # CSV columns

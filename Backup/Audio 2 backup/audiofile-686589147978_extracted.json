@@ -1,0 +1,107 @@
+{
+  "A_basic_context_identifiers": {
+    "insurer_name": "State Farm",
+    "branch_location": "Hertz at 8202 Eastern Avenue, Bell Gardens, California; Reference to the desired location at 1103 South La Cienega, zip code 90035.",
+    "conversation_summary": "Catherine Cheek interacts with Sarah from Hertz regarding a rental car approved by State Farm. The rental location was initially set in Bell Gardens, but Catherine requests a change to a location on La Cienega. Catherine's car, a 2014 BMW X1, requires service, and she plans to handle this at Fix Auto in Beverly Hills. Discussions covered State Farm switching the policy into Catherine's name, rental timing, the potential need for a vehicle drop-off, and ensuring a valid driver's license and credit/debit card are available. Catherine is instructed to call Hertz at least an hour in advance of any rental requirements. The conversation concludes with Catherine understanding her next steps and confirming her details with Sarah."
+  },
+  "B_call_type_flow": {
+    "call_type_description": "Scheduled_future",
+    "call_flow_type": "scheduled_future",
+    "customer_urgency": "flexible",
+    "decision_points": [
+      "selection of a preferred rental location",
+      "updating insurance policy to reflect Catherine's name",
+      "confirming whether to call Hertz for potential changes"
+    ],
+    "call_outcome": "completed"
+  },
+  "C_time_feasibility": {
+    "customer_stated_timing_need": "Catherine has an appointment scheduled for 10 a.m. the following day with the repair shop.",
+    "customer_time_need_category": "unsure",
+    "branch_hours_constraints": null,
+    "request_feasible": true,
+    "infeasibility_reasons": [],
+    "customer_timing_anxiety": false,
+    "stranded_risk_language": false
+  },
+  "D_pickup_delivery_access": {
+    "pickup_requested": false,
+    "delivery_requested": false,
+    "self_pickup_only": true,
+    "agent_said_pickup_not_guaranteed": false,
+    "agent_said_delivery_not_guaranteed": false,
+    "agent_said_branch_discretion": false,
+    "instructed_to_call_branch": true,
+    "option_5_instruction_used": true,
+    "customer_logistics_confusion": false,
+    "customer_logistics_anxiety": false
+  },
+  "E_fleet_vehicle_availability": {
+    "vehicle_class_requested": null,
+    "vehicle_class_category": null,
+    "agent_mentioned_inventory_uncertainty": false,
+    "agent_mentioned_class_not_guaranteed": false,
+    "customer_vehicle_anxiety": false,
+    "hard_constraint_exists": false,
+    "hard_constraint_type": null,
+    "hard_constraint_details": null
+  },
+  "F_insurance_coverage_money": {
+    "coverage_explained_clearly": true,
+    "coverage_understood_by_customer": true,
+    "coverage_partial_or_capped": true,
+    "coverage_cap_amount": null,
+    "deposit_mentioned": true,
+    "deposit_amount": null,
+    "customer_cost_worry": false,
+    "customer_changed_plans_due_to_cost": false
+  },
+  "G_branch_reliability_alternatives": {
+    "agent_attempted_branch_contact": false,
+    "agent_transferred_to_branch": false,
+    "branch_answered": null,
+    "branch_unreachable": false,
+    "prior_bad_branch_experience_mentioned": false,
+    "location_avoidance_requested": true,
+    "competitor_mentioned": false,
+    "competitor_name": null
+  },
+  "H_customer_comprehension_cognitive_load": {
+    "familiar_with_ir_process": true,
+    "familiarity_level": "some_experience",
+    "confusion_expressed": true,
+    "confusion_topics": [
+      "logistics: location of the Hertz branch",
+      "next steps for vehicle handover"
+    ],
+    "repeated_instructions": false,
+    "took_notes": false
+  },
+  "I_emotional_psychological_signals": {
+    "emotional_state_start": "calm",
+    "emotional_state_end": "stressed",
+    "distress_signals_present": false,
+    "fear_signals_present": false,
+    "trauma_context_present": false,
+    "safety_concerns_present": false
+  },
+  "J_agent_behavior_clarity": {
+    "agent_polite_professional": true,
+    "agent_expressed_empathy": true,
+    "agent_acknowledged_concerns": true,
+    "agent_summarized_next_steps": true,
+    "next_steps_clarity": "clear"
+  },
+  "K_outcome_customer_effort": {
+    "reservation_status_end": "finalized",
+    "cancellation_during_call": false,
+    "customer_post_call_actions": [
+      "Call State Farm to switch the policy to her name.",
+      "Call Hertz an hour before arrival to confirm rental needs.",
+      "Ensure possession of a driver's license and credit/debit card."
+    ],
+    "customer_actions_count": 3,
+    "effort_burden": "medium",
+    "effort_burden_explanation": "The customer needs to coordinate with multiple parties (State Farm and Hertz) and manage timing between the repair drop-off and rental arrangements."
+  }
+}

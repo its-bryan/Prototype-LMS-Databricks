@@ -1,0 +1,103 @@
+{
+  "A_basic_context_identifiers": {
+    "insurer_name": "Commerce Insurance",
+    "branch_location": "488 South Broadway in Salem, New Hampshire",
+    "conversation_summary": "The call was initiated by Kimi from Hertz to inform Paula Tinney about an authorized rental from Commerce Insurance due to her damaged vehicle. Paula mentioned she had scheduled a delivery with Enterprise but needed a sedan due to accessibility concerns with her false leg. Enterprise did not have a sedan available, but Hertz confirmed they do. Arrangements were made for Hertz to pick up Paula from her home at 1 o'clock. The conversation also touched on why Paula's vehicle was considered totaled. Finally, Kimi transferred Paula to a Hertz location representative to finalize the pickup details. The call ended with a smooth transition to the local Hertz branch for final confirmation."
+  },
+  "B_call_type_flow": {
+    "call_type_description": "same_day_urgent",
+    "call_flow_type": "same_day_urgent",
+    "customer_urgency": "urgent",
+    "decision_points": [
+      "pickup time and location confirmation",
+      "vehicle type confirmation",
+      "switch from Enterprise to Hertz"
+    ],
+    "call_outcome": "completed"
+  },
+  "C_time_feasibility": {
+    "customer_stated_timing_need": "Pickup needed at 1 o'clock.",
+    "customer_time_need_category": "immediate_same_day",
+    "branch_hours_constraints": null,
+    "request_feasible": true,
+    "infeasibility_reasons": [],
+    "customer_timing_anxiety": false,
+    "stranded_risk_language": false
+  },
+  "D_pickup_delivery_access": {
+    "pickup_requested": true,
+    "delivery_requested": false,
+    "self_pickup_only": false,
+    "agent_said_pickup_not_guaranteed": false,
+    "agent_said_delivery_not_guaranteed": false,
+    "agent_said_branch_discretion": false,
+    "instructed_to_call_branch": false,
+    "option_5_instruction_used": false,
+    "customer_logistics_confusion": false,
+    "customer_logistics_anxiety": false
+  },
+  "E_fleet_vehicle_availability": {
+    "vehicle_class_requested": "Sedan",
+    "vehicle_class_category": "special",
+    "agent_mentioned_inventory_uncertainty": false,
+    "agent_mentioned_class_not_guaranteed": false,
+    "customer_vehicle_anxiety": true,
+    "hard_constraint_exists": true,
+    "hard_constraint_type": "medical",
+    "hard_constraint_details": "The customer required a sedan due to a false leg and inability to climb into tall vehicles."
+  },
+  "F_insurance_coverage_money": {
+    "coverage_explained_clearly": false,
+    "coverage_understood_by_customer": true,
+    "coverage_partial_or_capped": false,
+    "coverage_cap_amount": null,
+    "deposit_mentioned": true,
+    "deposit_amount": null,
+    "customer_cost_worry": false,
+    "customer_changed_plans_due_to_cost": false
+  },
+  "G_branch_reliability_alternatives": {
+    "agent_attempted_branch_contact": true,
+    "agent_transferred_to_branch": true,
+    "branch_answered": true,
+    "branch_unreachable": false,
+    "prior_bad_branch_experience_mentioned": false,
+    "location_avoidance_requested": false,
+    "competitor_mentioned": true,
+    "competitor_name": "Enterprise"
+  },
+  "H_customer_comprehension_cognitive_load": {
+    "familiar_with_ir_process": true,
+    "familiarity_level": "experienced",
+    "confusion_expressed": false,
+    "confusion_topics": [],
+    "repeated_instructions": false,
+    "took_notes": false
+  },
+  "I_emotional_psychological_signals": {
+    "emotional_state_start": "calm",
+    "emotional_state_end": "calm",
+    "distress_signals_present": false,
+    "fear_signals_present": false,
+    "trauma_context_present": false,
+    "safety_concerns_present": false
+  },
+  "J_agent_behavior_clarity": {
+    "agent_polite_professional": true,
+    "agent_expressed_empathy": true,
+    "agent_acknowledged_concerns": true,
+    "agent_summarized_next_steps": false,
+    "next_steps_clarity": "clear"
+  },
+  "K_outcome_customer_effort": {
+    "reservation_status_end": "parked",
+    "cancellation_during_call": false,
+    "customer_post_call_actions": [
+      "Follow through with the local Hertz branch to ensure pickup details.",
+      "Have a valid driver\u2019s license and a payment card ready."
+    ],
+    "customer_actions_count": 2,
+    "effort_burden": "medium",
+    "effort_burden_explanation": "The customer needed to manage a switch from Enterprise to Hertz with specific vehicle requirements and coordinate a new pickup time."
+  }
+}

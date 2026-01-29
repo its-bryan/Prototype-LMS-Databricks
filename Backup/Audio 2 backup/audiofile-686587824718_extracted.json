@@ -1,0 +1,110 @@
+{
+  "A_basic_context_identifiers": {
+    "insurer_name": "State Farm",
+    "branch_location": "1655 South College Street, Suite H, Auburn, Alabama",
+    "conversation_summary": "The conversation is between a representative from HERTZ and a customer, Bobby, concerning a rental car authorized by State Farm. The customer inquired about picking up a vehicle or having it delivered, considering personal pickup due to timing and distance complications."
+  },
+  "B_call_type_flow": {
+    "call_type_description": "straight_through",
+    "call_flow_type": "straight_through",
+    "customer_urgency": "urgent",
+    "decision_points": [
+      "delivery vs. pickup",
+      "timing availability",
+      "distance constraints",
+      "alternative locations"
+    ],
+    "call_outcome": "completed"
+  },
+  "C_time_feasibility": {
+    "customer_stated_timing_need": "Immediate, but flexible for Monday.",
+    "customer_time_need_category": "immediate_same_day",
+    "branch_hours_constraints": "Closed today; available 9 a.m. to 4 p.m. on Monday.",
+    "request_feasible": false,
+    "infeasibility_reasons": [
+      "request for today is infeasible"
+    ],
+    "customer_timing_anxiety": true,
+    "stranded_risk_language": true
+  },
+  "D_pickup_delivery_access": {
+    "pickup_requested": true,
+    "delivery_requested": true,
+    "self_pickup_only": false,
+    "agent_said_pickup_not_guaranteed": true,
+    "agent_said_delivery_not_guaranteed": true,
+    "agent_said_branch_discretion": true,
+    "instructed_to_call_branch": true,
+    "option_5_instruction_used": false,
+    "customer_logistics_confusion": true,
+    "customer_logistics_anxiety": true
+  },
+  "E_fleet_vehicle_availability": {
+    "vehicle_class_requested": null,
+    "vehicle_class_category": null,
+    "agent_mentioned_inventory_uncertainty": false,
+    "agent_mentioned_class_not_guaranteed": false,
+    "customer_vehicle_anxiety": false,
+    "hard_constraint_exists": false,
+    "hard_constraint_type": null,
+    "hard_constraint_details": null
+  },
+  "F_insurance_coverage_money": {
+    "coverage_explained_clearly": true,
+    "coverage_understood_by_customer": true,
+    "coverage_partial_or_capped": false,
+    "coverage_cap_amount": null,
+    "deposit_mentioned": false,
+    "deposit_amount": null,
+    "customer_cost_worry": true,
+    "customer_changed_plans_due_to_cost": false
+  },
+  "G_branch_reliability_alternatives": {
+    "agent_attempted_branch_contact": false,
+    "agent_transferred_to_branch": false,
+    "branch_answered": null,
+    "branch_unreachable": false,
+    "prior_bad_branch_experience_mentioned": false,
+    "location_avoidance_requested": true,
+    "competitor_mentioned": true,
+    "competitor_name": "Dothan"
+  },
+  "H_customer_comprehension_cognitive_load": {
+    "familiar_with_ir_process": true,
+    "familiarity_level": "some_experience",
+    "confusion_expressed": true,
+    "confusion_topics": [
+      "timing",
+      "delivery arrangements",
+      "insurance coverage"
+    ],
+    "repeated_instructions": true,
+    "took_notes": false
+  },
+  "I_emotional_psychological_signals": {
+    "emotional_state_start": "calm",
+    "emotional_state_end": "frustrated",
+    "distress_signals_present": true,
+    "fear_signals_present": false,
+    "trauma_context_present": true,
+    "safety_concerns_present": true
+  },
+  "J_agent_behavior_clarity": {
+    "agent_polite_professional": true,
+    "agent_expressed_empathy": true,
+    "agent_acknowledged_concerns": true,
+    "agent_summarized_next_steps": true,
+    "next_steps_clarity": "partial"
+  },
+  "K_outcome_customer_effort": {
+    "reservation_status_end": "finalized",
+    "cancellation_during_call": false,
+    "customer_post_call_actions": [
+      "call back to confirm delivery arrangement",
+      "discuss with State Farm if needed"
+    ],
+    "customer_actions_count": 2,
+    "effort_burden": "medium",
+    "effort_burden_explanation": "The customer needs to coordinate logistics, consider alternative locations, and confirm arrangements with HERTZ and potentially State Farm."
+  }
+}

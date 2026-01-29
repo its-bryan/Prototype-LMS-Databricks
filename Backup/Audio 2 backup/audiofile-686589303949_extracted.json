@@ -1,0 +1,99 @@
+{
+  "A_basic_context_identifiers": {
+    "insurer_name": "State Farm",
+    "branch_location": "HERTZ rental in Union City, Georgia at 6851 Shannon Mall Parkway, zip code 30291.",
+    "conversation_summary": "Dominic from HERTZ calls to speak to Tanya Russell regarding a rental car authorized by State Farm. Tanya is not available, so Dominic leaves a message with her representative. The representative needs to coordinate with State Farm to update the name on the policy since Dominic cannot make that change. Dominic provides details for the location in Union City, the phone number to call (option 5), and a confirmation number for the rental. The representative confirms they will call back to finalize the details."
+  },
+  "B_call_type_flow": {
+    "call_type_description": "parked_waiting_on_third_party",
+    "call_flow_type": "parked_waiting_on_third_party",
+    "customer_urgency": "flexible",
+    "decision_points": [],
+    "call_outcome": "parked"
+  },
+  "C_time_feasibility": {
+    "customer_stated_timing_need": null,
+    "customer_time_need_category": "no_urgency",
+    "branch_hours_constraints": null,
+    "request_feasible": true,
+    "infeasibility_reasons": [],
+    "customer_timing_anxiety": false,
+    "stranded_risk_language": false
+  },
+  "D_pickup_delivery_access": {
+    "pickup_requested": false,
+    "delivery_requested": false,
+    "self_pickup_only": false,
+    "agent_said_pickup_not_guaranteed": false,
+    "agent_said_delivery_not_guaranteed": false,
+    "agent_said_branch_discretion": false,
+    "instructed_to_call_branch": true,
+    "option_5_instruction_used": true,
+    "customer_logistics_confusion": false,
+    "customer_logistics_anxiety": false
+  },
+  "E_fleet_vehicle_availability": {
+    "vehicle_class_requested": null,
+    "vehicle_class_category": null,
+    "agent_mentioned_inventory_uncertainty": false,
+    "agent_mentioned_class_not_guaranteed": false,
+    "customer_vehicle_anxiety": false,
+    "hard_constraint_exists": false,
+    "hard_constraint_type": null,
+    "hard_constraint_details": null
+  },
+  "F_insurance_coverage_money": {
+    "coverage_explained_clearly": true,
+    "coverage_understood_by_customer": true,
+    "coverage_partial_or_capped": false,
+    "coverage_cap_amount": null,
+    "deposit_mentioned": false,
+    "deposit_amount": null,
+    "customer_cost_worry": false,
+    "customer_changed_plans_due_to_cost": false
+  },
+  "G_branch_reliability_alternatives": {
+    "agent_attempted_branch_contact": false,
+    "agent_transferred_to_branch": false,
+    "branch_answered": null,
+    "branch_unreachable": false,
+    "prior_bad_branch_experience_mentioned": false,
+    "location_avoidance_requested": false,
+    "competitor_mentioned": false,
+    "competitor_name": null
+  },
+  "H_customer_comprehension_cognitive_load": {
+    "familiar_with_ir_process": null,
+    "familiarity_level": null,
+    "confusion_expressed": false,
+    "confusion_topics": [],
+    "repeated_instructions": true,
+    "took_notes": false
+  },
+  "I_emotional_psychological_signals": {
+    "emotional_state_start": "calm",
+    "emotional_state_end": "calm",
+    "distress_signals_present": false,
+    "fear_signals_present": false,
+    "trauma_context_present": false,
+    "safety_concerns_present": false
+  },
+  "J_agent_behavior_clarity": {
+    "agent_polite_professional": true,
+    "agent_expressed_empathy": false,
+    "agent_acknowledged_concerns": false,
+    "agent_summarized_next_steps": true,
+    "next_steps_clarity": "clear"
+  },
+  "K_outcome_customer_effort": {
+    "reservation_status_end": "finalized",
+    "cancellation_during_call": false,
+    "customer_post_call_actions": [
+      "Contact State Farm to update the insurance policy details.",
+      "Call the local HERTZ branch using the provided number to finalize the rental."
+    ],
+    "customer_actions_count": 2,
+    "effort_burden": "low",
+    "effort_burden_explanation": "The customer has to make a call to State Farm and the branch, both of which are straightforward processes."
+  }
+}

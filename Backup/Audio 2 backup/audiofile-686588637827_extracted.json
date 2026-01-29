@@ -1,0 +1,107 @@
+{
+  "A_basic_context_identifiers": {
+    "insurer_name": "Cure Insurance",
+    "branch_location": "2655 Allen Road in Woodhaven, Michigan",
+    "conversation_summary": "The conversation was between Jennifer from HERTZ and Ms. Charbonne Lyons regarding an authorized rental by Cure Insurance. Ms. Lyons needed clarification regarding her rental options as she was not comfortable driving a Kia due to a recent theft. She also required pickup service, but faced issues with contacting the branch. The agent attempted to change her location to West 8 Mile Road to avoid a Kia vehicle and promised escalation to an area manager since the branch wasn't answering calls. Ms. Lyons was told she would be contacted back regarding vehicle availability and pickup arrangements."
+  },
+  "B_call_type_flow": {
+    "call_type_description": "high_constraint_safety_sensitive",
+    "call_flow_type": null,
+    "customer_urgency": "urgent",
+    "decision_points": [
+      "verifying the email address",
+      "confirming the unavailability of pickup",
+      "vehicle type preference related to safety concerns",
+      "changing the rental location"
+    ],
+    "call_outcome": "parked"
+  },
+  "C_time_feasibility": {
+    "customer_stated_timing_need": "Pickup at any available time on the same day.",
+    "customer_time_need_category": null,
+    "branch_hours_constraints": "Not explicitly mentioned, but agent suggested 11:45 AM for pickup depends on branch response.",
+    "request_feasible": null,
+    "infeasibility_reasons": [
+      "branch was unresponsive",
+      "availability of desired vehicle was unclear"
+    ],
+    "customer_timing_anxiety": true,
+    "stranded_risk_language": true
+  },
+  "D_pickup_delivery_access": {
+    "pickup_requested": true,
+    "delivery_requested": false,
+    "self_pickup_only": false,
+    "agent_said_pickup_not_guaranteed": true,
+    "agent_said_delivery_not_guaranteed": false,
+    "agent_said_branch_discretion": true,
+    "instructed_to_call_branch": false,
+    "option_5_instruction_used": false,
+    "customer_logistics_confusion": true,
+    "customer_logistics_anxiety": true
+  },
+  "E_fleet_vehicle_availability": {
+    "vehicle_class_requested": "Preference against a Kia; accepted options include a Malibu or smaller, temporary vehicle.",
+    "vehicle_class_category": null,
+    "agent_mentioned_inventory_uncertainty": true,
+    "agent_mentioned_class_not_guaranteed": true,
+    "customer_vehicle_anxiety": true,
+    "hard_constraint_exists": true,
+    "hard_constraint_type": "safety",
+    "hard_constraint_details": "customer did not want another Kia due to past theft"
+  },
+  "F_insurance_coverage_money": {
+    "coverage_explained_clearly": false,
+    "coverage_understood_by_customer": null,
+    "coverage_partial_or_capped": false,
+    "coverage_cap_amount": null,
+    "deposit_mentioned": false,
+    "deposit_amount": null,
+    "customer_cost_worry": false,
+    "customer_changed_plans_due_to_cost": false
+  },
+  "G_branch_reliability_alternatives": {
+    "agent_attempted_branch_contact": true,
+    "agent_transferred_to_branch": false,
+    "branch_answered": false,
+    "branch_unreachable": true,
+    "prior_bad_branch_experience_mentioned": true,
+    "location_avoidance_requested": false,
+    "competitor_mentioned": false,
+    "competitor_name": null
+  },
+  "H_customer_comprehension_cognitive_load": {
+    "familiar_with_ir_process": true,
+    "familiarity_level": "some_experience",
+    "confusion_expressed": false,
+    "confusion_topics": [],
+    "repeated_instructions": false,
+    "took_notes": false
+  },
+  "I_emotional_psychological_signals": {
+    "emotional_state_start": "stressed",
+    "emotional_state_end": "anxious",
+    "distress_signals_present": true,
+    "fear_signals_present": true,
+    "trauma_context_present": true,
+    "safety_concerns_present": true
+  },
+  "J_agent_behavior_clarity": {
+    "agent_polite_professional": true,
+    "agent_expressed_empathy": true,
+    "agent_acknowledged_concerns": true,
+    "agent_summarized_next_steps": true,
+    "next_steps_clarity": "partial"
+  },
+  "K_outcome_customer_effort": {
+    "reservation_status_end": "parked",
+    "cancellation_during_call": false,
+    "customer_post_call_actions": [
+      "Wait for a callback",
+      "ensure availability of driver's license and payment card"
+    ],
+    "customer_actions_count": 2,
+    "effort_burden": "medium",
+    "effort_burden_explanation": "due to high concern over safety, detailed need communication, waiting for branch confirmation, previous complications with locations, and emotional distress from past incidents."
+  }
+}

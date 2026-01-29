@@ -1,0 +1,107 @@
+{
+  "A_basic_context_identifiers": {
+    "insurer_name": "State Farm",
+    "branch_location": "Baton Rouge, Louisiana, located at 6868 Florida Boulevard",
+    "conversation_summary": "A customer, Ms. Long, received a call from Aisha with HERTZ regarding a State Farm authorized rental car. The agent confirmed the reservation details and asked if the customer needed a pickup. The customer did not need a pickup as she was at home and planned to have her husband assist. She expressed uncertainty about needing to pick up the rental as she already rented a car the previous night to take her children back to school in Ruston and planned to check with State Farm about reimbursement or exchanging the car. The customer intended to call State Farm and then get back to HERTZ."
+  },
+  "B_call_type_flow": {
+    "call_type_description": "Already_rented_elsewhere",
+    "call_flow_type": "already_rented_elsewhere",
+    "customer_urgency": "urgent",
+    "decision_points": [
+      "whether to keep the current rental",
+      "whether reimbursement was possible",
+      "what the insurance company\u2019s expectations were"
+    ],
+    "call_outcome": "parked"
+  },
+  "C_time_feasibility": {
+    "customer_stated_timing_need": "The customer considered picking up the car at 1 o'clock but was unsure.",
+    "customer_time_need_category": "unsure",
+    "branch_hours_constraints": null,
+    "request_feasible": null,
+    "infeasibility_reasons": [],
+    "customer_timing_anxiety": true,
+    "stranded_risk_language": true
+  },
+  "D_pickup_delivery_access": {
+    "pickup_requested": true,
+    "delivery_requested": null,
+    "self_pickup_only": null,
+    "agent_said_pickup_not_guaranteed": false,
+    "agent_said_delivery_not_guaranteed": false,
+    "agent_said_branch_discretion": false,
+    "instructed_to_call_branch": false,
+    "option_5_instruction_used": false,
+    "customer_logistics_confusion": true,
+    "customer_logistics_anxiety": true
+  },
+  "E_fleet_vehicle_availability": {
+    "vehicle_class_requested": "A rental vehicle, class not specified.",
+    "vehicle_class_category": null,
+    "agent_mentioned_inventory_uncertainty": false,
+    "agent_mentioned_class_not_guaranteed": false,
+    "customer_vehicle_anxiety": false,
+    "hard_constraint_exists": false,
+    "hard_constraint_type": null,
+    "hard_constraint_details": null
+  },
+  "F_insurance_coverage_money": {
+    "coverage_explained_clearly": false,
+    "coverage_understood_by_customer": false,
+    "coverage_partial_or_capped": null,
+    "coverage_cap_amount": null,
+    "deposit_mentioned": false,
+    "deposit_amount": null,
+    "customer_cost_worry": true,
+    "customer_changed_plans_due_to_cost": false
+  },
+  "G_branch_reliability_alternatives": {
+    "agent_attempted_branch_contact": false,
+    "agent_transferred_to_branch": false,
+    "branch_answered": null,
+    "branch_unreachable": false,
+    "prior_bad_branch_experience_mentioned": false,
+    "location_avoidance_requested": false,
+    "competitor_mentioned": true,
+    "competitor_name": null
+  },
+  "H_customer_comprehension_cognitive_load": {
+    "familiar_with_ir_process": true,
+    "familiarity_level": "some_experience",
+    "confusion_expressed": true,
+    "confusion_topics": [
+      "whether to maintain their current rental",
+      "whether they should switch per insurance instructions"
+    ],
+    "repeated_instructions": false,
+    "took_notes": true
+  },
+  "I_emotional_psychological_signals": {
+    "emotional_state_start": "calm",
+    "emotional_state_end": "anxious",
+    "distress_signals_present": false,
+    "fear_signals_present": false,
+    "trauma_context_present": false,
+    "safety_concerns_present": true
+  },
+  "J_agent_behavior_clarity": {
+    "agent_polite_professional": true,
+    "agent_expressed_empathy": true,
+    "agent_acknowledged_concerns": true,
+    "agent_summarized_next_steps": true,
+    "next_steps_clarity": "unclear"
+  },
+  "K_outcome_customer_effort": {
+    "reservation_status_end": "parked",
+    "cancellation_during_call": false,
+    "customer_post_call_actions": [
+      "contact State Farm",
+      "assess the reimbursement or rental exchange",
+      "follow up with HERTZ based on those outcomes"
+    ],
+    "customer_actions_count": 3,
+    "effort_burden": "medium",
+    "effort_burden_explanation": "due to the complexity of coordinating with insurance and rental services and ensuring clear direction forward."
+  }
+}

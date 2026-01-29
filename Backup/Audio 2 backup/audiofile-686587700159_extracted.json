@@ -1,0 +1,109 @@
+{
+  "A_basic_context_identifiers": {
+    "insurer_name": "State Farm Insurance",
+    "branch_location": "Greensboro, North Carolina, 1619 Westover Terrace",
+    "conversation_summary": "The customer contacted HERTZ to discuss a rental authorized by State Farm Insurance following a car accident. The customer expressed confusion about how the process works, wanting the rental car delivered to an auto shop where their damaged car could be picked up. The agent explained that delivery and pickup services are not guaranteed and are dependent on the HERTZ location."
+  },
+  "B_call_type_flow": {
+    "call_type_description": "scheduled_future",
+    "call_flow_type": "scheduled_future",
+    "customer_urgency": "flexible",
+    "decision_points": [
+      "delivery service options",
+      "understanding the process",
+      "coordinating with the local branch",
+      "insurance coverage timelines"
+    ],
+    "call_outcome": "completed"
+  },
+  "C_time_feasibility": {
+    "customer_stated_timing_need": null,
+    "customer_time_need_category": "unsure",
+    "branch_hours_constraints": "Agent could only place it for times between 10:00, 10:30, or 11:00.",
+    "request_feasible": true,
+    "infeasibility_reasons": [],
+    "customer_timing_anxiety": true,
+    "stranded_risk_language": true
+  },
+  "D_pickup_delivery_access": {
+    "pickup_requested": false,
+    "delivery_requested": true,
+    "self_pickup_only": false,
+    "agent_said_pickup_not_guaranteed": true,
+    "agent_said_delivery_not_guaranteed": true,
+    "agent_said_branch_discretion": true,
+    "instructed_to_call_branch": true,
+    "option_5_instruction_used": false,
+    "customer_logistics_confusion": true,
+    "customer_logistics_anxiety": true
+  },
+  "E_fleet_vehicle_availability": {
+    "vehicle_class_requested": null,
+    "vehicle_class_category": null,
+    "agent_mentioned_inventory_uncertainty": false,
+    "agent_mentioned_class_not_guaranteed": false,
+    "customer_vehicle_anxiety": false,
+    "hard_constraint_exists": true,
+    "hard_constraint_type": "none",
+    "hard_constraint_details": "Customer expressed difficulty due to being alone, without anyone to assist in transportation."
+  },
+  "F_insurance_coverage_money": {
+    "coverage_explained_clearly": true,
+    "coverage_understood_by_customer": true,
+    "coverage_partial_or_capped": true,
+    "coverage_cap_amount": null,
+    "deposit_mentioned": false,
+    "deposit_amount": null,
+    "customer_cost_worry": true,
+    "customer_changed_plans_due_to_cost": true
+  },
+  "G_branch_reliability_alternatives": {
+    "agent_attempted_branch_contact": false,
+    "agent_transferred_to_branch": false,
+    "branch_answered": null,
+    "branch_unreachable": false,
+    "prior_bad_branch_experience_mentioned": false,
+    "location_avoidance_requested": false,
+    "competitor_mentioned": false,
+    "competitor_name": null
+  },
+  "H_customer_comprehension_cognitive_load": {
+    "familiar_with_ir_process": false,
+    "familiarity_level": "first_time",
+    "confusion_expressed": true,
+    "confusion_topics": [
+      "delivery process",
+      "insurance timelines"
+    ],
+    "repeated_instructions": true,
+    "took_notes": true
+  },
+  "I_emotional_psychological_signals": {
+    "emotional_state_start": "anxious",
+    "emotional_state_end": "frustrated",
+    "distress_signals_present": true,
+    "fear_signals_present": false,
+    "trauma_context_present": false,
+    "safety_concerns_present": true
+  },
+  "J_agent_behavior_clarity": {
+    "agent_polite_professional": true,
+    "agent_expressed_empathy": true,
+    "agent_acknowledged_concerns": true,
+    "agent_summarized_next_steps": true,
+    "next_steps_clarity": "clear"
+  },
+  "K_outcome_customer_effort": {
+    "reservation_status_end": "parked",
+    "cancellation_during_call": false,
+    "customer_post_call_actions": [
+      "Contact the auto shop",
+      "Confirm dates",
+      "Call the HERTZ location",
+      "Finalize rental details"
+    ],
+    "customer_actions_count": 4,
+    "effort_burden": "high",
+    "effort_burden_explanation": "High, due to multiple steps required to coordinate between the repair shop, rental availability, and insurance constraints."
+  }
+}

@@ -1,0 +1,106 @@
+{
+  "A_basic_context_identifiers": {
+    "insurer_name": "State Farm",
+    "branch_location": "Atlanta Metro, Georgia at 202 Courtland Street",
+    "conversation_summary": "The customer, Valina Anderson, was contacted by a HERTZ representative regarding a rental authorized by State Farm due to her vehicle being stolen. The conversation involved confirming the rental location, timing for pickup, and discussing logistics such as transportation and payment methods. Valina planned to pick up the vehicle at 2 PM the same day. Payment concerns were raised due to potential issues with using her husband's debit card, and it was suggested she consult directly with the local branch to address this."
+  },
+  "B_call_type_flow": {
+    "call_type_description": "same_day_urgent",
+    "call_flow_type": "same_day_urgent",
+    "customer_urgency": "urgent",
+    "decision_points": [
+      "email clarification",
+      "insurance policy coverage",
+      "debit card issue"
+    ],
+    "call_outcome": "completed"
+  },
+  "C_time_feasibility": {
+    "customer_stated_timing_need": "Pickup in about two hours, by 2 PM on the same day.",
+    "customer_time_need_category": "immediate_same_day",
+    "branch_hours_constraints": null,
+    "request_feasible": true,
+    "infeasibility_reasons": [],
+    "customer_timing_anxiety": true,
+    "stranded_risk_language": false
+  },
+  "D_pickup_delivery_access": {
+    "pickup_requested": true,
+    "delivery_requested": false,
+    "self_pickup_only": true,
+    "agent_said_pickup_not_guaranteed": false,
+    "agent_said_delivery_not_guaranteed": false,
+    "agent_said_branch_discretion": true,
+    "instructed_to_call_branch": true,
+    "option_5_instruction_used": true,
+    "customer_logistics_confusion": false,
+    "customer_logistics_anxiety": false
+  },
+  "E_fleet_vehicle_availability": {
+    "vehicle_class_requested": "the cheapest available",
+    "vehicle_class_category": null,
+    "agent_mentioned_inventory_uncertainty": false,
+    "agent_mentioned_class_not_guaranteed": false,
+    "customer_vehicle_anxiety": false,
+    "hard_constraint_exists": false,
+    "hard_constraint_type": null,
+    "hard_constraint_details": null
+  },
+  "F_insurance_coverage_money": {
+    "coverage_explained_clearly": true,
+    "coverage_understood_by_customer": true,
+    "coverage_partial_or_capped": true,
+    "coverage_cap_amount": null,
+    "deposit_mentioned": true,
+    "deposit_amount": "$50",
+    "customer_cost_worry": true,
+    "customer_changed_plans_due_to_cost": false
+  },
+  "G_branch_reliability_alternatives": {
+    "agent_attempted_branch_contact": false,
+    "agent_transferred_to_branch": false,
+    "branch_answered": null,
+    "branch_unreachable": false,
+    "prior_bad_branch_experience_mentioned": false,
+    "location_avoidance_requested": false,
+    "competitor_mentioned": false,
+    "competitor_name": null
+  },
+  "H_customer_comprehension_cognitive_load": {
+    "familiar_with_ir_process": true,
+    "familiarity_level": "some_experience",
+    "confusion_expressed": true,
+    "confusion_topics": [
+      "debit card use"
+    ],
+    "repeated_instructions": true,
+    "took_notes": false
+  },
+  "I_emotional_psychological_signals": {
+    "emotional_state_start": "calm",
+    "emotional_state_end": "anxious",
+    "distress_signals_present": true,
+    "fear_signals_present": false,
+    "trauma_context_present": true,
+    "safety_concerns_present": true
+  },
+  "J_agent_behavior_clarity": {
+    "agent_polite_professional": true,
+    "agent_expressed_empathy": true,
+    "agent_acknowledged_concerns": true,
+    "agent_summarized_next_steps": true,
+    "next_steps_clarity": "clear"
+  },
+  "K_outcome_customer_effort": {
+    "reservation_status_end": "finalized",
+    "cancellation_during_call": false,
+    "customer_post_call_actions": [
+      "Confirm details with the local branch using option 5.",
+      "Address the payment method issue directly with the branch.",
+      "Ensure to have a valid driver's license and accepted payment method at pickup."
+    ],
+    "customer_actions_count": 3,
+    "effort_burden": "medium",
+    "effort_burden_explanation": "While steps were clearly outlined, action required on the customer's side to solve payment method issues and ensure rental conditions align with branch policy."
+  }
+}

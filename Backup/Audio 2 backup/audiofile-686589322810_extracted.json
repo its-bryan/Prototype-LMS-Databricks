@@ -1,0 +1,106 @@
+{
+  "A_basic_context_identifiers": {
+    "insurer_name": "State Farm",
+    "branch_location": "Peoria, Arizona at 8737 West Vail Road",
+    "conversation_summary": "The caller, Jackie from HERTZ, contacted the customer, Mr. Harlan Mattson, regarding a rental authorized by State Farm due to Mr. Mattson's vehicle being totaled. They discussed picking up the rental vehicle in Peoria, Arizona, before the branch closed. Mr. Mattson expressed a need to pick up the vehicle the same day and adjusted his schedule to do so. They confirmed contact details and discussed the process of calling the branch, as well as providing a license and payment method upon arrival. The call ended with the agent attempting to connect the customer directly to the branch."
+  },
+  "B_call_type_flow": {
+    "call_type_description": "Same_day_urgent",
+    "call_flow_type": "same_day_urgent",
+    "customer_urgency": "urgent",
+    "decision_points": [
+      "confirming hours",
+      "deciding to leave work early"
+    ],
+    "call_outcome": "completed"
+  },
+  "C_time_feasibility": {
+    "customer_stated_timing_need": "Needed to pick up the vehicle that night.",
+    "customer_time_need_category": "immediate_same_day",
+    "branch_hours_constraints": "The branch is open until 5:30 PM with a latest advised pickup time around 4:30 PM.",
+    "request_feasible": true,
+    "infeasibility_reasons": [],
+    "customer_timing_anxiety": false,
+    "stranded_risk_language": false
+  },
+  "D_pickup_delivery_access": {
+    "pickup_requested": true,
+    "delivery_requested": null,
+    "self_pickup_only": true,
+    "agent_said_pickup_not_guaranteed": false,
+    "agent_said_delivery_not_guaranteed": false,
+    "agent_said_branch_discretion": true,
+    "instructed_to_call_branch": true,
+    "option_5_instruction_used": true,
+    "customer_logistics_confusion": true,
+    "customer_logistics_anxiety": false
+  },
+  "E_fleet_vehicle_availability": {
+    "vehicle_class_requested": null,
+    "vehicle_class_category": null,
+    "agent_mentioned_inventory_uncertainty": false,
+    "agent_mentioned_class_not_guaranteed": false,
+    "customer_vehicle_anxiety": false,
+    "hard_constraint_exists": false,
+    "hard_constraint_type": null,
+    "hard_constraint_details": null
+  },
+  "F_insurance_coverage_money": {
+    "coverage_explained_clearly": false,
+    "coverage_understood_by_customer": false,
+    "coverage_partial_or_capped": false,
+    "coverage_cap_amount": null,
+    "deposit_mentioned": true,
+    "deposit_amount": null,
+    "customer_cost_worry": false,
+    "customer_changed_plans_due_to_cost": false
+  },
+  "G_branch_reliability_alternatives": {
+    "agent_attempted_branch_contact": true,
+    "agent_transferred_to_branch": false,
+    "branch_answered": false,
+    "branch_unreachable": false,
+    "prior_bad_branch_experience_mentioned": true,
+    "location_avoidance_requested": false,
+    "competitor_mentioned": false,
+    "competitor_name": null
+  },
+  "H_customer_comprehension_cognitive_load": {
+    "familiar_with_ir_process": true,
+    "familiarity_level": "some_experience",
+    "confusion_expressed": true,
+    "confusion_topics": [
+      "contacting the branch",
+      "location inside a dealership"
+    ],
+    "repeated_instructions": true,
+    "took_notes": false
+  },
+  "I_emotional_psychological_signals": {
+    "emotional_state_start": "calm",
+    "emotional_state_end": "calm",
+    "distress_signals_present": false,
+    "fear_signals_present": false,
+    "trauma_context_present": false,
+    "safety_concerns_present": false
+  },
+  "J_agent_behavior_clarity": {
+    "agent_polite_professional": true,
+    "agent_expressed_empathy": true,
+    "agent_acknowledged_concerns": true,
+    "agent_summarized_next_steps": true,
+    "next_steps_clarity": "clear"
+  },
+  "K_outcome_customer_effort": {
+    "reservation_status_end": "finalized",
+    "cancellation_during_call": false,
+    "customer_post_call_actions": [
+      "Call the branch at least an hour before arrival.",
+      "Pick up the vehicle before branch closing.",
+      "Present driver's license and credit/debit card at branch."
+    ],
+    "customer_actions_count": 3,
+    "effort_burden": "low",
+    "effort_burden_explanation": "The customer needs to make a timely call and schedule pickup, but overall processes seem clearly explained and manageable."
+  }
+}

@@ -1,0 +1,104 @@
+{
+  "A_basic_context_identifiers": {
+    "insurer_name": "State Farm",
+    "branch_location": "5717 South I-35 in Austin, Texas",
+    "conversation_summary": "The conversation is between an agent from Hertz and a customer named Prisma Perez. The customer needs a rental car authorized by State Farm due to a vehicle repair. Key details include pickup service from a repair shop (Crash Champions) scheduled for 9:30 a.m. the next day. The agent confirmed the customer's email and phone details and advised her to call the local Hertz branch ahead of time to confirm the pickup. A security deposit was mentioned. The call ended on a positive note."
+  },
+  "B_call_type_flow": {
+    "call_type_description": "Same_day_urgent",
+    "call_flow_type": "straight_through",
+    "customer_urgency": "flexible",
+    "decision_points": [
+      "confirming the location of the repair shop",
+      "discussing the pickup time"
+    ],
+    "call_outcome": "completed"
+  },
+  "C_time_feasibility": {
+    "customer_stated_timing_need": "Pickup after a 9 a.m. appointment, confirmed for 9:30 a.m.",
+    "customer_time_need_category": "scheduled",
+    "branch_hours_constraints": "Not specifically mentioned but implied with the instruction to call at 8 or 8:30 a.m.",
+    "request_feasible": true,
+    "infeasibility_reasons": [],
+    "customer_timing_anxiety": false,
+    "stranded_risk_language": false
+  },
+  "D_pickup_delivery_access": {
+    "pickup_requested": true,
+    "delivery_requested": null,
+    "self_pickup_only": null,
+    "agent_said_pickup_not_guaranteed": true,
+    "agent_said_delivery_not_guaranteed": false,
+    "agent_said_branch_discretion": true,
+    "instructed_to_call_branch": true,
+    "option_5_instruction_used": true,
+    "customer_logistics_confusion": false,
+    "customer_logistics_anxiety": false
+  },
+  "E_fleet_vehicle_availability": {
+    "vehicle_class_requested": null,
+    "vehicle_class_category": null,
+    "agent_mentioned_inventory_uncertainty": false,
+    "agent_mentioned_class_not_guaranteed": false,
+    "customer_vehicle_anxiety": false,
+    "hard_constraint_exists": false,
+    "hard_constraint_type": null,
+    "hard_constraint_details": null
+  },
+  "F_insurance_coverage_money": {
+    "coverage_explained_clearly": false,
+    "coverage_understood_by_customer": true,
+    "coverage_partial_or_capped": false,
+    "coverage_cap_amount": null,
+    "deposit_mentioned": true,
+    "deposit_amount": "$50 plus tax, refundable",
+    "customer_cost_worry": false,
+    "customer_changed_plans_due_to_cost": false
+  },
+  "G_branch_reliability_alternatives": {
+    "agent_attempted_branch_contact": false,
+    "agent_transferred_to_branch": false,
+    "branch_answered": null,
+    "branch_unreachable": false,
+    "prior_bad_branch_experience_mentioned": false,
+    "location_avoidance_requested": false,
+    "competitor_mentioned": false,
+    "competitor_name": null
+  },
+  "H_customer_comprehension_cognitive_load": {
+    "familiar_with_ir_process": true,
+    "familiarity_level": "some_experience",
+    "confusion_expressed": true,
+    "confusion_topics": [
+      "address verification",
+      "deposit inquiry"
+    ],
+    "repeated_instructions": false,
+    "took_notes": false
+  },
+  "I_emotional_psychological_signals": {
+    "emotional_state_start": "anxious",
+    "emotional_state_end": "calm",
+    "distress_signals_present": false,
+    "fear_signals_present": false,
+    "trauma_context_present": false,
+    "safety_concerns_present": false
+  },
+  "J_agent_behavior_clarity": {
+    "agent_polite_professional": true,
+    "agent_expressed_empathy": true,
+    "agent_acknowledged_concerns": true,
+    "agent_summarized_next_steps": true,
+    "next_steps_clarity": "clear"
+  },
+  "K_outcome_customer_effort": {
+    "reservation_status_end": "finalized",
+    "cancellation_during_call": false,
+    "customer_post_call_actions": [
+      "Call Hertz branch to confirm pickup at 8 or 8:30 a.m."
+    ],
+    "customer_actions_count": 1,
+    "effort_burden": "low",
+    "effort_burden_explanation": "The instructions were clear and straightforward with only a phone call required."
+  }
+}

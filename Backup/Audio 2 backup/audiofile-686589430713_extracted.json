@@ -1,0 +1,105 @@
+{
+  "A_basic_context_identifiers": {
+    "insurer_name": "State Farm",
+    "branch_location": "2119 Airline Drive Suite 200 in Bozer City, Louisiana",
+    "conversation_summary": "Jackie from HERTZ contacted Mr. Bates to discuss a rental authorized by State Farm following the theft of his car. Jackie asked Mr. Bates about his vehicle needs and timing, offering to connect him with the local branch for specifics. Mr. Bates confirmed prior communication with a local branch, where he was informed about limited availability due to absent staff. He was advised of a possible pickup at 9 AM and discussed vehicle preferences (Sentra or Nissan Rogue). Mr. Bates appeared uncertain due to his inexperience with such rentals, but ultimately decided to adhere to the previously agreed-on pickup time of 9 AM the next morning."
+  },
+  "B_call_type_flow": {
+    "call_type_description": "Scheduled_future",
+    "call_flow_type": "scheduled_future",
+    "customer_urgency": "flexible",
+    "decision_points": [
+      "Timing of vehicle pickup.",
+      "Vehicle class preference.",
+      "Confirmation of email and phone details."
+    ],
+    "call_outcome": "completed"
+  },
+  "C_time_feasibility": {
+    "customer_stated_timing_need": "Mr. Bates did not need a vehicle the same day; he agreed to a pickup the following morning at 9 AM.",
+    "customer_time_need_category": "scheduled",
+    "branch_hours_constraints": "Branch closure at 6 PM.",
+    "request_feasible": true,
+    "infeasibility_reasons": [],
+    "customer_timing_anxiety": false,
+    "stranded_risk_language": false
+  },
+  "D_pickup_delivery_access": {
+    "pickup_requested": true,
+    "delivery_requested": false,
+    "self_pickup_only": null,
+    "agent_said_pickup_not_guaranteed": true,
+    "agent_said_delivery_not_guaranteed": false,
+    "agent_said_branch_discretion": true,
+    "instructed_to_call_branch": false,
+    "option_5_instruction_used": false,
+    "customer_logistics_confusion": true,
+    "customer_logistics_anxiety": false
+  },
+  "E_fleet_vehicle_availability": {
+    "vehicle_class_requested": "Sentra or Nissan Rogue.",
+    "vehicle_class_category": null,
+    "agent_mentioned_inventory_uncertainty": true,
+    "agent_mentioned_class_not_guaranteed": true,
+    "customer_vehicle_anxiety": false,
+    "hard_constraint_exists": false,
+    "hard_constraint_type": null,
+    "hard_constraint_details": null
+  },
+  "F_insurance_coverage_money": {
+    "coverage_explained_clearly": false,
+    "coverage_understood_by_customer": false,
+    "coverage_partial_or_capped": false,
+    "coverage_cap_amount": null,
+    "deposit_mentioned": false,
+    "deposit_amount": null,
+    "customer_cost_worry": false,
+    "customer_changed_plans_due_to_cost": false
+  },
+  "G_branch_reliability_alternatives": {
+    "agent_attempted_branch_contact": false,
+    "agent_transferred_to_branch": false,
+    "branch_answered": null,
+    "branch_unreachable": false,
+    "prior_bad_branch_experience_mentioned": false,
+    "location_avoidance_requested": false,
+    "competitor_mentioned": false,
+    "competitor_name": null
+  },
+  "H_customer_comprehension_cognitive_load": {
+    "familiar_with_ir_process": false,
+    "familiarity_level": "first_time",
+    "confusion_expressed": true,
+    "confusion_topics": [
+      "The process and coordination between locations."
+    ],
+    "repeated_instructions": false,
+    "took_notes": false
+  },
+  "I_emotional_psychological_signals": {
+    "emotional_state_start": "calm",
+    "emotional_state_end": "calm",
+    "distress_signals_present": false,
+    "fear_signals_present": false,
+    "trauma_context_present": true,
+    "safety_concerns_present": false
+  },
+  "J_agent_behavior_clarity": {
+    "agent_polite_professional": true,
+    "agent_expressed_empathy": true,
+    "agent_acknowledged_concerns": true,
+    "agent_summarized_next_steps": true,
+    "next_steps_clarity": "clear"
+  },
+  "K_outcome_customer_effort": {
+    "reservation_status_end": "finalized",
+    "cancellation_during_call": false,
+    "customer_post_call_actions": [
+      "Attend scheduled pickup.",
+      "Possibly reconfirm details closer to time with the branch."
+    ],
+    "customer_actions_count": 2,
+    "effort_burden": "medium",
+    "effort_burden_explanation": "Due to newness to the process and reliance on coordination with external parties."
+  }
+}

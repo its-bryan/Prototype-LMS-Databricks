@@ -1,0 +1,104 @@
+{
+  "A_basic_context_identifiers": {
+    "insurer_name": "State Farm",
+    "branch_location": "543 Cary Avenue, Staten Island, New York",
+    "conversation_summary": "The conversation involves Jennifer from HERTZ reaching out to Elsa Pilko to update her reservation authorized by State Farm. Elsa is initially unable to verify the information due to a language barrier, and it seems she tries to bring someone in who can assist. The call switches to an automated LanguageLink system reflecting an attempt to access translation services. There is no clear resolution within the provided transcript as the interaction seems to be handled midway."
+  },
+  "B_call_type_flow": {
+    "call_type_description": "Parked_waiting_on_third_party (due to transfer to LanguageLink for translation support)",
+    "call_flow_type": "parked_waiting_on_third_party",
+    "customer_urgency": "neutral",
+    "decision_points": [
+      "language assistance",
+      "transfer to LanguageLink"
+    ],
+    "call_outcome": "parked"
+  },
+  "C_time_feasibility": {
+    "customer_stated_timing_need": null,
+    "customer_time_need_category": null,
+    "branch_hours_constraints": null,
+    "request_feasible": null,
+    "infeasibility_reasons": [],
+    "customer_timing_anxiety": false,
+    "stranded_risk_language": false
+  },
+  "D_pickup_delivery_access": {
+    "pickup_requested": null,
+    "delivery_requested": null,
+    "self_pickup_only": null,
+    "agent_said_pickup_not_guaranteed": false,
+    "agent_said_delivery_not_guaranteed": false,
+    "agent_said_branch_discretion": false,
+    "instructed_to_call_branch": false,
+    "option_5_instruction_used": false,
+    "customer_logistics_confusion": false,
+    "customer_logistics_anxiety": false
+  },
+  "E_fleet_vehicle_availability": {
+    "vehicle_class_requested": null,
+    "vehicle_class_category": null,
+    "agent_mentioned_inventory_uncertainty": false,
+    "agent_mentioned_class_not_guaranteed": false,
+    "customer_vehicle_anxiety": false,
+    "hard_constraint_exists": false,
+    "hard_constraint_type": null,
+    "hard_constraint_details": null
+  },
+  "F_insurance_coverage_money": {
+    "coverage_explained_clearly": false,
+    "coverage_understood_by_customer": false,
+    "coverage_partial_or_capped": false,
+    "coverage_cap_amount": null,
+    "deposit_mentioned": false,
+    "deposit_amount": null,
+    "customer_cost_worry": false,
+    "customer_changed_plans_due_to_cost": false
+  },
+  "G_branch_reliability_alternatives": {
+    "agent_attempted_branch_contact": false,
+    "agent_transferred_to_branch": false,
+    "branch_answered": null,
+    "branch_unreachable": false,
+    "prior_bad_branch_experience_mentioned": false,
+    "location_avoidance_requested": false,
+    "competitor_mentioned": false,
+    "competitor_name": null
+  },
+  "H_customer_comprehension_cognitive_load": {
+    "familiar_with_ir_process": false,
+    "familiarity_level": null,
+    "confusion_expressed": true,
+    "confusion_topics": [
+      "language barrier"
+    ],
+    "repeated_instructions": false,
+    "took_notes": false
+  },
+  "I_emotional_psychological_signals": {
+    "emotional_state_start": "calm",
+    "emotional_state_end": null,
+    "distress_signals_present": false,
+    "fear_signals_present": false,
+    "trauma_context_present": false,
+    "safety_concerns_present": false
+  },
+  "J_agent_behavior_clarity": {
+    "agent_polite_professional": true,
+    "agent_expressed_empathy": false,
+    "agent_acknowledged_concerns": false,
+    "agent_summarized_next_steps": false,
+    "next_steps_clarity": "unclear"
+  },
+  "K_outcome_customer_effort": {
+    "reservation_status_end": null,
+    "cancellation_during_call": false,
+    "customer_post_call_actions": [
+      "Await assistance from LanguageLink",
+      "Secure a translator"
+    ],
+    "customer_actions_count": 2,
+    "effort_burden": "medium",
+    "effort_burden_explanation": "due to language barrier requiring additional effort to resolve through third-party services"
+  }
+}

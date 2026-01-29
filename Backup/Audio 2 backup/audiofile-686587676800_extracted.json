@@ -1,0 +1,107 @@
+{
+  "A_basic_context_identifiers": {
+    "insurer_name": "State Farm Insurance",
+    "branch_location": "Nashville, Tennessee, 3100 Charlotte Avenue",
+    "conversation_summary": "A HERTZ representative named Zariah called Joseph McNeesey regarding an insurance-authorized rental by State Farm Insurance in Nashville. Zariah offered pickup service options and discussed branch hours. Joseph planned to use a lift service instead of the unsure pickup service and initially thought the branch was open despite the agent's system indicating otherwise. After confirming the need for a valid driver's license and payment method for the rental, Zariah found an alternate open branch at 783 Bell Road, Anatote, Tennessee. Inventory concerns at the HERTZ location were mentioned, and Joseph inquired about switching to Enterprise if needed. The call ended with a confirmation for Joseph to call the branch to finalize details."
+  },
+  "B_call_type_flow": {
+    "call_type_description": "Same_day_urgent",
+    "call_flow_type": "same_day_urgent",
+    "customer_urgency": "urgent",
+    "decision_points": [
+      "Whether to keep the lift or rely on HERTZ pickup",
+      "Confirming branch operational hours",
+      "Finding an alternative branch",
+      "Checking inventory availability"
+    ],
+    "call_outcome": "completed"
+  },
+  "C_time_feasibility": {
+    "customer_stated_timing_need": "To arrive at the HERTZ location by 10 AM.",
+    "customer_time_need_category": "immediate_same_day",
+    "branch_hours_constraints": "Initially, the system showed the branch was closed on weekends, but Joseph was informed it was open until 4 PM.",
+    "request_feasible": true,
+    "infeasibility_reasons": [],
+    "customer_timing_anxiety": false,
+    "stranded_risk_language": true
+  },
+  "D_pickup_delivery_access": {
+    "pickup_requested": true,
+    "delivery_requested": false,
+    "self_pickup_only": false,
+    "agent_said_pickup_not_guaranteed": true,
+    "agent_said_delivery_not_guaranteed": false,
+    "agent_said_branch_discretion": true,
+    "instructed_to_call_branch": true,
+    "option_5_instruction_used": true,
+    "customer_logistics_confusion": true,
+    "customer_logistics_anxiety": false
+  },
+  "E_fleet_vehicle_availability": {
+    "vehicle_class_requested": "None specified, but for a rental to replace a 2006 Nissan Maxima.",
+    "vehicle_class_category": null,
+    "agent_mentioned_inventory_uncertainty": true,
+    "agent_mentioned_class_not_guaranteed": true,
+    "customer_vehicle_anxiety": false,
+    "hard_constraint_exists": false,
+    "hard_constraint_type": null,
+    "hard_constraint_details": null
+  },
+  "F_insurance_coverage_money": {
+    "coverage_explained_clearly": false,
+    "coverage_understood_by_customer": true,
+    "coverage_partial_or_capped": null,
+    "coverage_cap_amount": null,
+    "deposit_mentioned": true,
+    "deposit_amount": null,
+    "customer_cost_worry": false,
+    "customer_changed_plans_due_to_cost": false
+  },
+  "G_branch_reliability_alternatives": {
+    "agent_attempted_branch_contact": false,
+    "agent_transferred_to_branch": false,
+    "branch_answered": null,
+    "branch_unreachable": false,
+    "prior_bad_branch_experience_mentioned": false,
+    "location_avoidance_requested": false,
+    "competitor_mentioned": true,
+    "competitor_name": "Enterprise"
+  },
+  "H_customer_comprehension_cognitive_load": {
+    "familiar_with_ir_process": true,
+    "familiarity_level": "some_experience",
+    "confusion_expressed": true,
+    "confusion_topics": [
+      "branch hours",
+      "HERTZ services"
+    ],
+    "repeated_instructions": false,
+    "took_notes": false
+  },
+  "I_emotional_psychological_signals": {
+    "emotional_state_start": "calm",
+    "emotional_state_end": "anxious",
+    "distress_signals_present": false,
+    "fear_signals_present": false,
+    "trauma_context_present": false,
+    "safety_concerns_present": false
+  },
+  "J_agent_behavior_clarity": {
+    "agent_polite_professional": true,
+    "agent_expressed_empathy": true,
+    "agent_acknowledged_concerns": true,
+    "agent_summarized_next_steps": true,
+    "next_steps_clarity": "clear"
+  },
+  "K_outcome_customer_effort": {
+    "reservation_status_end": "finalized",
+    "cancellation_during_call": false,
+    "customer_post_call_actions": [
+      "Call the new HERTZ location",
+      "Possibly call back about alternative options if needed"
+    ],
+    "customer_actions_count": 2,
+    "effort_burden": "medium",
+    "effort_burden_explanation": "Due to needing to change locations and confirm details independently, including vehicle availability and operation hours."
+  }
+}

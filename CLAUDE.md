@@ -23,3 +23,4 @@ This project analyzes Hertz's insurance replacement business to **improve lead-t
 
 ## Notes
 - Use `engine='openpyxl'` when reading .xlsx files
+- When creating any charts, graphs, or graphics, see /Users/dansia/Documents/HertzDataAnalysis/visual-guide.md for style guide

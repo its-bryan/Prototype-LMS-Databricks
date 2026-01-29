@@ -1,0 +1,105 @@
+{
+  "A_basic_context_identifiers": {
+    "insurer_name": "State Farm",
+    "branch_location": "Sugarland, Texas; Spring, Texas; The Woodlands, Texas; Rosenberg, Texas",
+    "conversation_summary": "Dominic from Hertz is coordinating a rental vehicle for Gerald Montgomery, authorized by State Farm, initially scheduled for Sugarland, Texas. Gerald needs the vehicle today but cannot make it before 4:30 PM. They discuss finding an alternative location closer to Gerald's workplace in Spring, Texas. After some discussion, they agree on The Woodlands, Texas as it is nearer. Gerald verifies necessary information and receives the address and contact number of the Woodlands branch. He is advised to contact the location for specific pickup details, and that a security deposit would be required."
+  },
+  "B_call_type_flow": {
+    "call_type_description": "Scheduled_future",
+    "call_flow_type": "scheduled_future",
+    "customer_urgency": "urgent",
+    "decision_points": [
+      "location and timing of pickup",
+      "feasibility of various branches",
+      "whether airports could be used"
+    ],
+    "call_outcome": "completed"
+  },
+  "C_time_feasibility": {
+    "customer_stated_timing_need": "Required a vehicle on the same day by around 5:30 PM.",
+    "customer_time_need_category": "immediate_same_day",
+    "branch_hours_constraints": "The branch initially appeared to close at 4:30 PM.",
+    "request_feasible": true,
+    "infeasibility_reasons": [],
+    "customer_timing_anxiety": true,
+    "stranded_risk_language": false
+  },
+  "D_pickup_delivery_access": {
+    "pickup_requested": true,
+    "delivery_requested": false,
+    "self_pickup_only": true,
+    "agent_said_pickup_not_guaranteed": false,
+    "agent_said_delivery_not_guaranteed": false,
+    "agent_said_branch_discretion": true,
+    "instructed_to_call_branch": true,
+    "option_5_instruction_used": true,
+    "customer_logistics_confusion": true,
+    "customer_logistics_anxiety": false
+  },
+  "E_fleet_vehicle_availability": {
+    "vehicle_class_requested": null,
+    "vehicle_class_category": null,
+    "agent_mentioned_inventory_uncertainty": false,
+    "agent_mentioned_class_not_guaranteed": false,
+    "customer_vehicle_anxiety": false,
+    "hard_constraint_exists": false,
+    "hard_constraint_type": null,
+    "hard_constraint_details": null
+  },
+  "F_insurance_coverage_money": {
+    "coverage_explained_clearly": true,
+    "coverage_understood_by_customer": true,
+    "coverage_partial_or_capped": true,
+    "coverage_cap_amount": "approximately $50",
+    "deposit_mentioned": true,
+    "deposit_amount": "approximately $50",
+    "customer_cost_worry": false,
+    "customer_changed_plans_due_to_cost": false
+  },
+  "G_branch_reliability_alternatives": {
+    "agent_attempted_branch_contact": true,
+    "agent_transferred_to_branch": true,
+    "branch_answered": false,
+    "branch_unreachable": false,
+    "prior_bad_branch_experience_mentioned": false,
+    "location_avoidance_requested": true,
+    "competitor_mentioned": false,
+    "competitor_name": null
+  },
+  "H_customer_comprehension_cognitive_load": {
+    "familiar_with_ir_process": true,
+    "familiarity_level": "some_experience",
+    "confusion_expressed": true,
+    "confusion_topics": [
+      "branch location and address"
+    ],
+    "repeated_instructions": false,
+    "took_notes": true
+  },
+  "I_emotional_psychological_signals": {
+    "emotional_state_start": "calm",
+    "emotional_state_end": "calm",
+    "distress_signals_present": false,
+    "fear_signals_present": false,
+    "trauma_context_present": false,
+    "safety_concerns_present": false
+  },
+  "J_agent_behavior_clarity": {
+    "agent_polite_professional": true,
+    "agent_expressed_empathy": true,
+    "agent_acknowledged_concerns": true,
+    "agent_summarized_next_steps": true,
+    "next_steps_clarity": "clear"
+  },
+  "K_outcome_customer_effort": {
+    "reservation_status_end": "finalized",
+    "cancellation_during_call": false,
+    "customer_post_call_actions": [
+      "Contact the Woodlands branch using option five.",
+      "Present a valid driver's license and a credit or debit card at pickup."
+    ],
+    "customer_actions_count": 2,
+    "effort_burden": "medium",
+    "effort_burden_explanation": "customer had to navigate location and timing changes and follow up with the branch, though steps were clearly outlined."
+  }
+}

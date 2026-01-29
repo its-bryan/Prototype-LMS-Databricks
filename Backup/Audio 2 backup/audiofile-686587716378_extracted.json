@@ -1,0 +1,108 @@
+{
+  "A_basic_context_identifiers": {
+    "insurer_name": "State Farm Insurance",
+    "branch_location": "Lebanon, New Jersey",
+    "conversation_summary": "The call between Zariah from HERTZ and the customer, Jessica, involved arranging a rental car authorized by State Farm Insurance due to a vehicle repair need. Jessica preferred delivery to the auto body shop instead of pickup. Zariah explained that both services are at the HERTZ location's discretion and not guaranteed, discussing key details like service date and instructions for confirming with the local branch."
+  },
+  "B_call_type_flow": {
+    "call_type_description": "Same_day_urgent",
+    "call_flow_type": "same_day_urgent",
+    "customer_urgency": "flexible",
+    "decision_points": [
+      "confirming the type of service required (pickup vs. delivery)",
+      "timing of service"
+    ],
+    "call_outcome": "completed"
+  },
+  "C_time_feasibility": {
+    "customer_stated_timing_need": "Monday at around 2:30 PM",
+    "customer_time_need_category": "scheduled",
+    "branch_hours_constraints": null,
+    "request_feasible": true,
+    "infeasibility_reasons": [],
+    "customer_timing_anxiety": true,
+    "stranded_risk_language": true
+  },
+  "D_pickup_delivery_access": {
+    "pickup_requested": true,
+    "delivery_requested": true,
+    "self_pickup_only": false,
+    "agent_said_pickup_not_guaranteed": true,
+    "agent_said_delivery_not_guaranteed": true,
+    "agent_said_branch_discretion": true,
+    "instructed_to_call_branch": true,
+    "option_5_instruction_used": true,
+    "customer_logistics_confusion": true,
+    "customer_logistics_anxiety": true
+  },
+  "E_fleet_vehicle_availability": {
+    "vehicle_class_requested": null,
+    "vehicle_class_category": null,
+    "agent_mentioned_inventory_uncertainty": false,
+    "agent_mentioned_class_not_guaranteed": false,
+    "customer_vehicle_anxiety": false,
+    "hard_constraint_exists": false,
+    "hard_constraint_type": null,
+    "hard_constraint_details": null
+  },
+  "F_insurance_coverage_money": {
+    "coverage_explained_clearly": false,
+    "coverage_understood_by_customer": false,
+    "coverage_partial_or_capped": false,
+    "coverage_cap_amount": null,
+    "deposit_mentioned": false,
+    "deposit_amount": null,
+    "customer_cost_worry": false,
+    "customer_changed_plans_due_to_cost": false
+  },
+  "G_branch_reliability_alternatives": {
+    "agent_attempted_branch_contact": false,
+    "agent_transferred_to_branch": false,
+    "branch_answered": null,
+    "branch_unreachable": false,
+    "prior_bad_branch_experience_mentioned": false,
+    "location_avoidance_requested": false,
+    "competitor_mentioned": true,
+    "competitor_name": "Enterprise"
+  },
+  "H_customer_comprehension_cognitive_load": {
+    "familiar_with_ir_process": false,
+    "familiarity_level": "first_time",
+    "confusion_expressed": true,
+    "confusion_topics": [
+      "confirming pickup or delivery process",
+      "calling ahead",
+      "procedure after pressing option five"
+    ],
+    "repeated_instructions": true,
+    "took_notes": true
+  },
+  "I_emotional_psychological_signals": {
+    "emotional_state_start": "calm",
+    "emotional_state_end": "anxious",
+    "distress_signals_present": true,
+    "fear_signals_present": false,
+    "trauma_context_present": false,
+    "safety_concerns_present": true
+  },
+  "J_agent_behavior_clarity": {
+    "agent_polite_professional": true,
+    "agent_expressed_empathy": true,
+    "agent_acknowledged_concerns": true,
+    "agent_summarized_next_steps": true,
+    "next_steps_clarity": "clear"
+  },
+  "K_outcome_customer_effort": {
+    "reservation_status_end": "provisional",
+    "cancellation_during_call": false,
+    "customer_post_call_actions": [
+      "Call the local HERTZ branch one hour before the scheduled rental time.",
+      "Select option five during the call.",
+      "Confirm whether delivery service will be available.",
+      "Have a valid driver\u2019s license and card ready the day of the rental."
+    ],
+    "customer_actions_count": 4,
+    "effort_burden": "medium",
+    "effort_burden_explanation": "Medium, due to multiple follow-up actions, potential waiting times for the branch's decision, and navigating an unfamiliar process."
+  }
+}
