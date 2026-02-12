@@ -7,6 +7,8 @@ with idempotent processing (skips already-transcribed files).
 
 Usage:
     python scripts/transcribe_audio.py              # Process pending files
+    python scripts/transcribe_audio.py --workers 4  # Process with 4 parallel workers
+    python scripts/transcribe_audio.py --max-files 10  # Process only first 10 files
     python scripts/transcribe_audio.py --dry-run   # Show what would be processed
     python scripts/transcribe_audio.py --retry-failed  # Retry failed transcriptions
 
@@ -22,8 +24,10 @@ import os
 import subprocess
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
+from threading import Lock
 
 from openai import APIConnectionError, APITimeoutError, OpenAI
 from tqdm import tqdm
@@ -48,6 +52,9 @@ PROJECT_ROOT = Path(__file__).parent.parent
 RAW_AUDIO_DIR = PROJECT_ROOT / "data" / "audio 2" / "raw"
 TRANSCRIPTIONS_DIR = PROJECT_ROOT / "data" / "audio 2" / "Transcription_Inbound"
 METADATA_FILE = TRANSCRIPTIONS_DIR / "metadata.csv"
+
+# Thread-safe lock for CSV writing
+metadata_lock = Lock()
 
 # CSV columns
 CSV_COLUMNS = [
@@ -158,14 +165,15 @@ def transcribe_file(client: OpenAI, file_path: Path) -> tuple[str, str]:
 
 
 def append_to_metadata(row: dict) -> None:
-    """Append a single row to metadata.csv (creates file if needed)."""
-    file_exists = METADATA_FILE.exists()
+    """Append a single row to metadata.csv (creates file if needed). Thread-safe."""
+    with metadata_lock:
+        file_exists = METADATA_FILE.exists()
 
-    with open(METADATA_FILE, "a", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=CSV_COLUMNS)
-        if not file_exists:
-            writer.writeheader()
-        writer.writerow(row)
+        with open(METADATA_FILE, "a", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=CSV_COLUMNS)
+            if not file_exists:
+                writer.writeheader()
+            writer.writerow(row)
 
 
 def process_file(client: OpenAI, file_path: Path, dry_run: bool = False) -> bool:
@@ -261,6 +269,18 @@ def main():
         action="store_true",
         help="Retry previously failed transcriptions",
     )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=1,
+        help="Number of parallel workers (default: 1, recommended: 3-5)",
+    )
+    parser.add_argument(
+        "--max-files",
+        type=int,
+        default=None,
+        help="Maximum number of files to process (default: all)",
+    )
     args = parser.parse_args()
 
     # Check API key
@@ -294,10 +314,17 @@ def main():
         # Skip all previously processed files (success or failed)
         pending_files = [f for f in all_files if f.name not in processed]
 
+    # Apply max-files limit
+    total_pending = len(pending_files)
+    if args.max_files is not None and args.max_files < len(pending_files):
+        pending_files = pending_files[:args.max_files]
+
     # Summary
     print(f"Audio files found: {len(all_files)}")
     print(f"Already processed: {len(processed)}")
-    print(f"Pending: {len(pending_files)}")
+    print(f"Pending: {total_pending}")
+    if args.max_files is not None:
+        print(f"Processing (--max-files): {len(pending_files)}")
 
     if not pending_files:
         print("\nNo files to process.")
@@ -314,13 +341,29 @@ def main():
     client = OpenAI(api_key=api_key)
 
     # Process files
-    print(f"\nProcessing {len(pending_files)} file(s)...")
+    print(f"\nProcessing {len(pending_files)} file(s) with {args.workers} worker(s)...")
     success_count = 0
 
-    for file_path in tqdm(pending_files, desc="Transcribing"):
-        print(f"\n{file_path.name}")
-        if process_file(client, file_path):
-            success_count += 1
+    if args.workers == 1:
+        # Sequential processing
+        for file_path in tqdm(pending_files, desc="Transcribing"):
+            print(f"\n{file_path.name}")
+            if process_file(client, file_path):
+                success_count += 1
+    else:
+        # Parallel processing
+        with ThreadPoolExecutor(max_workers=args.workers) as executor:
+            futures = {
+                executor.submit(process_file, client, file_path): file_path
+                for file_path in pending_files
+            }
+            for future in tqdm(as_completed(futures), total=len(pending_files), desc="Transcribing"):
+                file_path = futures[future]
+                try:
+                    if future.result():
+                        success_count += 1
+                except Exception as e:
+                    print(f"\n{file_path.name}: Error - {e}")
 
     # Final summary
     print(f"\n{'='*50}")

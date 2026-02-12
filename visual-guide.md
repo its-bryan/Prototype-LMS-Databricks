@@ -21,6 +21,7 @@
 - No gradients, shadows, or borders
 - Minimal gridlines (horizontal only)
 - Strong visual hierarchy: **yellow used sparingly and intentionally**
+- Never have overlapping elements (e.g. titles, legends)
 
 ---
 
