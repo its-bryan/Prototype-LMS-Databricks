@@ -1,21 +1,14 @@
 import { useState } from "react";
 import Landing from "./components/Landing";
 import WalkthroughShell from "./components/WalkthroughShell";
-
-function Placeholder(label) {
-  return function PlaceholderStep() {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-[#6E6E6E] text-xl">{label} — steps coming soon</p>
-      </div>
-    );
-  };
-}
+import { bmSteps } from "./walkthroughs/BranchManagerSteps";
+import { gmSteps } from "./walkthroughs/GeneralManagerSteps";
+import { adminSteps } from "./walkthroughs/AdminSteps";
 
 const walkthroughs = {
-  bm: { title: "Branch Manager — Weekly Lead Review", steps: [Placeholder("Branch Manager")] },
-  gm: { title: "General Manager — Compliance & Oversight", steps: [Placeholder("General Manager")] },
-  admin: { title: "Admin — Data & Configuration", steps: [Placeholder("Admin")] },
+  bm: { title: "Branch Manager — Weekly Lead Review", steps: bmSteps },
+  gm: { title: "General Manager — Compliance & Oversight", steps: gmSteps },
+  admin: { title: "Admin — Data & Configuration", steps: adminSteps },
 };
 
 export default function App() {
