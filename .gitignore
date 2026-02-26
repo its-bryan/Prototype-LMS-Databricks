@@ -58,6 +58,9 @@ logs/
 htmlcov/
 .tox/
 
+# Node modules
+node_modules/
+
 # Secrets and credentials
 *.pem
 *.key
