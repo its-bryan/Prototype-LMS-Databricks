@@ -140,6 +140,229 @@ Between weekly calls, the GM has almost no visibility into what's actually happe
 
 The GM can open the LMS dashboard at any time and see, at a glance, which branches have untouched leads, which have overdue follow-ups, and which are falling behind on enrichment. If a senior leader asks a question, the GM can answer it in minutes. If they notice a branch with low activity, they can drill in, review specific leads, and add a directive — without waiting for the next weekly call.
 
+### 3.5 Jobs to Be Done
+
+Each role comes to the LMS with a specific job in mind. The interface should be designed around these jobs — not around features or data tables. If a user can't complete their job quickly and obviously, the design isn't working.
+
+#### Branch Manager — Jobs
+
+**Job 1: "Show me what needs my attention this week"**
+
+The BM opens the LMS and immediately sees which leads need action. They shouldn't have to search, filter, or sort to find them. The system should answer these questions on arrival:
+
+- How many leads need comments? (cancelled or unused leads with no BM input yet)
+- Which leads are overdue for follow-up? (follow-up date has passed)
+- How am I tracking overall? (what % of my leads are commented on)
+
+The BM's mental model is an inbox: items come in, you work through them, and when you're done, you're done. The "done" state should feel satisfying — not just an empty list, but a clear signal that you're caught up.
+
+**Job 2: "Let me explain what happened with this lead"**
+
+The BM clicks into a specific lead and needs to quickly understand the story so far (what HLES says, what the TRANSLOG shows), then add their own context: why did this lead not convert, and what's the next step?
+
+This is the core enrichment action. What the BM needs to do:
+
+- Read the HLES cancellation reason (e.g., "NO SHOW") and the TRANSLOG activity trail (e.g., 3 calls, all voicemail)
+- Select a structured cancellation reason from a dropdown (see Section 7 for categories)
+- Add free-text notes with additional context (e.g., "Phone number only has 9 digits — likely data quality issue")
+- Set a next action and follow-up date for unused leads that still have a chance
+
+This should take **under 60 seconds per lead**. If it takes longer, the form is too complex. BMs will do this for 10–30 leads per week. It needs to be fast and painless, not a chore.
+
+**Job 3: "Let me see what my GM is going to see before the meeting"**
+
+Before the weekly compliance call (typically Thursday), the BM wants to preview exactly what the GM will be looking at. This means: all cancelled leads for the current week, plus all unused leads as of today — including unused leads that have carried over from previous weeks. If a lead is sitting there without a comment, the BM knows the GM is going to ask about it.
+
+This is a meeting-prep job, but it shouldn't feel like prep. If the BM has been adding comments throughout the week (Job 2), this view should just confirm they're ready. If they haven't, this is the "oh no" moment where they see the gaps and can fill them in before the call.
+
+The key insight: the BM and the GM are looking at the same leads. The BM should be able to see their leads through the GM's eyes — filtered the same way, sorted the same way. No surprises in the meeting.
+
+**Job 4: "Show me I'm keeping up with my peers"**
+
+BMs can see a conversion dashboard with named peer comparison. This isn't their primary task, but it's a motivator. They want to see where they rank relative to other branch managers — and whether they're improving or falling behind. The leaderboard creates healthy competition and signals that activity is being watched.
+
+#### General Manager — Jobs
+
+**Job 5: "What's the state of my zone right now?"**
+
+The GM opens the LMS and needs to see the big picture across all their branches in seconds. The questions they're trying to answer:
+
+- What's our conversion rate, and is it trending up or down?
+- What % of leads are we contacting within 30 minutes? (This is the #1 metric — David (ZGM) said: "My number one question is always… what percentage are we contacting within thirty minutes." This metric should be for the current week's data.)
+- How much of the first contact is coming from branches vs HRD (the call centre)? (David: "HRD is really kind of like when you don't do your job, they're there to fix it." High HRD contact rate means branches aren't picking up the phone. This is a current-week metric.)
+- Which branches are falling behind on compliance? (leads without comments, overdue follow-ups)
+- Are there any red flags I need to act on right now?
+
+This is a dashboard job. The GM should be able to answer all of these questions without clicking anything — the default view should surface the answers. All dashboard metrics should be filterable (by branch, by area manager, by insurance company, by date range).
+
+**Job 6: "Who's converting and who's not?"**
+
+The GM needs a leaderboard/conversion view that answers: which branches, area managers, or GMs are performing well, and which are falling behind?
+
+**Conversion bar chart — the core visual:**
+
+Each entity (branch, AM, GM, or zone) should be shown as a stacked horizontal bar with three segments:
+
+- **Rented** (green) — leads that converted to rentals
+- **Cancelled** (red) — leads that were lost
+- **Unused / Opportunity** (yellow/amber) — leads still open, yet to convert or cancel
+
+This gives the GM an instant read on the composition of each entity's leads — not just a single conversion percentage, but the full breakdown. A branch with 60% rented, 10% cancelled, and 30% unused tells a very different story from one with 60% rented, 35% cancelled, and 5% unused. The first has upside potential; the second is leaking.
+
+**Time dimension:**
+
+- Show the **last 4 weeks**, week by week, so the GM can see trends (is this branch improving or declining?)
+- Include a **blended trailing 4-week conversion rate** — a single percentage that smooths out weekly noise and gives the true trend line (e.g., "4-week avg: 72%")
+
+**Additional features:**
+
+- Sorted from best to lowest conversion rate
+- The ability to toggle between different views: by Branch, by Area Manager, by GM, by Zone
+- A "Most Improved" view — who made the biggest jump week over week?
+- Delta indicators showing the direction of change (↑ or ↓)
+
+This is the accountability lever. When conversion rates are named and ranked, people pay attention. David's feedback confirmed this is central to how GMs drive performance.
+
+**Job 7: "Prepare for and run the weekly compliance meeting"**
+
+Once a week (typically Thursday), the GM runs a compliance call with their branch managers. This is arguably the most important moment in the weekly cycle. The LMS should make this meeting focused and efficient.
+
+This may warrant its own dedicated view — a "Meeting Mode" or "Weekly Review" that's purpose-built for running the call, separate from the day-to-day dashboard. The GM needs:
+
+- A view of all cancelled leads from the current week, plus all unused leads as of today (including carryovers from previous weeks) that haven't been reviewed yet, across all branches
+- For each lead: what HLES says happened, what TRANSLOG shows actually happened, and what the BM says happened — side by side
+- The ability to spot mismatches (e.g., BM says "customer cancelled" but TRANSLOG shows zero contact attempts — was this lead ever actually worked?)
+- A way to add a directive (instruction to the BM) and archive the lead once discussed
+
+The meeting should work like a checklist: go through the unreviewed leads one by one, discuss, directive if needed, archive, next. By the end of the meeting, every lead has been accounted for.
+
+**Job 8: "Spot-check a branch between meetings"**
+
+Between weekly calls, the GM notices something — maybe a branch's numbers dipped, maybe a senior leader asked about a specific location. The GM needs to drill into a single branch's leads on demand, without waiting for the next meeting. They want to see:
+
+- Untouched leads (no contact, no comments)
+- Leads where activity doesn't match the stated outcome
+- Overall branch metrics vs the zone average
+
+After reviewing, the GM may add a directive: "Follow up on these before Friday." The BM sees that directive next time they open the LMS.
+
+#### Admin — Jobs
+
+**Job 9: "Upload this week's data and make sure it loaded correctly"**
+
+The Admin uploads HLES and TRANSLOG CSV exports every Monday. They need clear feedback: how many records were parsed, how many are new vs updated, and whether any rows failed validation. If rows fail, they need to see why (e.g., missing CONFIRM_NUM) and decide whether to fix and re-upload or proceed without them. This upload kicks off the entire weekly cycle — nothing else works until the data is in.
+
+**Job 10: "Keep the org mapping current"**
+
+When a branch manager transfers, a new GM is assigned, or a branch is added, the Admin updates the org mapping (BM → Branch → AM → GM → Zone). This should be simple table editing — no complex forms, just change the value and save.
+
+### 3.6 Urgency & Priority Logic
+
+The system needs a consistent definition of what "needs attention" means. These aren't hard rules for implementation — they're the logic that should drive how leads are surfaced and ordered.
+
+**Lead priority tiers (highest to lowest):**
+
+| Priority | Condition | Why it matters |
+| --- | --- | --- |
+| **Overdue** | Follow-up date has passed and lead is still unused | BM committed to an action and hasn't done it |
+| **Cancelled — no comment** | Lead is cancelled and BM hasn't added a reason | GM will ask about this in the weekly meeting — BM needs to explain |
+| **Unused — no comment** | Lead is unused (active opportunity) with no BM input | Might be slipping through the cracks |
+| **Unused — has comment** | Lead is unused but BM has added notes/next action | Being actively worked — lower urgency |
+| **Cancelled — has comment** | Lead is cancelled and BM has explained why | Ready for GM review |
+| **Rented** | Lead converted successfully | No action needed — success |
+
+**What "overdue" means:** A lead becomes overdue when the BM set a follow-up date and that date has passed without the lead converting or the BM updating their notes. The specific threshold can be flexible in the prototype, but the concept is: you said you'd do something by this date, and you haven't.
+
+**What "untouched" means (for GM spot-checks):** A lead with zero or minimal TRANSLOG activity (no contact attempts) AND no BM comments. These are the leads that may have been ignored entirely.
+
+### 3.7 The Weekly Cadence
+
+Everything in the LMS revolves around a weekly cycle. The data arrives once a week, and everything flows from that. Understanding this rhythm is essential to designing the right experience.
+
+**The weekly timeline:**
+
+```
+MONDAY        TUESDAY–WEDNESDAY       THURSDAY              FRIDAY
+Admin uploads  BMs enrich their       Weekly compliance     Follow-up on
+HLES + TRANSLOG  leads (add comments,   meeting — GM reviews  directives from
+data. This is    next actions,          leads with BMs on     the meeting.
+the trigger.     follow-up dates)       a group call.         New week begins
+                                                             Monday.
+```
+
+**Monday — Data Upload Day:**
+
+The Admin uploads the latest HLES and TRANSLOG CSV exports. This is the single data refresh for the week. Once uploaded, the system reflects the previous week's lead activity: which leads converted, which were cancelled, what contact attempts were made. The "Data as of" date updates in the system so everyone knows how fresh the data is.
+
+**Tuesday–Wednesday — Branch Manager Enrichment Window:**
+
+The BM opens the LMS and sees the current state of their leads. The data now reflects what happened last week. Their job is to work through the leads that need comments:
+
+- **New cancelled leads from last week** — Why did these not convert? BM selects a structured reason, adds notes.
+- **Unused leads (cumulative)** — These are all leads that are still open and haven't converted or been cancelled. This includes carryovers from previous weeks — a lead that was unused two weeks ago and is still unused today will keep appearing until it resolves. BM adds next actions and follow-up dates.
+- **Overdue follow-ups** — Leads where the BM previously set a follow-up date that has now passed. These need updated notes or a new follow-up date.
+
+This isn't a marathon session. Ideally the BM is spending 15–30 minutes across Tuesday and Wednesday getting their leads commented on. By Wednesday evening, they should be "all caught up" — ready for Thursday's meeting.
+
+**Thursday — Weekly Compliance Meeting:**
+
+The GM runs the weekly call with their BMs (typically 5–10 per call, ~1 hour). The GM opens the meeting view, which shows:
+
+- All cancelled leads from the current week that haven't been reviewed
+- All unused leads as of today (including carryovers from previous weeks) that haven't been reviewed
+- Each lead with three sources of truth side by side: HLES reason, TRANSLOG trail, BM comments
+
+The GM works through the list lead by lead. For leads where the BM has good comments and the story is consistent, the GM archives quickly. For leads with mismatches or missing comments, the GM discusses with the BM and may add a directive. By the end of the meeting, the unreviewed queue should be empty.
+
+The GM also reviews last week's performance metrics during or before the meeting: conversion rates, time to first contact, branch vs HRD contact split, compliance rates. These are all based on the Monday data upload and reflect the previous week's performance.
+
+**Friday — Follow-Up:**
+
+BMs action any directives from Thursday's meeting. The cycle resets on Monday with the next data upload.
+
+**What carries over between weeks:**
+
+- **Unused leads persist.** An unused lead from 3 weeks ago that's still open will keep appearing in the BM's queue and the GM's meeting view until it converts, gets cancelled, or is otherwise resolved. These are cumulative — they don't reset each week.
+- **Cancelled leads persist until archived.** A cancelled lead stays visible until the GM reviews and archives it in a meeting.
+- **Comments and directives persist.** Everything the BM and GM record in the LMS is stored permanently. It doesn't get overwritten by the next data upload.
+- **Dashboard trends show week-over-week history.** The last 4 weeks of conversion rates, contact metrics, and compliance rates are visible so users can see trajectories, not just snapshots.
+
+### 3.8 Edge States & Empty States
+
+These states are just as important to design as the happy path. They tell the user what's happening and what to do next.
+
+**BM: "All caught up"** — Every cancelled lead has a comment, every unused lead has a next action, no follow-ups are overdue. This is a success state. The BM should feel good about it — they're ready for the weekly call.
+
+**BM: "New lead, no activity yet"** — A lead just arrived in the system. TRANSLOG may show it was created but nothing else has happened. This isn't alarming — it's just new. The lead should be visible but not flagged as urgent until enough time has passed.
+
+**GM: "Full compliance"** — All branches have commented on all their leads, no overdue follow-ups, conversion trending up. This should feel like a clean bill of health.
+
+**Lead with no TRANSLOG entries** — About 11% of leads receive zero contact. This is significant — it could mean the lead was auto-cancelled by EDI before anyone could act, or it could mean the branch ignored it. The absence of activity is itself an important signal and should be visible, not hidden.
+
+**Lead with a mismatch** — HLES says "CUSTOMER CANCELLED" but TRANSLOG shows zero contact events, and the BM wrote "customer went with competitor." How would the BM know that if they never spoke to the customer? This mismatch is the most important thing the GM is looking for. The system should make these contradictions visually obvious without the GM having to cross-reference manually.
+
+**Stale lead** — An unused lead that's been sitting for weeks with no updates, no follow-up, no activity. This is different from "new and untouched" — this one has been forgotten. The longer it sits, the more likely it's lost.
+
+### 3.9 Stakeholder Feedback — What We Learned from David (ZGM)
+
+In February 2026, we demoed the v1.0 prototype to David, a Zone General Manager. His feedback validated the concept and sharpened several design priorities. These insights should be treated as direct user requirements — they reflect how a real GM thinks about the tool.
+
+**On terminology:** "Nobody uses the term enrichment." Users call these "comments" — the interface should use that language everywhere. Similarly, "region" is outdated — the org uses "zone." Using the wrong words makes the tool feel foreign.
+
+**On the #1 metric:** "My number one question is always… what percentage are we contacting within thirty minutes." Time to first contact is the leading indicator that GMs care most about. It should be prominently displayed — not buried in a secondary view.
+
+**On HRD (the call centre):** "HRD is really kind of like when you don't do your job, they're there to fix it." The split between branch-originated contact and HRD contact is a key accountability signal. High HRD contact rate for a branch means the branch isn't doing its job. This should be visible at the branch level and the zone level.
+
+**On filtering:** David wants to filter by insurance company (using company names like "State Farm", not internal CDP codes), by branch, by area manager, and by date. Every view should be filterable — the GM moves fluidly between zone-wide and branch-specific perspectives.
+
+**On hierarchy context:** When looking at a lead, the GM wants to immediately see who's responsible: which BM, which branch, which AM, which GM, which zone. The full reporting chain should be visible on the lead detail view.
+
+**On data freshness:** David compares LMS data against HLES constantly. He needs to know when the data was last uploaded (e.g., "Data as of: Mon, Feb 24") so he knows whether he's looking at current information or stale data.
+
+**On leaderboards:** Named rankings drive behaviour. David wants to see conversion rates by branch, by AM, by GM — sorted best to worst, with trend arrows showing who's improving. A "Most Improved" view is as important as a "Top Performers" view — it rewards effort, not just results.
+
+These feedback points are already implemented in the v2.0 prototype (see Appendix A for the full changelog). The next version should preserve and refine all of them.
+
 ---
 
 ## 4. Product Vision
