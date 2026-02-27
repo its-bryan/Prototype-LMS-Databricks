@@ -1,7 +1,7 @@
 # Lead Management System (LMS) — Product Requirements Document
 
-**Version:** 1.0 (V1 Prototype)
-**Date:** 2026-02-21
+**Version:** 2.0 (V1 Prototype + ZGM Feedback)
+**Date:** 2026-02-27 (originally 2026-02-21)
 **Author:** Product & Data Team
 **Status:** Draft
 
@@ -469,3 +469,140 @@ Key ingestion requirements:
 - **Automated alerts**: Notify branch managers of new leads, overdue follow-ups
 - **National rollout**: Scale to 200+ branches
 - **AI-assisted insights**: Pattern detection on cancellation reasons, predictive conversion scoring
+
+---
+
+## Appendix A — Prototype Changelog
+
+### Version 2.0 — ZGM Stakeholder Feedback Release
+**Date:** Feb 27, 2026
+**Commits:** `5fc3f4c` → `43dad22` (6 commits)
+**Based on:** David (ZGM) review session, Feb 26, 2026
+
+#### Terminology & Language
+
+- **"Enrichment" → "Comments"** — Renamed across all user-facing text (20+ files). David: *"Nobody uses the term enrichment."* Code variable names kept as-is for stability.
+  - Affected labels: "Enrichment Rate" → "Comment Rate", "Needs Enrichment" → "Needs Comments", "LMS Enrichment" → "LMS Comments", "Save Enrichment" → "Save Comment", "Enrichment Activity" → "Comment History", "BM Enrichment" → "BM Comments", etc.
+- **"Region" → "Zone"** — David: *"We don't call them regions anymore."* Updated in GM dashboard trend chart, compliance dashboard, and walkthrough text.
+
+#### New Dashboard Features (GM)
+
+- **Time to First Contact card** — Stacked horizontal bar showing % of leads contacted within <30m, 30m–1h, 1–3h, >3h. David: *"My number one question is always… what percentage are we contacting within thirty minutes."*
+- **Branch vs HRD contact source card** — Side-by-side comparison showing what % of first contacts came from the branch vs OKC (HRD call center). David: *"HRD is really kind of like when you don't do your job, they're there to fix it."*
+
+#### New Filters
+
+- **Insurance Company filter** — Added to Lead Queue and Compliance Dashboard. Dropdown populated from lead data (State Farm, GEICO, Progressive, Allstate, etc.). David prefers company names over CDP codes.
+- **Date filter** — Week-preset selector already existed in Lead Queue; confirmed working.
+
+#### Hierarchy & Context
+
+- **BM → AM → GM → Zone hierarchy bar** — Added to Lead Detail view. Looks up org mapping by branch and displays the full reporting chain above each lead.
+- **Contact source badge** — Green "Branch" or red "HRD" badge shown next to Time to 1st Contact in Lead Detail.
+- **"Data as of" date in top bar** — Displays the date of last data upload (e.g., "Data as of: Thu, Feb 26") so users know data freshness when comparing with HLES.
+
+#### Leaderboard
+
+- **New Leaderboard page** — Interactive leaderboard with filter tabs: Branches, GMs, AMs, Zones, Overall.
+- **Most Improved toggle** — Switch between "Top Rate" and "Most Improved" sort on the Branches view, ranking by week-over-week conversion rate delta.
+- **Delta indicators** — Each row shows ↑+N or ↓-N arrows next to conversion rates.
+- Added to sidebar navigation under Interactive Demo mode.
+
+#### Org Mapping
+
+- **AM and Zone columns** — Table now shows full hierarchy: BM, Branch, AM, GM, Zone (previously only BM, Branch, GM).
+
+#### Data Model Updates (`mockData.js`)
+
+- Added `insuranceCompany` and `repairShop` fields to all leads
+- Added `firstContactBy` ("branch"/"none") to lead-level summary
+- Added `source` ("branch"/"hrd") to translog contact entries
+- Added `timeToContact`, `branchContactRate`, `hrdContactRate` to GM weekly trends
+- Added `priorConversionRate` to leaderboard branch entries
+- Added `dataAsOfDate` export
+- Renamed trend fields: `enrichmentRate` → `commentRate`, `enrichmentCompliance` → `commentCompliance`, `regionConversionRate` → `zoneConversionRate`
+
+---
+
+### Version 1.0 — Initial Prototype
+**Date:** Feb 23–25, 2026
+**Commits:** `412f815` → `7648b22` (6 commits)
+
+#### Core Application
+
+- **Scaffolded React 19 + Vite 7 + Tailwind CSS v4 + Framer Motion** project
+- **Landing page** with three role cards: Branch Manager, General Manager, Admin
+- **State-driven navigation** via AppContext (no router) with role-based view switching
+- **Two app modes:** Guided Tour (step-by-step walkthroughs) and Interactive Demo (sidebar-navigated)
+- **Hertz brand palette:** Dark #1A1A1A, Gold #F5C400, Green #2E7D32, Red #C62828
+
+#### Interactive Demo Views
+
+- **Branch Manager Dashboard** — Weekly KPI cards (Total Leads, Rented, Cancelled, Unused, Comment Rate, Needs Comments) + 4-week trend mini bar charts
+- **GM Dashboard** — Cancelled Unreviewed, Unused Overdue, Comment Compliance cards + 4-week trends
+- **Admin Dashboard** — Data Uploads and Org Mapping quick-access cards
+- **Lead Queue** — Filterable/sortable lead table with status badges, search, and status/date filters
+- **Lead Detail** — Full lead view with customer info, metadata grid, translog timeline, and enrichment form slot
+- **Compliance Dashboard** — Branch manager compliance table with summary KPI cards
+- **Cancelled Leads Review** — Three-column layout (lead list, detail, BM comments)
+- **Spot Check** — Random lead review for GM oversight
+- **Unused Leads** — Overdue unused leads list
+- **Enrichment Form** — BM data entry form (reason, notes, next action)
+- **Inbox** — Notification-style feed of actionable items
+- **To-Do List** — Task tracker for pending lead actions
+- **Legend** — Visual guide explaining statuses, colors, and workflows
+- **Org Mapping** — Editable BM/Branch/GM assignment table
+- **Data Uploads** — HLES and TRANSLOG file upload interface
+
+#### Guided Tour Walkthroughs
+
+- **Branch Manager walkthrough** — 7-step journey through lead review and enrichment
+- **General Manager walkthrough** — 8-step journey through compliance review and oversight
+- **Admin walkthrough** — 4-step journey through data management
+
+#### Shared Components
+
+- `StatusBadge` — Color-coded lead status indicators
+- `MiniBarChart` — Compact trend visualizations
+- `TitleCard` — Reusable section headers
+- `TranslogTimeline` — Customer interaction timeline
+- `EnrichmentTimeline` — BM comment history
+- `WalkthroughShell` — Step navigation with progress dots and transitions
+
+#### Infrastructure
+
+- Hand-crafted mock data covering 12 leads across 4 branches with realistic translog entries
+- Selector layer (`demoSelectors.js`) for computed stats and filtering
+- Navigation config mapping views to components and sidebar structure
+- Page title set to "Hertz LMS"
+
+---
+
+### Other Changes (Non-Prototype)
+**Included in commit `5fc3f4c`**
+
+#### Documentation & Plans
+
+- Added Commercial Excellence Campaign plan (`docs/plans/commercial-excellence-campaign.md` + Word export)
+- Added Phase 2 Activity Prioritisation plan
+- Added LMS prototype design doc and implementation plan
+- Added MMR initiative docs (PRD, screen mockups, feature discussions)
+- Added Carrara approach docs (one-pager, reporting doc, meeting notes)
+- Added meeting notes from Nick (Feb 25)
+
+#### Charts & Analysis
+
+- New PowerPoint charts: "Conversion Summary Tom vs Chad", "Tom vs Chad Report Showdown Delta", weekly conversion tables
+- Updated who-cancels analysis chart
+- New notebook: `all_cancellation_analysis.ipynb`
+- Updated existing analysis notebooks with expanded GM and cancellation analyses
+
+#### Scripts
+
+- `scripts/explore_translog_csv.py` — Translog CSV exploration utility
+- `scripts/generate_mmr_prd.py` — MMR PRD generation script
+
+#### Data
+
+- Sample data files moved into prototype directory structure
+- `.gitignore` updates for `.worktrees/` and prototype build artifacts
