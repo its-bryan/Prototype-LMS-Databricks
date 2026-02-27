@@ -21,6 +21,12 @@ This project analyzes Hertz's insurance replacement business to **improve lead-t
 - **Formula**: `Conversion Rate = sum(RENT_IND) / sum(RES_ID) × 100%`
 - **Baseline**: Current conversion ~67-70%, target 80%+
 
+## LMS Prototype
+- The LMS prototype lives under `docs/Prototype-LeadMgmtsys/prototype-lms/`
+- **Its GitHub repo is https://github.com/popcornAlesto33/Prototype-LMS** (git remote: `prototype-lms`)
+- Push prototype changes to `prototype-lms` remote, NOT to `origin` (`TrophyVentures/Halibu`)
+- **IMPORTANT:** Never run `git push prototype-lms main` — that pushes the entire repo. Use `git subtree split --prefix=docs/Prototype-LeadMgmtsys/prototype-lms` to push only the prototype code. See `docs/Prototype-LeadMgmtsys/CLAUDE.md` for full instructions.
+
 ## Notes
 - Use `engine='openpyxl'` when reading .xlsx files
 - When creating any charts, graphs, or graphics, see /Users/dansia/Documents/HertzDataAnalysis/visual-guide.md for style guide

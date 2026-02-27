@@ -1,5 +1,33 @@
 # CLAUDE.md — Project Orientation
 
+## GitHub Repository
+
+**Primary repo:** https://github.com/popcornAlesto33/Prototype-LMS
+- Git remote name: `prototype-lms`
+- The `TrophyVentures/Halibu` repo (remote `origin`) is the parent analysis project — do NOT push prototype code there
+
+### Pushing to GitHub — IMPORTANT
+
+The prototype source lives at `docs/Prototype-LeadMgmtsys/prototype-lms/` inside the parent `HertzDataAnalysis` repo. The GitHub repo `popcornAlesto33/Prototype-LMS` should contain **only** the prototype code (not notebooks, scripts, data, or other analysis files).
+
+**How to push prototype changes:**
+
+```bash
+# 1. Commit your changes on the main branch as normal (from HertzDataAnalysis root)
+git add docs/Prototype-LeadMgmtsys/prototype-lms/...
+git commit -m "your message"
+
+# 2. Push ONLY the prototype-lms subdirectory using git subtree
+git subtree split --prefix=docs/Prototype-LeadMgmtsys/prototype-lms -b prototype-only
+git push prototype-lms prototype-only:main
+git branch -D prototype-only
+
+# If the push is rejected (diverged histories), use force:
+git push --force prototype-lms prototype-only:main
+```
+
+**Never run `git push prototype-lms main`** — that pushes the entire repo. Always use the subtree split approach above.
+
 ## What is this?
 
 **Hertz LMS (Lead Management System)** — an interactive prototype demonstrating insurance replacement lead conversion workflows. It's a walkthrough-style app where users pick a role (Branch Manager, General Manager, or Admin) and step through a guided tour of that role's workflow. There is no backend; all data is mock.
