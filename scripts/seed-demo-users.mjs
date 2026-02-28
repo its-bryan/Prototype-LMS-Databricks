@@ -1,0 +1,86 @@
+/**
+ * Seed 3 demo users for Hertz LMS (bm, gm, admin).
+ * Requires: SUPABASE_SERVICE_ROLE_KEY and VITE_SUPABASE_URL in .env
+ * Run: npm run seed:users
+ *
+ * Run 003_user_profiles.sql in Supabase SQL Editor first.
+ */
+
+import { readFileSync } from "fs";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
+import { createClient } from "@supabase/supabase-js";
+
+// Load .env from project root (no external deps)
+const __dirname = dirname(fileURLToPath(import.meta.url));
+try {
+  const env = readFileSync(join(__dirname, "..", ".env"), "utf8");
+  env.split("\n").forEach((line) => {
+    const m = line.match(/^([^#=]+)=(.*)$/);
+    if (m) process.env[m[1].trim()] = m[2].trim().replace(/^["']|["']$/g, "");
+  });
+} catch {}
+
+const url = process.env.VITE_SUPABASE_URL;
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!url || !serviceKey) {
+  const missing = [];
+  if (!url) missing.push("VITE_SUPABASE_URL");
+  if (!serviceKey) missing.push("SUPABASE_SERVICE_ROLE_KEY");
+  console.error("Missing in .env:", missing.join(", "));
+  console.error("Get the service role key from: Supabase Dashboard → Project Settings → API → service_role");
+  process.exit(1);
+}
+
+const supabase = createClient(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
+
+const DEMO_USERS = [
+  { email: "bm@hertz.demo", password: "demo123", role: "bm", display_name: "Sarah Chen", branch: "Santa Monica" },
+  { email: "gm@hertz.demo", password: "demo123", role: "gm", display_name: "Mike Torres", branch: null },
+  { email: "admin@hertz.demo", password: "demo123", role: "admin", display_name: "Lisa Park", branch: null },
+];
+
+async function seed() {
+  for (const u of DEMO_USERS) {
+    try {
+      const { data, error: createError } = await supabase.auth.admin.createUser({
+        email: u.email,
+        password: u.password,
+        email_confirm: true,
+      });
+
+      if (createError) {
+        if (createError.message?.includes("already been registered") || createError.message?.includes("already exists")) {
+          console.log(`  ${u.email} — already exists, resetting password & upserting profile`);
+          const { data: list } = await supabase.auth.admin.listUsers();
+          const found = list?.users?.find((x) => x.email === u.email);
+          if (found) {
+            await supabase.auth.admin.updateUserById(found.id, { password: u.password });
+            await upsertProfile(found.id, u.role, u.display_name, u.branch);
+          }
+          continue;
+        }
+        throw createError;
+      }
+
+      await upsertProfile(data.user.id, u.role, u.display_name, u.branch);
+      console.log(`  ${u.email} — created (${u.role})`);
+    } catch (err) {
+      console.error(`  ${u.email} — failed:`, err.message);
+    }
+  }
+  console.log("Done.");
+}
+
+async function upsertProfile(userId, role, displayName, branch = null) {
+  const row = { id: userId, role, display_name: displayName, updated_at: new Date().toISOString() };
+  if (branch !== undefined) row.branch = branch;
+  const { error } = await supabase.from("user_profiles").upsert(row, { onConflict: "id" });
+  if (error) throw error;
+}
+
+seed().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

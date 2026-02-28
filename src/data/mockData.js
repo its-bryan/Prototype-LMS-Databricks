@@ -1,0 +1,568 @@
+// Mock data for LMS prototype
+
+export const dataAsOfDate = "2026-02-26";
+
+function _sr(seed) {
+  const x = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+export const dailyTrends = (() => {
+  const data = [];
+  const start = new Date("2025-02-01T00:00:00");
+  const end = new Date("2026-02-22T00:00:00");
+
+  for (let d = new Date(start); d <= end; d = new Date(d.getTime() + 86400000)) {
+    const idx = Math.floor((d - start) / 86400000);
+    const dow = d.getDay();
+    const isWeekend = dow === 0 || dow === 6;
+
+    const r1 = _sr(idx);
+    const r2 = _sr(idx + 1000);
+    const r3 = _sr(idx + 2000);
+
+    const trend = idx * 0.03;
+    const seasonal = Math.sin((idx / 60) * Math.PI) * 3;
+
+    const baseLeads = isWeekend ? 7 : 18;
+    const totalLeads = Math.max(3, Math.round(baseLeads + r1 * 8 - 3 + trend * 0.05));
+    const convRate = Math.min(80, Math.max(42, 55 + trend + seasonal + r2 * 14 - 7));
+    const commentRate = Math.min(97, Math.max(65, 78 + trend * 0.5 + r3 * 10 - 5));
+
+    const rented = Math.min(totalLeads, Math.max(0, Math.round((totalLeads * convRate) / 100)));
+    const enriched = Math.min(totalLeads, Math.max(0, Math.round((totalLeads * commentRate) / 100)));
+
+    data.push({ date: d.toISOString().split("T")[0], totalLeads, rented, enriched });
+  }
+
+  return data;
+})();
+
+export const orgMapping = [
+  { bm: "J. Smith", branch: "Downtown LA", am: "K. Chen", gm: "D. Williams", zone: "Eastern" },
+  { bm: "M. Johnson", branch: "Santa Monica", am: "K. Chen", gm: "D. Williams", zone: "Eastern" },
+  { bm: "A. Garcia", branch: "Pasadena", am: "K. Chen", gm: "D. Williams", zone: "Eastern" },
+  { bm: "S. Lee", branch: "Long Beach", am: "K. Chen", gm: "D. Williams", zone: "Eastern" },
+  { bm: "T. Brown", branch: "Anaheim", am: "K. Chen", gm: "D. Williams", zone: "Eastern" },
+  { bm: "R. Davis", branch: "San Diego Central", am: "L. Park", gm: "R. Martinez", zone: "Southern" },
+  { bm: "E. Wilson", branch: "La Jolla", am: "L. Park", gm: "R. Martinez", zone: "Southern" },
+  { bm: "P. Taylor", branch: "Carlsbad", am: "L. Park", gm: "R. Martinez", zone: "Southern" },
+  { bm: "C. Anderson", branch: "Mission Valley", am: "L. Park", gm: "R. Martinez", zone: "Southern" },
+  { bm: "N. Thomas", branch: "Chula Vista", am: "L. Park", gm: "R. Martinez", zone: "Southern" },
+  { bm: "B. Jackson", branch: "Sacramento North", am: "M. Nguyen", gm: null, zone: "Northern" },
+  { bm: "D. White", branch: "Roseville", am: "M. Nguyen", gm: "R. Martinez", zone: "Northern" },
+  { bm: "F. Harris", branch: "Folsom", am: "M. Nguyen", gm: "R. Martinez", zone: "Northern" },
+  { bm: "G. Clark", branch: "Elk Grove", am: "M. Nguyen", gm: null, zone: "Northern" },
+  { bm: "H. Lewis", branch: "Davis", am: "M. Nguyen", gm: "R. Martinez", zone: "Northern" },
+];
+
+export const leads = [
+  {
+    id: 1,
+    customer: "John Martinez",
+    reservationId: "HL-2026-001234",
+    email: "john.martinez@example.com",
+    phone: "+14155551234",
+    initDtFinal: "2026-02-08",
+    dtFromAlpha1: "2026-02-10",
+    status: "Cancelled",
+    archived: false,
+    enrichmentComplete: true,
+    branch: "Downtown LA",
+    bmName: "J. Smith",
+    daysOpen: 4,
+    mismatch: false,
+    gmDirective: null,
+    insuranceCompany: "Progressive",
+    timeToFirstContact: "2h 15m",
+    firstContactBy: "branch",
+    timeToCancel: "3d 2h",
+    hlesReason: "Customer no-show",
+    translog: [
+      { time: "Feb 10, 9:15 AM", event: "Call", outcome: "No answer" },
+      { time: "Feb 11, 2:30 PM", event: "Call", outcome: "Left voicemail" },
+      { time: "Feb 12, 10:00 AM", event: "SMS", outcome: "Sent reminder" },
+    ],
+    lastActivity: "2026-02-12T10:00:00",
+    enrichment: { reason: "Unable to reach — no answer after multiple attempts", notes: "Called 3x over 2 days", nextAction: "Call again", followUpDate: "Feb 22, 2026" },
+    enrichmentLog: [],
+  },
+  {
+    id: 2,
+    customer: "Sarah Chen",
+    reservationId: "HL-2026-001235",
+    email: "sarah.chen@example.com",
+    phone: "+14155555678",
+    initDtFinal: "2026-02-13",
+    dtFromAlpha1: "2026-02-14",
+    status: "Cancelled",
+    archived: false,
+    enrichmentComplete: true,
+    branch: "Santa Monica",
+    bmName: "M. Johnson",
+    daysOpen: 2,
+    mismatch: false,
+    gmDirective: null,
+    insuranceCompany: "Geico",
+    timeToFirstContact: "45m",
+    firstContactBy: "branch",
+    timeToCancel: "1d 8h",
+    hlesReason: null,
+    translog: [
+      { time: "Feb 14, 11:00 AM", event: "Call", outcome: "Spoke — rescheduled" },
+      { time: "Feb 15, 3:00 PM", event: "Call", outcome: "No show — customer confirmed pickup" },
+    ],
+    lastActivity: "2026-02-15T15:00:00",
+    enrichment: { reason: "No-show after confirmation", notes: "Customer confirmed pickup last Tuesday but never showed", nextAction: "Call again", followUpDate: "Feb 22, 2026" },
+    enrichmentLog: [],
+  },
+  {
+    id: 3,
+    customer: "Michael Torres",
+    reservationId: "HL-2026-001236",
+    email: null,
+    phone: "+14155559999",
+    initDtFinal: "2026-02-07",
+    dtFromAlpha1: "2026-02-08",
+    status: "Cancelled",
+    archived: false,
+    enrichmentComplete: false,
+    branch: "Pasadena",
+    bmName: "A. Garcia",
+    daysOpen: 6,
+    mismatch: true,
+    mismatchReason: "No BM comments recorded despite cancelled status. Enrichment required.",
+    gmDirective: null,
+    insuranceCompany: "State Farm",
+    timeToFirstContact: "5d 2h",
+    firstContactBy: "hrd",
+    timeToCancel: "6d 4h",
+    hlesReason: "Unable to reach",
+    translog: [
+      { time: "Feb 8, 9:00 AM", event: "Call", outcome: "No answer" },
+      { time: "Feb 13, 2:00 PM", event: "Call", outcome: "Voicemail" },
+    ],
+    lastActivity: "2026-02-13T14:00:00",
+    enrichment: null,
+    enrichmentLog: [],
+  },
+  {
+    id: 4,
+    customer: "Emily Davis",
+    reservationId: "HL-2026-001237",
+    email: "emily.davis@example.com",
+    phone: null,
+    initDtFinal: "2026-02-14",
+    dtFromAlpha1: null,
+    status: "Unused",
+    archived: false,
+    enrichmentComplete: false,
+    branch: "Long Beach",
+    bmName: "S. Lee",
+    daysOpen: 8,
+    mismatch: false,
+    gmDirective: null,
+    insuranceCompany: "Allstate",
+    timeToFirstContact: null,
+    firstContactBy: "none",
+    timeToCancel: null,
+    hlesReason: null,
+    translog: [],
+    lastActivity: null,
+    enrichment: null,
+    enrichmentLog: [],
+  },
+  {
+    id: 5,
+    customer: "Robert Kim",
+    reservationId: "HL-2026-001238",
+    initDtFinal: "2026-02-19",
+    dtFromAlpha1: "2026-02-20",
+    status: "Rented",
+    archived: false,
+    enrichmentComplete: true,
+    branch: "Anaheim",
+    bmName: "T. Brown",
+    daysOpen: 1,
+    mismatch: false,
+    gmDirective: null,
+    insuranceCompany: "Farmers",
+    timeToFirstContact: "30m",
+    firstContactBy: "branch",
+    timeToCancel: null,
+    hlesReason: null,
+    translog: [{ time: "Feb 20, 10:00 AM", event: "Call", outcome: "Converted" }],
+    lastActivity: "2026-02-20T10:00:00",
+    enrichment: {},
+    enrichmentLog: [],
+  },
+  // Santa Monica sample leads (this week Feb 17–23) for BM Summary visualizations
+  {
+    id: 6,
+    customer: "Lisa Wong",
+    reservationId: "HL-2026-001239",
+    initDtFinal: "2026-02-17",
+    dtFromAlpha1: "2026-02-18",
+    status: "Rented",
+    archived: false,
+    enrichmentComplete: true,
+    branch: "Santa Monica",
+    bmName: "M. Johnson",
+    daysOpen: 1,
+    mismatch: false,
+    gmDirective: null,
+    insuranceCompany: "Geico",
+    timeToFirstContact: "25m",
+    firstContactBy: "branch",
+    timeToCancel: null,
+    hlesReason: null,
+    translog: [{ time: "Feb 18, 9:30 AM", event: "Call", outcome: "Converted" }],
+    lastActivity: "2026-02-18T09:30:00",
+    enrichment: {},
+    enrichmentLog: [],
+  },
+  {
+    id: 7,
+    customer: "David Park",
+    reservationId: "HL-2026-001240",
+    initDtFinal: "2026-02-17",
+    dtFromAlpha1: "2026-02-19",
+    status: "Rented",
+    archived: false,
+    enrichmentComplete: true,
+    branch: "Santa Monica",
+    bmName: "M. Johnson",
+    daysOpen: 2,
+    mismatch: false,
+    gmDirective: null,
+    insuranceCompany: "State Farm",
+    timeToFirstContact: "1h 10m",
+    firstContactBy: "branch",
+    timeToCancel: null,
+    hlesReason: null,
+    translog: [{ time: "Feb 19, 2:15 PM", event: "Call", outcome: "Converted" }],
+    lastActivity: "2026-02-19T14:15:00",
+    enrichment: {},
+    enrichmentLog: [],
+  },
+  {
+    id: 8,
+    customer: "Jennifer Adams",
+    reservationId: "HL-2026-001241",
+    initDtFinal: "2026-02-20",
+    dtFromAlpha1: "2026-02-21",
+    status: "Rented",
+    archived: false,
+    enrichmentComplete: true,
+    branch: "Santa Monica",
+    bmName: "M. Johnson",
+    daysOpen: 1,
+    mismatch: false,
+    gmDirective: null,
+    insuranceCompany: "Allstate",
+    timeToFirstContact: "45m",
+    firstContactBy: "branch",
+    timeToCancel: null,
+    hlesReason: null,
+    translog: [{ time: "Feb 21, 11:00 AM", event: "Call", outcome: "Converted" }],
+    lastActivity: "2026-02-21T11:00:00",
+    enrichment: {},
+    enrichmentLog: [],
+  },
+  {
+    id: 9,
+    customer: "Tom Bradley",
+    reservationId: "HL-2026-001242",
+    initDtFinal: "2026-02-16",
+    dtFromAlpha1: "2026-02-17",
+    status: "Cancelled",
+    archived: false,
+    enrichmentComplete: true,
+    branch: "Santa Monica",
+    bmName: "M. Johnson",
+    daysOpen: 3,
+    mismatch: false,
+    gmDirective: null,
+    insuranceCompany: "Progressive",
+    timeToFirstContact: "2h",
+    firstContactBy: "branch",
+    timeToCancel: "2d 4h",
+    hlesReason: "Customer no-show",
+    translog: [
+      { time: "Feb 17, 10:00 AM", event: "Call", outcome: "Spoke — confirmed" },
+      { time: "Feb 19, 9:00 AM", event: "Call", outcome: "No show" },
+    ],
+    lastActivity: "2026-02-19T09:00:00",
+    enrichment: { reason: "No-show after confirmation", notes: "Customer confirmed but did not show", nextAction: "Call again", followUpDate: "Feb 25, 2026" },
+    enrichmentLog: [],
+  },
+  {
+    id: 10,
+    customer: "Maria Santos",
+    reservationId: "HL-2026-001243",
+    initDtFinal: "2026-02-15",
+    dtFromAlpha1: "2026-02-18",
+    status: "Cancelled",
+    archived: false,
+    enrichmentComplete: false,
+    branch: "Santa Monica",
+    bmName: "M. Johnson",
+    daysOpen: 5,
+    mismatch: false,
+    gmDirective: null,
+    insuranceCompany: "Farmers",
+    timeToFirstContact: "4d 2h",
+    firstContactBy: "hrd",
+    timeToCancel: "5d 1h",
+    hlesReason: "Unable to reach",
+    translog: [
+      { time: "Feb 18, 3:00 PM", event: "Call", outcome: "No answer" },
+      { time: "Feb 20, 11:00 AM", event: "Call", outcome: "Voicemail" },
+    ],
+    lastActivity: "2026-02-20T11:00:00",
+    enrichment: null,
+    enrichmentLog: [],
+  },
+  {
+    id: 11,
+    customer: "Chris Nguyen",
+    reservationId: "HL-2026-001244",
+    initDtFinal: "2026-02-21",
+    dtFromAlpha1: "2026-02-22",
+    status: "Cancelled",
+    archived: false,
+    enrichmentComplete: true,
+    branch: "Santa Monica",
+    bmName: "M. Johnson",
+    daysOpen: 2,
+    mismatch: false,
+    gmDirective: null,
+    insuranceCompany: "Geico",
+    timeToFirstContact: "1h",
+    firstContactBy: "branch",
+    timeToCancel: "1d 6h",
+    hlesReason: null,
+    translog: [{ time: "Feb 22, 9:30 AM", event: "Call", outcome: "Customer cancelled — found better rate" }],
+    lastActivity: "2026-02-22T09:30:00",
+    enrichment: { reason: "Found better rate elsewhere", notes: "Customer chose competitor", nextAction: "Close — no further action", followUpDate: null },
+    enrichmentLog: [],
+  },
+  {
+    id: 12,
+    customer: "Rachel Green",
+    reservationId: "HL-2026-001245",
+    initDtFinal: "2026-02-13",
+    dtFromAlpha1: "2026-02-17",
+    status: "Unused",
+    archived: false,
+    enrichmentComplete: false,
+    branch: "Santa Monica",
+    bmName: "M. Johnson",
+    daysOpen: 4,
+    mismatch: false,
+    gmDirective: null,
+    insuranceCompany: "Allstate",
+    timeToFirstContact: "1h 30m",
+    firstContactBy: "branch",
+    timeToCancel: null,
+    hlesReason: null,
+    translog: [{ time: "Feb 17, 2:00 PM", event: "Call", outcome: "Left voicemail — awaiting callback" }],
+    lastActivity: "2026-02-17T14:00:00",
+    enrichment: null,
+    enrichmentLog: [],
+  },
+  {
+    id: 13,
+    customer: "James Wilson",
+    reservationId: "HL-2026-001246",
+    initDtFinal: "2026-02-17",
+    dtFromAlpha1: "2026-02-20",
+    status: "Unused",
+    archived: false,
+    enrichmentComplete: true,
+    branch: "Santa Monica",
+    bmName: "M. Johnson",
+    daysOpen: 3,
+    mismatch: false,
+    gmDirective: null,
+    insuranceCompany: "State Farm",
+    timeToFirstContact: "45m",
+    firstContactBy: "branch",
+    timeToCancel: null,
+    hlesReason: null,
+    translog: [{ time: "Feb 20, 10:30 AM", event: "Call", outcome: "Spoke — follow up Friday" }],
+    lastActivity: "2026-02-20T10:30:00",
+    enrichment: { reason: null, notes: "Active opportunity", nextAction: "Call again Friday", followUpDate: "Feb 21, 2026" },
+    enrichmentLog: [],
+  },
+];
+
+export const branchManagers = [
+  { name: "J. Smith", conversionRate: 72, quartile: 1 },
+  { name: "M. Johnson", conversionRate: 68, quartile: 2 },
+  { name: "A. Garcia", conversionRate: 61, quartile: 3 },
+  { name: "S. Lee", conversionRate: 58, quartile: 4 },
+  { name: "T. Brown", conversionRate: 75, quartile: 1 },
+  { name: "R. Davis", conversionRate: 65, quartile: 2 },
+  { name: "E. Wilson", conversionRate: 70, quartile: 1 },
+  { name: "P. Taylor", conversionRate: 63, quartile: 3 },
+  { name: "C. Anderson", conversionRate: 59, quartile: 4 },
+  { name: "N. Thomas", conversionRate: 67, quartile: 2 },
+];
+
+export const weeklyTrends = {
+  bm: [
+    { weekLabel: "Jan 27–Feb 2", totalLeads: 138, conversionRate: 62, commentRate: 86 },
+    { weekLabel: "Feb 3–9", totalLeads: 142, conversionRate: 64, commentRate: 88 },
+    { weekLabel: "Feb 10–16", totalLeads: 156, conversionRate: 67, commentRate: 91 },
+    { weekLabel: "Feb 17–23", totalLeads: 148, conversionRate: 69, commentRate: 92 },
+  ],
+  gm: [
+    {
+      weekLabel: "Feb 3–9",
+      cancelledUnreviewed: 28,
+      commentCompliance: 85,
+      zoneConversionRate: 64,
+      timeToContact: { under24h: 72, under48h: 88, over48h: 12 },
+      branchContactRate: 78,
+      hrdContactRate: 22,
+    },
+    {
+      weekLabel: "Feb 10–16",
+      cancelledUnreviewed: 23,
+      commentCompliance: 91,
+      zoneConversionRate: 67,
+      timeToContact: { under24h: 75, under48h: 90, over48h: 10 },
+      branchContactRate: 80,
+      hrdContactRate: 20,
+    },
+    {
+      weekLabel: "Feb 17–23",
+      cancelledUnreviewed: 19,
+      commentCompliance: 93,
+      zoneConversionRate: 69,
+      timeToContact: { under24h: 78, under48h: 92, over48h: 8 },
+      branchContactRate: 82,
+      hrdContactRate: 18,
+    },
+  ],
+};
+
+export const uploadSummary = {
+  hles: {
+    rowsParsed: 1247,
+    newLeads: 89,
+    updated: 156,
+    unchanged: 1002,
+    failed: 3,
+    failedDetails: ["Row 234: Invalid date format", "Row 567: Missing branch code", "Row 891: Duplicate reservation ID"],
+  },
+  translog: {
+    eventsParsed: 4521,
+    matched: 3892,
+    orphan: 629,
+  },
+};
+
+export const leaderboardData = {
+  branches: [
+    { name: "Anaheim", conversionRate: 75, leads: 48, priorConversionRate: 72 },
+    { name: "Downtown LA", conversionRate: 72, leads: 62, priorConversionRate: 68 },
+    { name: "La Jolla", conversionRate: 70, leads: 41, priorConversionRate: 67 },
+    { name: "Santa Monica", conversionRate: 68, leads: 55, priorConversionRate: 65 },
+    { name: "San Diego Central", conversionRate: 65, leads: 58, priorConversionRate: 63 },
+    { name: "Long Beach", conversionRate: 58, leads: 44, priorConversionRate: 61 },
+  ],
+  gms: [
+    { name: "D. Williams", conversionRate: 68, branches: 5 },
+    { name: "R. Martinez", conversionRate: 65, branches: 6 },
+  ],
+  ams: [
+    { name: "K. Chen", conversionRate: 67, branches: 5 },
+    { name: "L. Park", conversionRate: 64, branches: 5 },
+    { name: "M. Nguyen", conversionRate: 62, branches: 5 },
+  ],
+  zones: [
+    { name: "Eastern", conversionRate: 68, branches: 5 },
+    { name: "Southern", conversionRate: 65, branches: 5 },
+    { name: "Northern", conversionRate: 63, branches: 5 },
+  ],
+};
+
+export const cancellationReasonCategories = [
+  {
+    category: "Customer Unreachable",
+    reasons: [
+      "Unable to reach — no answer after multiple attempts",
+      "Invalid or disconnected phone number",
+      "Customer requested callback — never answered",
+    ],
+  },
+  {
+    category: "Customer Decision",
+    reasons: [
+      "Found better rate elsewhere",
+      "Changed travel plans",
+      "Decided not to rent",
+      "Rented from competitor",
+    ],
+  },
+  {
+    category: "Operational",
+    reasons: [
+      "No-show after confirmation",
+      "Documentation issues — could not complete",
+      "Vehicle availability — customer declined alternative",
+    ],
+  },
+  {
+    category: "Other",
+    reasons: [
+      "Duplicate reservation",
+      "Test or training lead",
+      "Other (see notes)",
+    ],
+  },
+];
+
+export const nextActions = [
+  "Call again",
+  "Send follow-up SMS",
+  "Escalate to AM",
+  "Close — no further action",
+  "Verify documentation",
+  "Other (see notes)",
+];
+
+// Mock tasks (GM-assigned to BMs) — every task attributed to a lead
+// notesLog: append-only log like TRANSLOG activity [{ time, timestamp, author, note }]
+export const tasks = [
+  { id: 1, title: "Follow up on John Martinez lead", description: "Customer no-show — call again before Friday", notes: null, notesLog: [], dueDate: "2026-02-28", status: "Open", priority: "High", assignedBranch: "Santa Monica", leadId: 2, createdBy: "D. Williams", assignedToName: "Sarah Chen", source: "gm_assigned", createdAt: "2026-02-26T10:00:00Z", completedAt: null },
+  { id: 2, title: "Add comments to Michael Torres cancellation", description: "Enrichment overdue — add reason and next action", notes: "Called twice, left voicemail. Will try again tomorrow.", notesLog: [{ time: "Feb 26, 2:30 PM", timestamp: 1737898200000, author: "Sarah Chen", note: "Called twice, left voicemail. Will try again tomorrow." }], dueDate: "2026-02-27", status: "In Progress", priority: "Normal", assignedBranch: "Santa Monica", leadId: 3, createdBy: "D. Williams", assignedToName: "Sarah Chen", source: "gm_assigned", createdAt: "2026-02-25T14:30:00Z", completedAt: null },
+  { id: 3, title: "Review Emily Davis unused lead", description: "8 days open with no contact — escalate if needed", notes: null, notesLog: [], dueDate: "2026-03-01", status: "Open", priority: "Urgent", assignedBranch: "Long Beach", leadId: 4, createdBy: "D. Williams", assignedToName: "T. Rodriguez", source: "gm_assigned", createdAt: "2026-02-27T09:00:00Z", completedAt: null },
+
+  // Santa Monica — additional tasks
+  { id: 4, title: "Verify Tom Bradley no-show documentation", description: "Customer confirmed pickup but never showed — verify branch notes match HLES", notes: null, notesLog: [{ time: "Feb 24, 10:15 AM", timestamp: 1740402900000, author: "M. Johnson", note: "Reviewed call log — confirmation was verbal only, no written follow-up sent." }], dueDate: "2026-02-26", status: "In Progress", priority: "High", assignedBranch: "Santa Monica", leadId: 9, createdBy: "D. Williams", assignedToName: "M. Johnson", source: "gm_assigned", createdAt: "2026-02-23T08:00:00Z", completedAt: null },
+  { id: 5, title: "Contact Maria Santos — overdue enrichment", description: "5-day-old cancellation with no enrichment. First contact was by HRD — branch needs to follow up.", notes: null, notesLog: [], dueDate: "2026-02-25", status: "Open", priority: "Urgent", assignedBranch: "Santa Monica", leadId: 10, createdBy: "D. Williams", assignedToName: "Sarah Chen", source: "gm_assigned", createdAt: "2026-02-22T11:00:00Z", completedAt: null },
+  { id: 6, title: "Close out Chris Nguyen — competitor loss", description: "Customer found a better rate. Confirm no win-back opportunity and close.", notes: "Spoke with customer — confirmed they signed with competitor. No further action.", notesLog: [{ time: "Feb 23, 3:00 PM", timestamp: 1740348000000, author: "Sarah Chen", note: "Spoke with customer — confirmed they signed with competitor. No further action." }], dueDate: "2026-02-24", status: "Done", priority: "Normal", assignedBranch: "Santa Monica", leadId: 11, createdBy: "D. Williams", assignedToName: "Sarah Chen", source: "gm_assigned", createdAt: "2026-02-22T16:00:00Z", completedAt: "2026-02-23T15:05:00Z" },
+  { id: 7, title: "Follow up on Rachel Green callback", description: "Voicemail left — customer hasn't called back in 5 days. Try alternate contact method.", notes: null, notesLog: [], dueDate: "2026-02-28", status: "Open", priority: "Normal", assignedBranch: "Santa Monica", leadId: 12, createdBy: "D. Williams", assignedToName: "M. Johnson", source: "gm_assigned", createdAt: "2026-02-26T09:30:00Z", completedAt: null },
+  { id: 8, title: "Confirm James Wilson Friday follow-up", description: "BM spoke with customer — follow-up scheduled for Friday. Verify outcome.", notes: null, notesLog: [{ time: "Feb 21, 4:45 PM", timestamp: 1740173100000, author: "M. Johnson", note: "Called customer — confirmed rental for next week. Will finalize Friday." }, { time: "Feb 22, 9:00 AM", timestamp: 1740229200000, author: "Sarah Chen", note: "Monitoring — if no update by EOD Friday, will escalate." }], dueDate: "2026-02-22", status: "Done", priority: "High", assignedBranch: "Santa Monica", leadId: 13, createdBy: "D. Williams", assignedToName: "Sarah Chen", source: "gm_assigned", createdAt: "2026-02-21T10:00:00Z", completedAt: "2026-02-22T17:00:00Z" },
+  { id: 9, title: "Auto: Sarah Chen — late first contact", description: "Translog shows first contact 4d 2h after reservation. Review and add notes.", notes: null, notesLog: [], dueDate: "2026-02-27", status: "Open", priority: "Normal", assignedBranch: "Santa Monica", leadId: 10, createdBy: "System", assignedToName: "Sarah Chen", source: "auto_translog", createdAt: "2026-02-24T06:00:00Z", completedAt: null },
+
+  // Long Beach — additional tasks
+  { id: 10, title: "Auto: Emily Davis — no activity detected", description: "Lead open 8 days with zero translog entries. Immediate action required.", notes: null, notesLog: [], dueDate: "2026-02-24", status: "Open", priority: "Urgent", assignedBranch: "Long Beach", leadId: 4, createdBy: "System", assignedToName: "T. Rodriguez", source: "auto_other", createdAt: "2026-02-23T07:00:00Z", completedAt: null },
+
+  // Downtown LA — tasks for lead 1
+  { id: 11, title: "Re-attempt contact with John Martinez", description: "3 contact attempts with no success — try SMS or email before closing", notes: null, notesLog: [{ time: "Feb 25, 11:00 AM", timestamp: 1740488400000, author: "J. Smith", note: "Sent SMS reminder to customer's phone. Awaiting response." }], dueDate: "2026-02-28", status: "In Progress", priority: "High", assignedBranch: "Downtown LA", leadId: 1, createdBy: "D. Williams", assignedToName: "J. Smith", source: "gm_assigned", createdAt: "2026-02-24T15:00:00Z", completedAt: null },
+  { id: 12, title: "Auto: John Martinez — enrichment stale", description: "Enrichment completed 10+ days ago with follow-up date passed. Review and update.", notes: null, notesLog: [], dueDate: "2026-02-26", status: "Open", priority: "Normal", assignedBranch: "Downtown LA", leadId: 1, createdBy: "System", assignedToName: "J. Smith", source: "auto_other", createdAt: "2026-02-25T06:00:00Z", completedAt: null },
+
+  // Pasadena — tasks for lead 3
+  { id: 13, title: "Resolve Michael Torres enrichment mismatch", description: "Lead flagged — no BM comments despite cancelled status. Complete enrichment ASAP.", notes: null, notesLog: [{ time: "Feb 26, 9:30 AM", timestamp: 1740570600000, author: "A. Garcia", note: "Attempted to reach customer, line busy. Will retry this afternoon." }], dueDate: "2026-02-27", status: "In Progress", priority: "Urgent", assignedBranch: "Pasadena", leadId: 3, createdBy: "D. Williams", assignedToName: "A. Garcia", source: "gm_assigned", createdAt: "2026-02-25T08:00:00Z", completedAt: null },
+  { id: 14, title: "Auto: Michael Torres — late first contact flag", description: "First contact was 5d 2h after reservation and made by HRD, not branch. Document reason.", notes: null, notesLog: [], dueDate: "2026-03-01", status: "Open", priority: "Normal", assignedBranch: "Pasadena", leadId: 3, createdBy: "System", assignedToName: "A. Garcia", source: "auto_translog", createdAt: "2026-02-26T06:00:00Z", completedAt: null },
+
+  // Anaheim — tasks for lead 5
+  { id: 15, title: "Document Robert Kim conversion", description: "Quick conversion (30m first contact, same-day rental) — add success notes for best-practice reference.", notes: "Called and converted same day. Customer was ready to pick up.", notesLog: [{ time: "Feb 20, 11:30 AM", timestamp: 1740055800000, author: "T. Brown", note: "Called and converted same day. Customer was ready to pick up." }], dueDate: "2026-02-21", status: "Done", priority: "Low", assignedBranch: "Anaheim", leadId: 5, createdBy: "D. Williams", assignedToName: "T. Brown", source: "gm_assigned", createdAt: "2026-02-20T10:30:00Z", completedAt: "2026-02-20T11:35:00Z" },
+  { id: 16, title: "Auto: Lisa Wong — confirm rental completed", description: "Translog shows conversion but no post-rental documentation. Verify rental status.", notes: null, notesLog: [], dueDate: "2026-02-25", status: "Done", priority: "Low", assignedBranch: "Santa Monica", leadId: 6, createdBy: "System", assignedToName: "M. Johnson", source: "auto_translog", createdAt: "2026-02-20T12:00:00Z", completedAt: "2026-02-21T09:00:00Z" },
+  { id: 17, title: "Escalate David Park — insurance verification pending", description: "Rental completed but insurance documentation incomplete. Follow up with customer.", notes: null, notesLog: [{ time: "Feb 24, 2:00 PM", timestamp: 1740412800000, author: "M. Johnson", note: "Left voicemail requesting insurance card upload. Set 48h reminder." }], dueDate: "2026-03-01", status: "In Progress", priority: "Normal", assignedBranch: "Santa Monica", leadId: 7, createdBy: "D. Williams", assignedToName: "M. Johnson", source: "gm_assigned", createdAt: "2026-02-24T09:00:00Z", completedAt: null },
+  { id: 18, title: "Review Jennifer Adams quick-turn rental", description: "Fast conversion — 45m to first contact. Capture process notes for team training.", notes: null, notesLog: [], dueDate: "2026-03-03", status: "Open", priority: "Low", assignedBranch: "Santa Monica", leadId: 8, createdBy: "D. Williams", assignedToName: "Sarah Chen", source: "gm_assigned", createdAt: "2026-02-27T14:00:00Z", completedAt: null },
+];

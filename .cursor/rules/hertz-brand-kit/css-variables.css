@@ -1,0 +1,174 @@
+/**
+ * Hertz Brand CSS Custom Properties
+ * Framework-agnostic. Import into your global stylesheet.
+ *
+ * Usage:
+ *   @import './.cursor/hertz-brand-kit/css-variables.css';
+ *
+ *   .my-button {
+ *     background: var(--hertz-primary);
+ *     color: var(--hertz-black);
+ *     border-radius: var(--radius-md);
+ *   }
+ */
+
+:root {
+  /* ===========================
+     PRIMARY BRAND COLORS
+     =========================== */
+  --hertz-primary: #FFD100;
+  --hertz-primary-hover: #E6BC00;
+  --hertz-primary-active: #CC9F00;
+  --hertz-primary-light: #FFE566;
+  --hertz-primary-subtle: rgba(255, 209, 0, 0.1);
+  --hertz-primary-focus: rgba(255, 209, 0, 0.2);
+  --hertz-black: #272425;
+  --hertz-black-hover: #1A1A1A;
+  --hertz-white: #FFFFFF;
+  --hertz-gold-plus: #C9A94E;
+  --hertz-gold-plus-light: #D4B968;
+
+  /* ===========================
+     NEUTRALS
+     =========================== */
+  --neutral-50: #F8F8F8;
+  --neutral-100: #F2F2F2;
+  --neutral-200: #E5E5E5;
+  --neutral-300: #CCCCCC;
+  --neutral-400: #AAAAAA;
+  --neutral-500: #888888;
+  --neutral-600: #666666;
+  --neutral-700: #4A4A4A;
+  --neutral-800: #333333;
+  --neutral-900: #1A1A1A;
+
+  /* ===========================
+     SEMANTIC COLORS
+     =========================== */
+  --color-success: #2E7D32;
+  --color-success-light: #E8F5E9;
+  --color-error: #C62828;
+  --color-error-light: #FFEBEE;
+  --color-warning: #F57F17;
+  --color-warning-light: #FFF8E1;
+  --color-info: #1565C0;
+  --color-info-light: #E3F2FD;
+
+  /* ===========================
+     TYPOGRAPHY
+     =========================== */
+  --font-display: 'DM Sans', 'Figtree', 'Inter', system-ui, sans-serif;
+  --font-body: 'Inter', 'DM Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Font Sizes */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+  --text-5xl: 3rem;
+  --text-6xl: 3.75rem;
+
+  /* Font Weights */
+  --font-regular: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+  --font-extrabold: 800;
+
+  /* Line Heights */
+  --leading-tight: 1.15;
+  --leading-snug: 1.3;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+
+  /* Letter Spacing */
+  --tracking-tight: -0.025em;
+  --tracking-normal: 0em;
+  --tracking-wide: 0.025em;
+  --tracking-wider: 0.05em;
+  --tracking-widest: 0.1em;
+
+  /* ===========================
+     SPACING (4px base grid)
+     =========================== */
+  --space-0: 0px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+
+  /* ===========================
+     BORDER RADIUS
+     =========================== */
+  --radius-none: 0px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-full: 9999px;
+
+  /* ===========================
+     SHADOWS (warm black base)
+     =========================== */
+  --shadow-sm: 0 1px 2px rgba(39, 36, 37, 0.06);
+  --shadow-md: 0 2px 8px rgba(39, 36, 37, 0.08);
+  --shadow-lg: 0 4px 16px rgba(39, 36, 37, 0.10);
+  --shadow-xl: 0 8px 32px rgba(39, 36, 37, 0.12);
+
+  /* ===========================
+     TRANSITIONS
+     =========================== */
+  --ease-hertz: cubic-bezier(0.4, 0, 0.2, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+
+  /* ===========================
+     LAYOUT
+     =========================== */
+  --container-max: 1280px;
+  --container-padding: 16px;
+  --container-padding-lg: 32px;
+  --nav-height: 64px;
+  --nav-height-mobile: 56px;
+  --input-height: 48px;
+
+  /* ===========================
+     BREAKPOINTS (for reference in JS, not usable in CSS media queries directly)
+     =========================== */
+  --bp-sm: 640px;
+  --bp-md: 768px;
+  --bp-lg: 1024px;
+  --bp-xl: 1280px;
+  --bp-2xl: 1440px;
+}
+
+/* ===========================
+   MEDIA QUERY HELPERS
+   =========================== */
+@media (min-width: 1024px) {
+  :root {
+    --container-padding: var(--container-padding-lg);
+    --nav-height: 64px;
+  }
+}
+
+@media (max-width: 767px) {
+  :root {
+    --nav-height: 56px;
+  }
+}
