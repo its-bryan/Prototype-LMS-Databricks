@@ -112,6 +112,7 @@ export default function DemoTopBar({ onHelpClick }) {
             {onHelpClick && (
               <button
                 onClick={onHelpClick}
+                data-onboarding="help-button"
                 className="p-2 text-white/70 hover:text-[#FFD100] hover:bg-white/10 rounded-md transition-colors duration-200 cursor-pointer"
                 title="Replay onboarding tour"
                 aria-label="Replay onboarding tour"

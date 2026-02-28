@@ -46,6 +46,22 @@ export function formatPhoneE164(countryCode, local) {
   return `${countryCode}${digits}`;
 }
 
+const CODE_TO_FLAG = Object.fromEntries(
+  COUNTRY_CODES.map(({ code, label }) => [code, label.match(/^\p{So}\p{So}/u)?.[0] ?? ""])
+);
+
+export function flagForCode(countryCode) {
+  return CODE_TO_FLAG[countryCode] ?? "";
+}
+
+export function formatLocalDisplay(countryCode, local) {
+  if (!local) return "—";
+  if (countryCode === "+1" && local.length === 10) {
+    return local.replace(/(\d{3})(\d{3})(\d{4})/, "($1) $2-$3");
+  }
+  return local;
+}
+
 const SORTED_COUNTRY_CODES = [...COUNTRY_CODES].sort((a, b) => a.code.localeCompare(b.code));
 
 export default function PhoneInput({ value, onChange, placeholder = "555 123 4567", showHint = true, showWarning = false }) {

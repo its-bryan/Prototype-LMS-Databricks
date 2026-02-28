@@ -7,16 +7,12 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import confetti from "canvas-confetti";
 import { useApp } from "../context/AppContext";
 import { BM_ONBOARDING_STEPS } from "../config/onboardingSteps";
 
 const OVERLAY_OPACITY = 0.55;
 const SPOTLIGHT_PADDING = 8;
 const EASE_OUT = [0.25, 1, 0.5, 1]; // ease-out-quart: refined, not bouncy
-
-// Hertz-branded confetti for completion
-const HERTZ_CONFETTI_COLORS = ["#FFD100", "#272425", "#FFFFFF", "#E6BC00"];
 
 function Spotlight({ targetRect, reducedMotion }) {
   if (!targetRect) {
@@ -54,13 +50,57 @@ function Spotlight({ targetRect, reducedMotion }) {
   );
 }
 
-function Callout({ step, stepIndex, totalSteps, onNext, onBack, onSkip, onQuit, canAdvance, isReplay, reducedMotion }) {
+function getCalloutPosition(targetRect) {
+  if (!targetRect) {
+    return { left: "50%", top: "50%", transform: "translate(-50%, -50%)" };
+  }
+
+  const vh = window.innerHeight;
+  const vw = window.innerWidth;
+  const GAP = 16;
+  const CALLOUT_WIDTH = 384;
+  const pad = SPOTLIGHT_PADDING;
+
+  const spaceBelow = vh - (targetRect.top + targetRect.height + pad);
+  const spaceAbove = targetRect.top - pad;
+  const spaceLeft = targetRect.left - pad;
+  const spaceRight = vw - (targetRect.left + targetRect.width + pad);
+
+  const style = {};
+
+  if (spaceBelow >= 200) {
+    style.top = `${targetRect.top + targetRect.height + pad + GAP}px`;
+  } else if (spaceAbove >= 200) {
+    style.top = `${Math.max(GAP, targetRect.top - pad - GAP - 220)}px`;
+  } else if (spaceRight >= CALLOUT_WIDTH + GAP) {
+    style.top = `${Math.max(GAP, targetRect.top)}px`;
+    style.left = `${targetRect.left + targetRect.width + pad + GAP}px`;
+    return style;
+  } else if (spaceLeft >= CALLOUT_WIDTH + GAP) {
+    style.top = `${Math.max(GAP, targetRect.top)}px`;
+    style.left = `${Math.max(GAP, targetRect.left - pad - GAP - CALLOUT_WIDTH)}px`;
+    return style;
+  } else {
+    style.top = `${GAP}px`;
+  }
+
+  const targetCenter = targetRect.left + targetRect.width / 2;
+  let left = targetCenter - CALLOUT_WIDTH / 2;
+  left = Math.max(GAP, Math.min(left, vw - CALLOUT_WIDTH - GAP));
+  style.left = `${left}px`;
+
+  return style;
+}
+
+function Callout({ step, stepIndex, totalSteps, onNext, onBack, onSkip, onQuit, canAdvance, isReplay, reducedMotion, targetRect }) {
   const isFirst = stepIndex === 0;
   const isLast = stepIndex === totalSteps - 1;
   const isDone = step.id === "done";
 
   const btnHover = reducedMotion ? {} : { scale: 1.02 };
   const btnTap = reducedMotion ? {} : { scale: 0.98 };
+
+  const positionStyle = getCalloutPosition(targetRect);
 
   return (
     <motion.div
@@ -72,11 +112,9 @@ function Callout({ step, stepIndex, totalSteps, onNext, onBack, onSkip, onQuit, 
         duration: reducedMotion ? 0.01 : 0.35,
         ease: EASE_OUT,
       }}
-      className="fixed z-[10000] bg-white rounded-xl shadow-2xl border border-[var(--neutral-200)] max-w-sm p-6"
+      className="fixed z-[10000] bg-white rounded-xl shadow-2xl border border-[var(--neutral-200)] max-w-sm w-[384px] p-6"
       style={{
-        left: "50%",
-        top: "50%",
-        transform: "translate(-50%, -50%)",
+        ...positionStyle,
         boxShadow: "0 24px 48px rgba(39,36,37,0.12), 0 0 0 1px rgba(39,36,37,0.04)",
       }}
     >
@@ -291,44 +329,14 @@ export default function OnboardingTour({
     navigateTo(step.requiredView);
   }, [open, step?.requiredView, activeView, navigateTo]);
 
-  const fireCompletionConfetti = useCallback(() => {
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reducedMotion) return;
-    const origin = { x: 0.5, y: 0.5 };
-    confetti({
-      particleCount: 60,
-      spread: 70,
-      origin,
-      colors: HERTZ_CONFETTI_COLORS,
-      ticks: 150,
-      gravity: 0.9,
-      scalar: 1,
-      disableForReducedMotion: true,
-    });
-    setTimeout(() => {
-      confetti({
-        particleCount: 30,
-        spread: 100,
-        angle: 90,
-        origin,
-        colors: HERTZ_CONFETTI_COLORS,
-        ticks: 120,
-        gravity: 0.8,
-        scalar: 0.9,
-        disableForReducedMotion: true,
-      });
-    }, 100);
-  }, []);
-
   const handleNext = useCallback(() => {
     if (stepIndex >= totalSteps - 1) {
-      fireCompletionConfetti();
       onComplete?.();
       onClose?.();
       return;
     }
     setStepIndex((i) => i + 1);
-  }, [stepIndex, totalSteps, fireCompletionConfetti, onComplete, onClose]);
+  }, [stepIndex, totalSteps, onComplete, onClose]);
 
   const handleBack = useCallback(() => {
     setStepIndex((i) => Math.max(0, i - 1));
@@ -405,6 +413,7 @@ export default function OnboardingTour({
           canAdvance={canAdvance}
           isReplay={isReplay}
           reducedMotion={!!reducedMotion}
+          targetRect={targetRect}
         />
       </AnimatePresence>
       <AnimatePresence>

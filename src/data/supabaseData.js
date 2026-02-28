@@ -31,6 +31,7 @@ function leadFromRow(row) {
     lastActivity: row.last_activity,
     enrichment: row.enrichment,
     enrichmentLog: row.enrichment_log ?? [],
+    initDtFinal: row.init_dt_final ?? null,
   };
 }
 

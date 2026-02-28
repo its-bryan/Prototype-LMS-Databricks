@@ -82,6 +82,8 @@ export default function InteractiveEnrichmentForm({ lead }) {
     return null;
   };
 
+  const clearError = () => setSaveError(null);
+
   const handleSave = async () => {
     const err = getValidationError();
     if (err) {
@@ -157,7 +159,7 @@ export default function InteractiveEnrichmentForm({ lead }) {
               <button
                 key={s}
                 type="button"
-                onClick={() => setStatus(s)}
+                onClick={() => { setStatus(s); clearError(); }}
                 className={`px-3 py-1.5 rounded text-sm font-medium border transition-colors cursor-pointer ${
                   status === s
                     ? "bg-[var(--hertz-primary)] border-[var(--hertz-primary)] text-[var(--hertz-black)]"
@@ -181,8 +183,10 @@ export default function InteractiveEnrichmentForm({ lead }) {
             </label>
             <select
               value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              className="w-full border border-[#E6E6E6] rounded px-3 py-2 text-sm bg-white focus:border-[#FFD100] focus:outline-none"
+              onChange={(e) => { setReason(e.target.value); clearError(); }}
+              className={`w-full border rounded px-3 py-2 text-sm bg-white focus:border-[#FFD100] focus:outline-none ${
+                saveError && !reason?.trim() ? "border-[var(--color-error)]/50" : "border-[#E6E6E6]"
+              }`}
             >
               <option value="">Select a reason...</option>
               {cancellationReasonCategories.map((cat) => (
@@ -203,9 +207,11 @@ export default function InteractiveEnrichmentForm({ lead }) {
             </label>
             <select
               value={nextAction}
-              onChange={(e) => setNextAction(e.target.value)}
+              onChange={(e) => { setNextAction(e.target.value); clearError(); }}
               disabled={status === "Rented"}
-              className="w-full border border-[#E6E6E6] rounded px-3 py-2 text-sm bg-white focus:border-[#FFD100] focus:outline-none disabled:bg-[var(--neutral-50)] disabled:cursor-not-allowed"
+              className={`w-full border rounded px-3 py-2 text-sm bg-white focus:border-[#FFD100] focus:outline-none disabled:bg-[var(--neutral-50)] disabled:cursor-not-allowed ${
+                saveError && !nextAction?.trim() && status !== "Rented" ? "border-[var(--color-error)]/50" : "border-[#E6E6E6]"
+              }`}
             >
               <option value="">Select next action...</option>
               {nextActions.map((a) => (
@@ -227,25 +233,27 @@ export default function InteractiveEnrichmentForm({ lead }) {
             <input
               type="date"
               value={followUpDate}
-              onChange={(e) => setFollowUpDate(e.target.value)}
-              className="w-full border border-[#E6E6E6] rounded px-3 py-2 text-sm bg-white focus:border-[#FFD100] focus:outline-none"
+              onChange={(e) => { setFollowUpDate(e.target.value); clearError(); }}
+              className={`w-full border rounded px-3 py-2 text-sm bg-white focus:border-[#FFD100] focus:outline-none ${
+                saveError && !followUpDate?.trim() ? "border-[var(--color-error)]/50" : "border-[#E6E6E6]"
+              }`}
             />
           </motion.div>
         )}
 
-        <div>
-          <label className="text-xs text-[#6E6E6E] uppercase tracking-wide block mb-1">
-            Notes
-          </label>
-          <textarea
-            data-onboarding="notes-textarea"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={3}
-            placeholder="Add notes..."
-            className="w-full border border-[#E6E6E6] rounded px-3 py-2 text-sm bg-white focus:border-[#FFD100] focus:outline-none resize-none"
-          />
-        </div>
+        <div data-onboarding="notes-textarea">
+          <div>
+            <label className="text-xs text-[#6E6E6E] uppercase tracking-wide block mb-1">
+              Notes
+            </label>
+            <textarea
+              value={notes}
+              onChange={(e) => { setNotes(e.target.value); clearError(); }}
+              rows={3}
+              placeholder="Add notes..."
+              className="w-full border border-[#E6E6E6] rounded px-3 py-2 text-sm bg-white focus:border-[#FFD100] focus:outline-none resize-none"
+            />
+          </div>
 
         <div className="flex items-center gap-3 pt-2">
           <button
@@ -256,7 +264,7 @@ export default function InteractiveEnrichmentForm({ lead }) {
             {saving ? "Saving…" : "Update Lead"}
           </button>
           {saveError && (
-            <span className="text-sm font-medium text-[var(--color-error)]">{saveError}</span>
+            <span className="text-sm text-[var(--color-error)]">{saveError}</span>
           )}
           {isSaved && !saveError && (
             <motion.span
@@ -267,6 +275,7 @@ export default function InteractiveEnrichmentForm({ lead }) {
               <span className="text-lg">✓</span> Saved
             </motion.span>
           )}
+        </div>
         </div>
       </div>
     </div>

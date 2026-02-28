@@ -52,6 +52,8 @@ export default function StatusChangeModal({ lead, fromStatus, toStatus, onConfir
     }
   }, [toStatus]);
 
+  const clearError = () => setError(null);
+
   const getValidationError = () => {
     if (showReason && !reason?.trim()) return "Cancellation reason is required";
     if (showNextAction && !nextAction?.trim()) return "Next action is required";
@@ -116,8 +118,10 @@ export default function StatusChangeModal({ lead, fromStatus, toStatus, onConfir
                 </label>
                 <select
                   value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  className="w-full border border-[#E6E6E6] rounded px-3 py-2 text-sm bg-white focus:border-[#FFD100] focus:outline-none"
+                  onChange={(e) => { setReason(e.target.value); clearError(); }}
+                  className={`w-full border rounded px-3 py-2 text-sm bg-white focus:border-[#FFD100] focus:outline-none ${
+                    error && !reason?.trim() ? "border-[var(--color-error)]/50" : "border-[#E6E6E6]"
+                  }`}
                 >
                   <option value="">Select a reason...</option>
                   {cancellationReasonCategories.map((cat) => (
@@ -138,9 +142,11 @@ export default function StatusChangeModal({ lead, fromStatus, toStatus, onConfir
                 </label>
                 <select
                   value={nextAction}
-                  onChange={(e) => setNextAction(e.target.value)}
+                  onChange={(e) => { setNextAction(e.target.value); clearError(); }}
                   disabled={toStatus === "Rented"}
-                  className="w-full border border-[#E6E6E6] rounded px-3 py-2 text-sm bg-white focus:border-[#FFD100] focus:outline-none disabled:bg-[var(--neutral-50)] disabled:cursor-not-allowed"
+                  className={`w-full border rounded px-3 py-2 text-sm bg-white focus:border-[#FFD100] focus:outline-none disabled:bg-[var(--neutral-50)] disabled:cursor-not-allowed ${
+                    error && !nextAction?.trim() && toStatus !== "Rented" ? "border-[var(--color-error)]/50" : "border-[#E6E6E6]"
+                  }`}
                 >
                   <option value="">Select next action...</option>
                   {nextActions.map((a) => (
@@ -158,8 +164,10 @@ export default function StatusChangeModal({ lead, fromStatus, toStatus, onConfir
                 <input
                   type="date"
                   value={followUpDate}
-                  onChange={(e) => setFollowUpDate(e.target.value)}
-                  className="w-full border border-[#E6E6E6] rounded px-3 py-2 text-sm bg-white focus:border-[#FFD100] focus:outline-none"
+                  onChange={(e) => { setFollowUpDate(e.target.value); clearError(); }}
+                  className={`w-full border rounded px-3 py-2 text-sm bg-white focus:border-[#FFD100] focus:outline-none ${
+                    error && !followUpDate?.trim() ? "border-[var(--color-error)]/50" : "border-[#E6E6E6]"
+                  }`}
                 />
               </div>
             )}
@@ -170,7 +178,7 @@ export default function StatusChangeModal({ lead, fromStatus, toStatus, onConfir
               </label>
               <textarea
                 value={notes}
-                onChange={(e) => setNotes(e.target.value)}
+                onChange={(e) => { setNotes(e.target.value); clearError(); }}
                 rows={2}
                 placeholder="Add notes (optional)..."
                 className="w-full border border-[#E6E6E6] rounded px-3 py-2 text-sm bg-white focus:border-[#FFD100] focus:outline-none resize-none"
@@ -179,7 +187,7 @@ export default function StatusChangeModal({ lead, fromStatus, toStatus, onConfir
           </div>
 
           {error && (
-            <p className="text-sm text-[var(--color-error)] mt-2">{error}</p>
+            <span className="text-sm text-[var(--color-error)] block mt-2">{error}</span>
           )}
 
           <div className="flex gap-3 mt-6">

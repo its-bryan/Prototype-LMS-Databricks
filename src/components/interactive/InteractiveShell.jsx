@@ -63,7 +63,7 @@ export default function InteractiveShell() {
         transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
         className="h-full"
       >
-        <div id="dashboard-scroll-root" className="px-8 py-8 lg:px-12 lg:py-10 h-full overflow-auto">
+        <div id="dashboard-scroll-root" className="px-8 py-8 lg:px-12 lg:py-10 h-full overflow-auto bg-[var(--neutral-50)]">
           <ViewComponent />
         </div>
       </motion.div>

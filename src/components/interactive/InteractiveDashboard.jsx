@@ -24,6 +24,7 @@ import {
   getAverageTimeToContact,
   getAverageTimeToContactMinutes,
   tasksInDateRange,
+  getLeadsForBranchInRange,
 } from "../../selectors/demoSelectors";
 import { roleMeta, roleUsers } from "../../config/navigation";
 import MiniBarChart from "../MiniBarChart";
@@ -36,6 +37,9 @@ import InteractiveUnusedLeads from "./InteractiveUnusedLeads";
 import InteractiveThreeColumn from "./InteractiveThreeColumn";
 import InteractiveSpotCheck from "./InteractiveSpotCheck";
 import { DateRangeCalendar } from "../DateRangeCalendar";
+import MetricDrilldownModal from "../MetricDrilldownModal";
+import SummaryExportModal from "../SummaryExportModal";
+import { exportLeadsToCSV, exportTasksToCSV } from "../../utils/exportUtils";
 
 const easeOut = [0.4, 0, 0.2, 1];
 const cardAnim = (i, reduced = false) => ({
@@ -66,6 +70,7 @@ function TrendsViewModal({ onClose }) {
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
   const [showCustomCalendar, setShowCustomCalendar] = useState(false);
+  const [chartType, setChartType] = useState("bar");
   const customAnchorRef = useRef(null);
 
   const dateRange = useMemo(() => {
@@ -86,11 +91,114 @@ function TrendsViewModal({ onClose }) {
     leadPipeline: { key: "totalLeads", label: "Total Leads", color: "#272425", suffix: "" },
     conversionRate: { key: "conversionRate", label: "Conversion Rate", color: "#2E7D32", suffix: "%" },
     commentRate: { key: "commentRate", label: "Comment Rate", color: "#FFD100", suffix: "%" },
+    openTasks: { key: "openTasks", label: "Open Tasks", color: "#1565C0", suffix: "" },
+    taskCompletion: { key: "taskCompletionRate", label: "Task Completion Rate", color: "#6A1B9A", suffix: "%" },
+    avgTimeToContact: { key: "avgTimeToContact", label: "Avg. Time to First Contact", color: "#E65100", suffix: "m" },
   };
   const config = metricConfig[metric];
   const values = chartData.map((d) => d[config.key] ?? 0);
   const labels = chartData.map((d) => d.label);
   const max = Math.max(...values, 1);
+
+  const chartTypeBtn = (type, label, icon) => (
+    <button
+      onClick={() => setChartType(type)}
+      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md transition-colors text-xs font-medium cursor-pointer ${
+        chartType === type
+          ? "bg-white text-[var(--hertz-black)] shadow-sm"
+          : "text-[var(--neutral-600)] hover:text-[var(--hertz-black)]"
+      }`}
+      title={label}
+    >
+      {icon}
+    </button>
+  );
+
+  const renderBarChart = () => (
+    <div>
+      <div className="grid" style={{ gridTemplateColumns: `repeat(${values.length}, 1fr)`, height: 200, gap: 4 }}>
+        {values.map((v, i) => (
+          <div key={i} className="flex flex-col items-center">
+            <span className="text-[10px] font-semibold text-[var(--neutral-700)] mb-1 whitespace-nowrap">
+              {v}{config.suffix}
+            </span>
+            <div className="flex-1 w-full flex items-end justify-center">
+              <motion.div
+                initial={{ height: 0 }}
+                animate={{ height: max > 0 ? `${(v / max) * 100}%` : "0%" }}
+                transition={{ delay: i * 0.05, duration: 0.3, ease: "easeOut" }}
+                className="rounded-t-sm"
+                style={{ backgroundColor: config.color, opacity: i === values.length - 1 ? 1 : 0.7, width: "70%", maxWidth: 48 }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="grid border-t border-[var(--neutral-200)] pt-2 mt-1" style={{ gridTemplateColumns: `repeat(${labels.length}, 1fr)`, gap: 4 }}>
+        {labels.map((l, i) => (
+          <span key={i} className="text-center text-[10px] text-[var(--neutral-600)] truncate">{l}</span>
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderLineChart = () => {
+    const svgW = 560, svgH = 220;
+    const pad = { t: 28, r: 25, b: 32, l: 25 };
+    const plotW = svgW - pad.l - pad.r;
+    const plotH = svgH - pad.t - pad.b;
+    const pts = values.map((v, i) => ({
+      x: pad.l + (values.length > 1 ? (i / (values.length - 1)) * plotW : plotW / 2),
+      y: pad.t + plotH - (max > 0 ? (v / max) * plotH : 0),
+      v,
+    }));
+    const pathD = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ");
+    const areaD = pts.length > 1
+      ? `${pathD} L${pts[pts.length - 1].x},${pad.t + plotH} L${pts[0].x},${pad.t + plotH} Z`
+      : "";
+    return (
+      <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full" style={{ maxHeight: 240 }}>
+        {[0, 0.25, 0.5, 0.75, 1].map((frac) => {
+          const y = pad.t + plotH * (1 - frac);
+          return <line key={frac} x1={pad.l} y1={y} x2={svgW - pad.r} y2={y} stroke="#e5e5e5" strokeWidth={0.5} />;
+        })}
+        {areaD && <path d={areaD} fill={config.color} opacity={0.07} />}
+        <path d={pathD} fill="none" stroke={config.color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+        {pts.map((p, i) => (
+          <g key={i}>
+            <circle cx={p.x} cy={p.y} r={4} fill={config.color} stroke="white" strokeWidth={2} />
+            <text x={p.x} y={Math.max(12, p.y - 12)} textAnchor="middle" fontSize={10} fontWeight={600} fill="#555">
+              {p.v}{config.suffix}
+            </text>
+            <text x={p.x} y={svgH - 6} textAnchor="middle" fontSize={9} fill="#888">{labels[i]}</text>
+          </g>
+        ))}
+      </svg>
+    );
+  };
+
+  const renderTable = () => (
+    <div className="overflow-x-auto rounded-md">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="bg-[var(--hertz-black)]">
+            <th className="text-left py-2.5 px-4 text-xs font-semibold text-white uppercase tracking-wider rounded-tl-md">Period</th>
+            <th className="text-right py-2.5 px-4 text-xs font-semibold text-white uppercase tracking-wider rounded-tr-md">{config.label}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {chartData.map((d, i) => (
+            <tr key={i} className="border-b border-[var(--neutral-100)] hover:bg-[var(--neutral-50)] transition-colors">
+              <td className="py-2 px-4 text-[var(--hertz-black)] font-medium">{labels[i]}</td>
+              <td className="py-2 px-4 text-right font-semibold" style={{ color: config.color }}>
+                {values[i]}{config.suffix}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 
   return (
     <motion.div
@@ -105,28 +213,43 @@ function TrendsViewModal({ onClose }) {
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-xl shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col"
+        className="bg-white rounded-xl shadow-xl max-w-3xl w-full mx-4 flex flex-col"
+        style={{ maxHeight: "95vh" }}
       >
-        <div className="px-6 py-4 border-b border-[var(--neutral-200)] flex items-center justify-between">
+        <div className="px-6 py-4 border-b border-[var(--neutral-200)] flex items-center justify-between shrink-0">
           <h3 className="text-lg font-bold text-[var(--hertz-black)]">View trends</h3>
           <button onClick={onClose} className="p-1 rounded hover:bg-[var(--neutral-100)] text-[var(--neutral-600)]">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
-        <div className="px-6 py-4 overflow-auto flex-1">
-          <p className="text-xs font-semibold text-[var(--neutral-600)] uppercase tracking-wider mb-2">Metric</p>
-          <div className="flex gap-2 mb-4">
-            {Object.entries(metricConfig).map(([k, c]) => (
-              <button
-                key={k}
-                onClick={() => setMetric(k)}
-                className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                  metric === k ? "bg-[var(--hertz-primary)] text-[var(--hertz-black)]" : "bg-[var(--neutral-50)] text-[var(--neutral-600)] hover:bg-[var(--neutral-100)]"
-                }`}
+        <div className="px-6 py-4 flex-1" style={{ overflowY: showCustomCalendar ? "visible" : "auto", overflowX: "visible" }}>
+          <div className="flex items-end gap-4 mb-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-[var(--neutral-600)] uppercase tracking-wider mb-1.5">Metric</p>
+              <select
+                value={metric}
+                onChange={(e) => setMetric(e.target.value)}
+                className="w-full px-3 py-2 border border-[var(--neutral-200)] rounded-lg text-sm font-medium text-[var(--hertz-black)] bg-white focus:outline-none focus:border-[var(--hertz-primary)] focus:ring-1 focus:ring-[var(--hertz-primary)] cursor-pointer"
               >
-                {c.label}
-              </button>
-            ))}
+                {Object.entries(metricConfig).map(([k, c]) => (
+                  <option key={k} value={k}>{c.label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="shrink-0">
+              <p className="text-xs font-semibold text-[var(--neutral-600)] uppercase tracking-wider mb-1.5">Chart type</p>
+              <div className="flex items-center gap-0.5 rounded-lg border border-[var(--neutral-200)] p-0.5 bg-[var(--neutral-50)]">
+                {chartTypeBtn("bar", "Bar",
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                )}
+                {chartTypeBtn("line", "Line",
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="4,16 8,10 13,13 20,6" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" /><polyline points="17,6 20,6 20,9" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" /></svg>
+                )}
+                {chartTypeBtn("table", "Table",
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18M3 6h18M3 18h18" /></svg>
+                )}
+              </div>
+            </div>
           </div>
           <p className="text-xs font-semibold text-[var(--neutral-600)] uppercase tracking-wider mb-2">Time range</p>
           <div className="flex flex-wrap gap-1.5 mb-4">
@@ -165,27 +288,12 @@ function TrendsViewModal({ onClose }) {
             <p className="text-xs font-bold text-[var(--neutral-600)] uppercase tracking-wider mb-3">{config.label}</p>
             {chartData.length === 0 ? (
               <p className="text-sm text-[var(--neutral-600)] py-8 text-center">Select a time range to see the trend.</p>
+            ) : chartType === "bar" ? (
+              renderBarChart()
+            ) : chartType === "line" ? (
+              renderLineChart()
             ) : (
-              <>
-                <div className="flex items-end gap-1.5" style={{ height: 160 }}>
-                  {values.map((v, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ height: 0 }}
-                      animate={{ height: max > 0 ? `${(v / max) * 100}%` : "0%" }}
-                      transition={{ delay: i * 0.05, duration: 0.3, ease: "easeOut" }}
-                      className="flex-1 rounded-sm min-w-[8px]"
-                      style={{ backgroundColor: config.color, opacity: i === values.length - 1 ? 1 : 0.7 }}
-                      title={`${labels[i]}: ${v}${config.suffix}`}
-                    />
-                  ))}
-                </div>
-                <div className="flex gap-1 mt-2 overflow-x-auto">
-                  {labels.map((l, i) => (
-                    <span key={i} className="flex-shrink-0 text-[10px] text-[var(--neutral-600)]">{l}</span>
-                  ))}
-                </div>
-              </>
+              renderTable()
             )}
           </div>
         </div>
@@ -194,17 +302,22 @@ function TrendsViewModal({ onClose }) {
   );
 }
 
-function SectionHeader({ title }) {
+function SectionHeader({ title, action }) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="mb-4"
+      className="mb-5"
     >
-      <h3 className="text-base font-bold text-[var(--hertz-black)] tracking-tight">
-        {title}
-      </h3>
-      <div className="w-10 h-0.5 bg-[var(--hertz-primary)] mt-1.5" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-1 h-6 bg-[var(--hertz-primary)] rounded-full" />
+          <h3 className="text-lg font-extrabold text-[var(--hertz-black)] tracking-tight">
+            {title}
+          </h3>
+        </div>
+        {action}
+      </div>
     </motion.div>
   );
 }
@@ -214,6 +327,21 @@ function getTimeOfDayGreeting() {
   if (h < 12) return "Good morning";
   if (h < 17) return "Good afternoon";
   return "Good evening";
+}
+
+function getContextualInsight({ stats, comparisonStats, openTasksCount, convRate, prevConvRate }) {
+  if (openTasksCount === 0) return "All tasks completed — nice work.";
+  if (stats.total > 0 && comparisonStats.total > 0) {
+    const change = stats.total - comparisonStats.total;
+    if (change > 0) return `${change} new lead${change !== 1 ? "s" : ""} since last period.`;
+  }
+  if (convRate > prevConvRate && prevConvRate > 0) {
+    return `Conversion rate is up ${convRate - prevConvRate}pp — keep it going.`;
+  }
+  if (openTasksCount > 0 && openTasksCount <= 3) {
+    return `Just ${openTasksCount} task${openTasksCount !== 1 ? "s" : ""} left today.`;
+  }
+  return null;
 }
 
 function formatDateRange(preset, customStart, customEnd) {
@@ -288,7 +416,9 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
   const [useCustom, setUseCustom] = useState(false);
   const [showTrendsModal, setShowTrendsModal] = useState(false);
   const [leadsViewMode, setLeadsViewMode] = useState("table"); // "table" | "board"
+  const [drilldownMetric, setDrilldownMetric] = useState(null);
   const [showCustomCalendar, setShowCustomCalendar] = useState(false);
+  const [showSummaryExport, setShowSummaryExport] = useState(false);
   const customAnchorRef = useRef(null);
 
   const [leadsStatusFilter, setLeadsStatusFilter] = useState("All");
@@ -316,6 +446,7 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
 
   const stats = getBMStats(leads, dateRange, branch);
   const branchLeads = getLeadsForBranch(leads, branch);
+  const pipelineLeads = useMemo(() => getLeadsForBranchInRange(leads, dateRange, branch), [leads, dateRange, branch]);
 
   const leadsFilterOptions = useMemo(() => {
     const statuses = [...new Set(branchLeads.map((l) => l.status))].sort();
@@ -439,27 +570,51 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
     : null;
 
   const rateTiles = [
-    { label: "Total Leads", value: stats.total, color: "text-[var(--hertz-black)]", isCount: true, relChange: relChange(stats.total, comparisonStats.total) },
-    { label: "Conversion Rate", value: `${convRate}%`, color: "text-[var(--color-success)]", isCount: false, relChange: relChange(convRate, prevConvRate) },
-    { label: "Comment Rate", value: `${stats.enrichmentRate}%`, color: "text-[var(--hertz-primary)]", isCount: false, relChange: relChange(stats.enrichmentRate, prevCommentRate) },
+    { label: "Total Leads", value: stats.total, color: "text-[var(--hertz-black)]", isCount: true, relChange: relChange(stats.total, comparisonStats.total), metricKey: "total_leads" },
+    { label: "Conversion Rate", value: `${convRate}%`, color: "text-[var(--color-success)]", isCount: false, relChange: relChange(convRate, prevConvRate), metricKey: "conversion_rate" },
+    { label: "Comment Rate", value: `${stats.enrichmentRate}%`, color: "text-[var(--hertz-primary)]", isCount: false, relChange: relChange(stats.enrichmentRate, prevCommentRate), metricKey: "comment_rate" },
   ];
 
   const secondaryTiles = [
-    { label: "Open Tasks", value: openTasksCount, color: "text-[var(--hertz-black)]", relChange: relChangeOpenTasks },
-    { label: "Task Completion Rate", value: taskCompletionRate != null ? `${taskCompletionRate}%` : "—", color: "text-[var(--neutral-700)]", relChange: relChangeCompletion },
-    { label: "Average Time for First Contact", value: avgTimeToContact ?? "—", color: "text-[var(--neutral-700)]", relChange: relChangeAvgTime, lowerIsBetter: true },
+    { label: "Open Tasks", value: openTasksCount, color: "text-[var(--hertz-black)]", relChange: relChangeOpenTasks, metricKey: "open_tasks" },
+    { label: "Task Completion Rate", value: taskCompletionRate != null ? `${taskCompletionRate}%` : "—", color: "text-[var(--neutral-700)]", relChange: relChangeCompletion, metricKey: "task_completion_rate" },
+    { label: "Average Time for First Contact", value: avgTimeToContact ?? "—", color: "text-[var(--neutral-700)]", relChange: relChangeAvgTime, lowerIsBetter: true, metricKey: "avg_time_to_contact" },
   ];
 
   const activePreset = useCustom ? { key: "custom" } : presets.find((p) => p.key === selectedPresetKey);
   const rangeLabel = formatDateRange(activePreset, customStart, customEnd);
 
   const greeting = getTimeOfDayGreeting();
+  const insight = getContextualInsight({ stats, comparisonStats, openTasksCount, convRate, prevConvRate });
 
   return (
     <div className="max-w-6xl">
       <AnimatePresence>
         {showTrendsModal && (
           <TrendsViewModal onClose={() => setShowTrendsModal(false)} />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {drilldownMetric && (
+          <MetricDrilldownModal
+            metricKey={drilldownMetric}
+            onClose={() => setDrilldownMetric(null)}
+            leads={leads}
+            branchTasks={branchTasks}
+            dateRange={dateRange}
+            comparisonRange={comparisonRange}
+            branch={branch}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {showSummaryExport && (
+          <SummaryExportModal
+            onClose={() => setShowSummaryExport(false)}
+            leads={leads}
+            branchTasks={branchTasks}
+            branch={branch}
+          />
         )}
       </AnimatePresence>
       {/* Dashboard: Greeting + Summary + Stats + Trend */}
@@ -486,11 +641,32 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
           transition={{ delay: 0.2, duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
           className="w-16 h-1 bg-[var(--hertz-primary)] mt-3 origin-left"
         />
+        {insight && (
+          <motion.p
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
+            className="text-sm text-[var(--neutral-600)] mt-2.5"
+          >
+            {insight}
+          </motion.p>
+        )}
       </div>
 
       {/* Summary: Date presets + Stats */}
       <div data-onboarding="summary">
-      <SectionHeader title="Summary" />
+      <SectionHeader title="Summary" action={
+        <motion.button
+          whileHover={!reduceMotion ? { scale: 1.05 } : {}}
+          whileTap={!reduceMotion ? { scale: 0.95 } : {}}
+          onClick={() => setShowSummaryExport(true)}
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-[var(--neutral-50)] text-[var(--neutral-600)] border border-transparent hover:border-[var(--neutral-200)] hover:bg-[var(--neutral-100)] transition-colors cursor-pointer shrink-0"
+          title="Export summary as CSV"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3M3 17v3a2 2 0 002 2h14a2 2 0 002-2v-3" /></svg>
+          Export
+        </motion.button>
+      } />
       <div className="flex items-center gap-2 flex-nowrap mb-6 whitespace-nowrap overflow-x-auto">
         <div className="flex items-center gap-1.5 flex-nowrap">
           {presets.map((p) => {
@@ -548,15 +724,19 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
       </div>
 
       {/* Rate tiles */}
-      <div className="grid grid-cols-3 gap-3 mb-3">
+      <div data-onboarding="metric-drilldown" className="grid grid-cols-3 gap-3 mb-3">
         {rateTiles.map((tile, i) => (
           <motion.div
             key={tile.label}
             {...cardAnim(i + 1, reduceMotion)}
-            whileHover={!reduceMotion ? { y: -2, boxShadow: "0 8px 24px rgba(39,36,37,0.10)", transition: { duration: 0.2 } } : {}}
-            className="bg-white border border-[var(--neutral-200)] rounded-lg px-4 py-3 shadow-[var(--shadow-sm)]"
+            whileHover={!reduceMotion ? { y: -3, boxShadow: "0 12px 28px rgba(39,36,37,0.12), 0 4px 10px rgba(39,36,37,0.06)", transition: { duration: 0.25, ease: [0.4, 0, 0.2, 1] } } : {}}
+            onClick={() => setDrilldownMetric(tile.metricKey)}
+            className="bg-white border border-[var(--neutral-200)] rounded-lg px-4 py-3 shadow-[var(--shadow-sm)] cursor-pointer group transition-[border-color] duration-200 hover:border-[var(--hertz-primary)]/40"
           >
-            <p className="text-[10px] font-bold text-[var(--neutral-600)] uppercase tracking-wider">{tile.label}</p>
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-bold text-[var(--neutral-600)] uppercase tracking-wider">{tile.label}</p>
+              <svg className="w-3.5 h-3.5 text-[var(--neutral-400)] opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+            </div>
             <div className="flex items-baseline gap-2 mt-0.5">
               <p className="text-xl font-extrabold tracking-tight text-[var(--hertz-black)]">{tile.value}</p>
               {comparisonRange != null && (
@@ -579,16 +759,19 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
           <motion.div
             key={tile.label}
             {...cardAnim(4 + i, reduceMotion)}
-            whileHover={!reduceMotion ? { y: -2, boxShadow: "0 8px 24px rgba(39,36,37,0.10)", transition: { duration: 0.2 } } : {}}
-            className="bg-white border border-[var(--neutral-200)] rounded-lg px-4 py-3 shadow-[var(--shadow-sm)]"
+            whileHover={!reduceMotion ? { y: -3, boxShadow: "0 12px 28px rgba(39,36,37,0.12), 0 4px 10px rgba(39,36,37,0.06)", transition: { duration: 0.25, ease: [0.4, 0, 0.2, 1] } } : {}}
+            onClick={() => setDrilldownMetric(tile.metricKey)}
+            className="bg-white border border-[var(--neutral-200)] rounded-lg px-4 py-3 shadow-[var(--shadow-sm)] cursor-pointer group transition-[border-color] duration-200 hover:border-[var(--hertz-primary)]/40"
           >
-            <p className="text-[10px] font-bold text-[var(--neutral-600)] uppercase tracking-wider">{tile.label}</p>
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-bold text-[var(--neutral-600)] uppercase tracking-wider">{tile.label}</p>
+              <svg className="w-3.5 h-3.5 text-[var(--neutral-400)] opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+            </div>
             <div className="flex items-baseline gap-2 mt-0.5">
               <p className={`text-xl font-extrabold tracking-tight ${tile.color}`}>{tile.value}</p>
               {comparisonRange != null && tile.relChange != null && (
                 <span
                   className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
-                    // lowerIsBetter: decrease = green (relChange>0), increase = red (relChange<0)
                     tile.relChange > 0 ? "bg-[#2E7D32]/15 text-[#2E7D32]" : tile.relChange < 0 ? "bg-[#C62828]/15 text-[#C62828]" : "bg-[var(--neutral-100)] text-[var(--neutral-600)]"
                   }`}
                 >
@@ -613,13 +796,31 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
           rented={stats.rented}
           cancelled={stats.cancelled}
           unused={stats.unused}
+          leads={pipelineLeads}
         />
       </motion.div>
       </div>
 
       {/* My Leads */}
       <div id="lead-pipeline" className="scroll-mt-4 mb-10" data-onboarding="my-leads">
-        <SectionHeader title="My Leads" />
+        <SectionHeader title="My Leads" action={
+          <motion.button
+            whileHover={!reduceMotion ? { scale: 1.05 } : {}}
+            whileTap={!reduceMotion ? { scale: 0.95 } : {}}
+            onClick={() => {
+              const rows = filteredBranchLeads.map((lead) => {
+                const org = getHierarchyForBranch(lead.branch);
+                return leadToHlesRow(lead, org);
+              });
+              exportLeadsToCSV(rows);
+            }}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-[var(--neutral-50)] text-[var(--neutral-600)] border border-transparent hover:border-[var(--neutral-200)] hover:bg-[var(--neutral-100)] transition-colors cursor-pointer shrink-0"
+            title="Export filtered leads as CSV"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3M3 17v3a2 2 0 002 2h14a2 2 0 002-2v-3" /></svg>
+            Export
+          </motion.button>
+        } />
         <div className="flex items-center gap-2 mt-2 mb-3">
           <div className="flex items-center gap-1 rounded-lg border border-[var(--neutral-200)] p-0.5 bg-[var(--neutral-50)]">
             <button
@@ -764,10 +965,10 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
           <thead>
             <tr className="bg-[#272425] text-center text-xs text-white font-semibold uppercase tracking-wider">
               <th className="px-3 py-4 w-[9%] break-words">Received Date</th>
-              <th className="px-3 py-4 w-[9%] break-words">Confirmation #</th>
-              <th className="px-3 py-4 w-[11%] break-words">Customer</th>
-              <th className="px-3 py-4 w-[8%] break-words">Status</th>
-              <th className="px-3 py-4 w-[8%] break-words">Days Open</th>
+              <th className="px-3 py-4 w-[12%] break-words">Confirmation #</th>
+              <th className="px-3 py-4 w-[10%] break-words">Customer</th>
+              <th className="px-3 py-4 w-[7%] break-words">Status</th>
+              <th className="px-3 py-4 w-[7%] break-words">Days Open</th>
               <th className="px-3 py-4 w-[11%] break-words">First Contact Date</th>
               <th className="px-3 py-4 w-[10%] break-words">Time to Contact</th>
               <th className="px-3 py-4 w-[14%] break-words">Cancel Reason</th>
@@ -779,13 +980,19 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
               <tr>
                 <td colSpan={9} className="px-3 py-16 text-center">
                   <div className="flex flex-col items-center gap-2">
-                    <div className="w-12 h-12 rounded-full bg-[#F8F8F8] flex items-center justify-center text-[#FFD100]">
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
+                    <div className="w-14 h-14 rounded-2xl bg-[var(--hertz-primary)]/10 flex items-center justify-center text-[var(--hertz-primary)]">
+                      {branchLeads.length === 0 ? (
+                        <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+                        </svg>
+                      ) : (
+                        <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L12 21l-1.006-.503a2.25 2.25 0 01-1.244-2.013v-2.927a2.25 2.25 0 00-.659-1.591L3.659 8.409A2.25 2.25 0 013 6.818V5.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z" />
+                        </svg>
+                      )}
                     </div>
-                    <p className="text-[#272425] font-semibold">{branchLeads.length === 0 ? "All caught up" : "No matching leads"}</p>
-                    <p className="text-sm text-[#666666]">{branchLeads.length === 0 ? "No leads for this branch right now." : "Try adjusting your filters."}</p>
+                    <p className="text-[var(--hertz-black)] font-bold text-sm mt-1">{branchLeads.length === 0 ? "All caught up" : "No matching leads"}</p>
+                    <p className="text-sm text-[var(--neutral-600)] max-w-[240px]">{branchLeads.length === 0 ? "Nothing on your plate — enjoy the calm." : "Try widening your filters to see more results."}</p>
                   </div>
                 </td>
               </tr>
@@ -808,7 +1015,7 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
                     }}
                   >
                     <td className="px-3 py-4 text-center text-[var(--neutral-600)] whitespace-nowrap">{row.INIT_DT_FINAL}</td>
-                    <td className="px-3 py-4 text-center text-[var(--hertz-black)] font-medium">{row.CONFIRM_NUM}</td>
+                    <td className="px-3 py-4 text-center text-[var(--hertz-black)] font-medium whitespace-nowrap">{row.CONFIRM_NUM}</td>
                     <td className="px-3 py-4 text-center font-semibold text-[var(--hertz-black)]">{row.RENTER_LAST}</td>
                     <td className="px-3 py-4 text-center"><StatusBadge status={row.STATUS} /></td>
                     <td className="px-3 py-4 text-center text-[var(--neutral-600)]">{row.DAYS_OPEN}</td>
@@ -833,13 +1040,19 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
       >
         {filteredBranchLeads.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16">
-            <div className="w-12 h-12 rounded-full bg-[#F8F8F8] flex items-center justify-center text-[#FFD100]">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+            <div className="w-14 h-14 rounded-2xl bg-[var(--hertz-primary)]/10 flex items-center justify-center text-[var(--hertz-primary)]">
+              {branchLeads.length === 0 ? (
+                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+                </svg>
+              ) : (
+                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L12 21l-1.006-.503a2.25 2.25 0 01-1.244-2.013v-2.927a2.25 2.25 0 00-.659-1.591L3.659 8.409A2.25 2.25 0 013 6.818V5.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z" />
+                </svg>
+              )}
             </div>
-            <p className="text-[#272425] font-semibold mt-2">{branchLeads.length === 0 ? "All caught up" : "No matching leads"}</p>
-            <p className="text-sm text-[#666666]">{branchLeads.length === 0 ? "No leads for this branch right now." : "Try adjusting your filters."}</p>
+            <p className="text-[var(--hertz-black)] font-bold text-sm mt-3">{branchLeads.length === 0 ? "All caught up" : "No matching leads"}</p>
+            <p className="text-sm text-[var(--neutral-600)] max-w-[240px] text-center">{branchLeads.length === 0 ? "Nothing on your plate — enjoy the calm." : "Try widening your filters to see more results."}</p>
           </div>
         ) : (
           <LeadsBoardView
@@ -860,7 +1073,20 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
 
       {/* Open Tasks */}
       <div id="open-tasks" className="scroll-mt-4">
-      <SectionHeader title="Open Tasks" />
+      <SectionHeader title="Open Tasks" action={
+        <motion.button
+          whileHover={!reduceMotion ? { scale: 1.05 } : {}}
+          whileTap={!reduceMotion ? { scale: 0.95 } : {}}
+          onClick={() => {
+            exportTasksToCSV(filteredBranchTasks, (id) => getLeadById(leads ?? [], id));
+          }}
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-[var(--neutral-50)] text-[var(--neutral-600)] border border-transparent hover:border-[var(--neutral-200)] hover:bg-[var(--neutral-100)] transition-colors cursor-pointer shrink-0"
+          title="Export filtered tasks as CSV"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3M3 17v3a2 2 0 002 2h14a2 2 0 002-2v-3" /></svg>
+          Export
+        </motion.button>
+      } />
       {/* Task filter bar */}
       <div className="flex items-center gap-2 flex-wrap mb-4 w-full">
         <div className="flex items-center gap-1.5 shrink-0">
@@ -951,13 +1177,13 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
               <tr>
                 <td colSpan={8} className="px-4 py-16 text-center">
                   <div className="flex flex-col items-center gap-2">
-                    <div className="w-12 h-12 rounded-full bg-[var(--neutral-50)] flex items-center justify-center text-[var(--hertz-primary)]">
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <div className="w-14 h-14 rounded-2xl bg-[#2E7D32]/10 flex items-center justify-center text-[#2E7D32]">
+                      <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11.35 3.836c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15a2.25 2.25 0 011.65 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m8.9-4.414c.376.023.75.05 1.124.08 1.131.094 1.976 1.057 1.976 2.192V16.5A2.25 2.25 0 0118 18.75h-2.25m-7.5-10.5H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V18.75m-7.5-10.5h6.375c.621 0 1.125.504 1.125 1.125v9.375m-8.25-3l1.5 1.5 3-3.75" />
                       </svg>
                     </div>
-                    <p className="text-[var(--hertz-black)] font-semibold">All clear</p>
-                    <p className="text-sm text-[var(--neutral-600)]">No open tasks at the moment.</p>
+                    <p className="text-[var(--hertz-black)] font-bold text-sm mt-1">All tasks done</p>
+                    <p className="text-sm text-[var(--neutral-600)] max-w-[220px]">Your task list is clear. Great job staying on top of things.</p>
                   </div>
                 </td>
               </tr>
@@ -1044,15 +1270,15 @@ export function BMDashboardInbox({ navigateTo, selectLead }) {
           <tbody>
             {directiveLeads.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-5 py-8 text-center">
+                <td colSpan={6} className="px-5 py-10 text-center">
                   <div className="flex flex-col items-center gap-2">
-                    <div className="w-12 h-12 rounded-full bg-[#F8F8F8] flex items-center justify-center text-[#FFD100]">
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                    <div className="w-14 h-14 rounded-2xl bg-[var(--hertz-primary)]/10 flex items-center justify-center text-[var(--hertz-primary)]">
+                      <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21.75 9v.906a2.25 2.25 0 01-1.183 1.981l-6.478 3.488M2.25 9v.906a2.25 2.25 0 001.183 1.981l6.478 3.488m8.839 2.51l-4.66-2.51m0 0l-1.023-.55a2.25 2.25 0 00-2.134 0l-1.022.55m0 0l-4.661 2.51m16.5 1.615a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V8.844a2.25 2.25 0 011.183-1.981l7.5-4.039a2.25 2.25 0 012.134 0l7.5 4.039a2.25 2.25 0 011.183 1.98V19.5z" />
                       </svg>
                     </div>
-                    <p className="text-[#272425] font-semibold">No directives</p>
-                    <p className="text-sm text-[#666666]">Your inbox is clear.</p>
+                    <p className="text-[var(--hertz-black)] font-bold text-sm mt-1">Inbox zero</p>
+                    <p className="text-sm text-[var(--neutral-600)]">No GM directives right now — you're all set.</p>
                   </div>
                 </td>
               </tr>
@@ -1338,9 +1564,9 @@ export default function InteractiveDashboard() {
         <BMDashboard navigateTo={navigateTo} selectLead={selectLead} selectTask={selectTask} />
       ) : (
         <>
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-[var(--hertz-black)]">{roleMeta[role]?.label} Dashboard</h1>
-            <div className="w-12 h-1 bg-[var(--hertz-primary)] mt-2" />
+          <div className="mb-8">
+            <h1 className="text-3xl font-extrabold text-[var(--hertz-black)] tracking-tight">{roleMeta[role]?.label} Dashboard</h1>
+            <div className="w-16 h-1 bg-[var(--hertz-primary)] mt-3 rounded-full" />
           </div>
           {role === "gm" && <GMDashboard navigateTo={navigateTo} />}
           {role === "admin" && <AdminDashboard navigateTo={navigateTo} />}

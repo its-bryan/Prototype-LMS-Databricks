@@ -84,20 +84,40 @@ Deno.serve(async (req: Request): Promise<Response> => {
     // Persist activity and update lead last_activity
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    let activityError: string | null = null;
+
     if (supabaseUrl && supabaseServiceKey) {
-      const supabase = createClient(supabaseUrl, supabaseServiceKey);
-      await supabase.from("lead_activities").insert({
+      const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+        auth: { persistSession: false },
+      });
+
+      const { error: insertErr } = await supabase.from("lead_activities").insert({
         lead_id: body.leadId,
         type: "call",
         performed_by: body.performedBy || null,
         performed_by_name: body.performedByName || null,
         metadata: { callSid: data.sid },
       });
-      await supabase.from("leads").update({ last_activity: new Date().toISOString() }).eq("id", body.leadId);
+
+      if (insertErr) {
+        console.error("[initiate-call] lead_activities insert failed:", insertErr);
+        activityError = insertErr.message;
+      } else {
+        const { error: updateErr } = await supabase
+          .from("leads")
+          .update({ last_activity: new Date().toISOString() })
+          .eq("id", body.leadId);
+        if (updateErr) {
+          console.error("[initiate-call] leads.last_activity update failed:", updateErr);
+        }
+      }
+    } else {
+      console.error("[initiate-call] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY — activity not logged");
+      activityError = "Server config: activity logging unavailable";
     }
 
     return new Response(
-      JSON.stringify({ success: true, callSid: data.sid }),
+      JSON.stringify({ success: true, callSid: data.sid, ...(activityError && { activityError }) }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {

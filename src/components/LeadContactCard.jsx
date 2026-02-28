@@ -6,7 +6,7 @@
 import { useState, useEffect } from "react";
 import { useData } from "../context/DataContext";
 import { useAuth } from "../context/AuthContext";
-import PhoneInput, { parsePhoneE164 } from "./PhoneInput";
+import PhoneInput, { parsePhoneE164, flagForCode, formatLocalDisplay } from "./PhoneInput";
 
 function formatNow() {
   const d = new Date();
@@ -171,11 +171,9 @@ export default function LeadContactCard({ lead }) {
             <p className="text-[#6E6E6E] text-xs uppercase">Phone</p>
             {lead?.phone ? (
               <div className="flex items-baseline gap-2">
-                <span className="font-medium text-[#6E6E6E]">{parsedPhone.countryCode}</span>
+                <span className="font-medium">{flagForCode(parsedPhone.countryCode)} {parsedPhone.countryCode}</span>
                 <span className="font-medium">
-                  {parsedPhone.local.length === 10
-                    ? parsedPhone.local.replace(/(\d{3})(\d{3})(\d{4})/, "($1) $2-$3")
-                    : parsedPhone.local || "—"}
+                  {formatLocalDisplay(parsedPhone.countryCode, parsedPhone.local)}
                 </span>
               </div>
             ) : (

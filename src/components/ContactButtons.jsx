@@ -4,10 +4,12 @@
  */
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
+import EmailComposeModal from "./EmailComposeModal";
 
 export default function ContactButtons({ lead, agentPhone, userProfile, onContactSuccess }) {
   const [loading, setLoading] = useState(null); // "email" | "sms" | "call"
   const [message, setMessage] = useState(null); // { type: "success" | "error", text }
+  const [showCompose, setShowCompose] = useState(false);
 
   const hasEmail = lead?.email && lead.email.includes("@");
   const hasPhone = lead?.phone && lead.phone.length >= 10;
@@ -34,8 +36,13 @@ export default function ContactButtons({ lead, agentPhone, userProfile, onContac
     return fallback;
   };
 
-  const handleEmail = async () => {
+  const handleEmail = () => {
     if (!hasEmail) return;
+    setShowCompose(true);
+  };
+
+  const handleEmailSend = async ({ template, subject, body: bodyText }) => {
+    setShowCompose(false);
     setLoading("email");
     setMessage(null);
     try {
@@ -43,6 +50,9 @@ export default function ContactButtons({ lead, agentPhone, userProfile, onContac
         body: {
           leadId: lead.id,
           to: lead.email,
+          template,
+          subject,
+          body: bodyText,
           customer: lead.customer,
           reservationId: lead.reservationId ?? "",
           branch: lead.branch ?? "",
@@ -56,7 +66,12 @@ export default function ContactButtons({ lead, agentPhone, userProfile, onContac
         return;
       }
       if (data?.success) {
-        setMessage({ type: "success", text: "Email sent" });
+        if (data.activityError) {
+          console.error("[ContactButtons] Email sent but activity log failed:", data.activityError);
+          setMessage({ type: "success", text: `Email sent (activity log error: ${data.activityError})` });
+        } else {
+          setMessage({ type: "success", text: "Email sent" });
+        }
         onContactSuccess?.();
       } else {
         setMessage({ type: "error", text: data?.error ?? "Failed to send" });
@@ -90,7 +105,12 @@ export default function ContactButtons({ lead, agentPhone, userProfile, onContac
         return;
       }
       if (data?.success) {
-        setMessage({ type: "success", text: "SMS sent" });
+        if (data.activityError) {
+          console.error("[ContactButtons] SMS sent but activity log failed:", data.activityError);
+          setMessage({ type: "success", text: `SMS sent (activity log error: ${data.activityError})` });
+        } else {
+          setMessage({ type: "success", text: "SMS sent" });
+        }
         onContactSuccess?.();
       } else {
         setMessage({ type: "error", text: data?.error ?? "Failed to send" });
@@ -127,7 +147,12 @@ export default function ContactButtons({ lead, agentPhone, userProfile, onContac
         return;
       }
       if (data?.success) {
-        setMessage({ type: "success", text: "Calling you now" });
+        if (data.activityError) {
+          console.error("[ContactButtons] Call initiated but activity log failed:", data.activityError);
+          setMessage({ type: "success", text: `Calling you now (activity log error: ${data.activityError})` });
+        } else {
+          setMessage({ type: "success", text: "Calling you now" });
+        }
         onContactSuccess?.();
       } else {
         setMessage({ type: "error", text: data?.error ?? "Failed to initiate call" });
@@ -143,6 +168,13 @@ export default function ContactButtons({ lead, agentPhone, userProfile, onContac
 
   return (
     <div>
+      {showCompose && (
+        <EmailComposeModal
+          lead={lead}
+          onSend={handleEmailSend}
+          onCancel={() => setShowCompose(false)}
+        />
+      )}
       {needsEnrichment && (
         <div className="mb-4 p-3 rounded-lg bg-[var(--color-error-light)] border border-red-200">
           <p className="text-sm font-medium text-[var(--color-error)]">
