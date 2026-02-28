@@ -1,0 +1,96 @@
+/**
+ * BM Onboarding tour step definitions.
+ * target: CSS selector for spotlight; null = centered modal
+ * requiredView: view ID user must be on; tour will navigate if needed
+ * actionType: for interactive gates (HER-24); replay mode skips gates
+ */
+export const BM_ONBOARDING_STEPS = [
+  {
+    id: "welcome",
+    target: null,
+    requiredView: "bm-dashboard",
+    title: "Welcome to LEO",
+    content: "Your lead management system, built for how you work. We'll show you around in just a few steps.",
+    actionType: null,
+  },
+  {
+    id: "summary",
+    target: "[data-onboarding=summary]",
+    requiredView: "bm-dashboard",
+    title: "Your numbers at a glance",
+    content: "Total Leads, Conversion Rate, and Comment Rate — everything you need to track performance.",
+    actionType: null,
+  },
+  {
+    id: "view-trends",
+    target: "[data-onboarding=view-trends]",
+    requiredView: "bm-dashboard",
+    title: "See how you're trending",
+    content: "Click here to view trends over time and spot patterns.",
+    actionType: "view_trends",
+  },
+  {
+    id: "my-leads",
+    target: "[data-onboarding=my-leads]",
+    requiredView: "bm-dashboard",
+    title: "Your leads",
+    content: "All leads for your branch. Click any row to open the full profile.",
+    actionType: null,
+  },
+  {
+    id: "lead-profile",
+    target: "[data-onboarding=lead-row]",
+    requiredView: "bm-dashboard",
+    title: "Open a lead",
+    content: "Click a lead to open their profile — that's where the real work happens.",
+    actionType: "click_lead",
+  },
+  {
+    id: "notes",
+    target: "[data-onboarding=notes-textarea]",
+    requiredView: "bm-lead-detail",
+    title: "Add your comments",
+    content: "Document your outreach here. Click Update Lead when you're done.",
+    actionType: "add_note",
+  },
+  {
+    id: "tasks",
+    target: "[data-onboarding=tasks-section]",
+    requiredView: "bm-lead-detail",
+    title: "Tasks from your GM",
+    content: "Assigned tasks show up here. Click one to view details and take action.",
+    actionType: "open_task",
+  },
+  {
+    id: "edit-contact",
+    target: "[data-onboarding=contact-edit]",
+    requiredView: "bm-lead-detail",
+    title: "Keep contact info current",
+    content: "Click the pencil to update email or phone when customers change details.",
+    actionType: "edit_contact",
+  },
+  {
+    id: "sidebar",
+    target: "[data-onboarding=sidebar-nav]",
+    requiredView: "bm-dashboard",
+    title: "Get around quickly",
+    content: "Summary, My Leads, and Open Tasks — your main navigation, always one click away.",
+    actionType: null,
+  },
+  {
+    id: "inbox",
+    target: "[data-onboarding=inbox-button]",
+    requiredView: "bm-dashboard",
+    title: "GM directives",
+    content: "When your GM has instructions for a specific lead, they'll appear here.",
+    actionType: null,
+  },
+  {
+    id: "done",
+    target: null,
+    requiredView: "bm-dashboard",
+    title: "You're ready to go",
+    content: "That's it — you're set up. Use the ? button next to Inbox anytime to revisit this tour.",
+    actionType: null,
+  },
+];
