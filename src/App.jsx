@@ -21,10 +21,10 @@ function AppContent() {
 
 function AppRoot() {
   const { loading } = useAuth();
-  const { role } = useApp();
+  const { role, setRole } = useApp();
 
   if (loading) return <LoadingScreen />;
-  if (!role && !supabase) return <Landing />;
+  if (!role && !supabase) return <Landing onSelect={setRole} />;
   if (!role) return <LoginScreen />;
   return (
     <AppLayout>
