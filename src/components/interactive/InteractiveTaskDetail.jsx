@@ -1,24 +1,22 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useApp } from "../../context/AppContext";
+import BackButton from "../BackButton";
 import { useAuth } from "../../context/AuthContext";
 import { useData } from "../../context/DataContext";
 import { getTaskById, getLeadById } from "../../selectors/demoSelectors";
+import { formatDateTime, formatDateTimeShort } from "../../utils/dateTime";
 
 const STATUS_OPTIONS = ["Open", "In Progress", "Done"];
 const PRIORITY_COLORS = {
-  Urgent: "bg-[var(--color-error)]/15 text-[var(--color-error)]",
   High: "bg-amber-100 text-amber-800",
-  Normal: "bg-[var(--neutral-100)] text-[var(--neutral-600)]",
-  Low: "bg-[var(--neutral-50)] text-[var(--neutral-500)]",
+  Medium: "bg-[var(--neutral-100)] text-[var(--neutral-600)]",
+  Low: "bg-[var(--neutral-100)] text-[var(--neutral-600)]",
 };
 const SOURCE_LABELS = { gm_assigned: "GM Assigned", auto_translog: "Auto (Translog)", auto_other: "Auto (Other)" };
 
 function formatTimestamp(iso) {
-  if (!iso) return null;
-  const d = new Date(iso);
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) +
-    ", " + d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  return formatDateTime(iso);
 }
 
 function formatRelativeTime(iso) {
@@ -34,7 +32,7 @@ function formatRelativeTime(iso) {
 }
 
 export default function InteractiveTaskDetail() {
-  const { selectedTaskId, navigateTo, selectLead, selectTask } = useApp();
+  const { selectedTaskId, navigateTo, selectLead, selectTask, activeView, role } = useApp();
   const { userProfile } = useAuth();
   const { leads, fetchTaskById, updateTaskStatus, appendTaskNote, useSupabase } = useData();
   const [task, setTask] = useState(null);
@@ -109,8 +107,7 @@ export default function InteractiveTaskDetail() {
     } else {
       const author = userProfile?.displayName ?? "—";
       const entry = {
-        time: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }) +
-          ", " + new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
+        time: formatDateTimeShort(new Date()),
         timestamp: Date.now(),
         author,
         note: text,
@@ -120,11 +117,15 @@ export default function InteractiveTaskDetail() {
     }
   }, [task, newNoteText, useSupabase, appendTaskNote, userProfile?.displayName]);
 
+  const isGMContext = activeView === "gm-task-detail" || role === "gm";
+  const backView = isGMContext ? "gm-meeting-prep" : "bm-todo";
+  const backLabel = isGMContext ? "Back to Meeting Prep" : "Back to Open Tasks";
+
   const handleViewLead = () => {
     if (task?.leadId) {
       selectLead(task.leadId);
       selectTask(null);
-      navigateTo("bm-lead-detail");
+      navigateTo(isGMContext ? "gm-lead-detail" : "bm-lead-detail");
     }
   };
 
@@ -132,9 +133,7 @@ export default function InteractiveTaskDetail() {
     return (
       <div className="h-full flex items-center justify-center text-[var(--neutral-600)]">
         No task selected.
-        <button onClick={() => navigateTo("bm-todo")} className="ml-2 text-[var(--hertz-primary)] hover:underline cursor-pointer">
-          Back to Open Tasks
-        </button>
+        <BackButton onClick={() => navigateTo(backView)} label={backLabel} className="ml-2 mb-0" />
       </div>
     );
   }
@@ -151,14 +150,12 @@ export default function InteractiveTaskDetail() {
     return (
       <div className="h-full flex items-center justify-center text-[var(--neutral-600)]">
         Task not found.
-        <button onClick={() => { selectTask(null); navigateTo("bm-todo"); }} className="ml-2 text-[var(--hertz-primary)] hover:underline cursor-pointer">
-          Back to Open Tasks
-        </button>
+        <BackButton onClick={() => { selectTask(null); navigateTo(backView); }} label={backLabel} className="ml-2 mb-0" />
       </div>
     );
   }
 
-  const priorityClass = PRIORITY_COLORS[task.priority] ?? PRIORITY_COLORS.Normal;
+  const priorityClass = PRIORITY_COLORS[task.priority] ?? PRIORITY_COLORS.Medium;
   const statusClass =
     task.status === "Done"
       ? "bg-[var(--color-success)]/15 text-[var(--color-success)]"
@@ -180,12 +177,7 @@ export default function InteractiveTaskDetail() {
       transition={{ duration: 0.3 }}
       className="max-w-2xl"
     >
-      <button
-        onClick={() => { selectTask(null); navigateTo("bm-todo"); }}
-        className="text-sm text-[var(--neutral-600)] hover:text-[var(--hertz-black)] mb-4 inline-block cursor-pointer"
-      >
-        ← Back to Open Tasks
-      </button>
+      <BackButton onClick={() => { selectTask(null); navigateTo(backView); }} label={backLabel} />
 
       <div className="space-y-6">
         {/* Title + badges */}

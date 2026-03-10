@@ -24,3 +24,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# AI tooling (not needed in deployment)
+.cursor/
+.claude/
+CLAUDE.md
+twilio-mcp/
+.firecrawl/

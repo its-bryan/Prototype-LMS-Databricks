@@ -4,6 +4,7 @@ import { useData } from "../../context/DataContext";
 import { getAllLeads, getUnresolvedLeads, getInsuranceCompanies } from "../../selectors/demoSelectors";
 import { getLastTranslogTime } from "../LeadQueue";
 import LeadQueue from "../LeadQueue";
+import { formatDateShort } from "../../utils/dateTime";
 
 // "Now" for this demo
 const NOW = new Date("2026-02-26T09:00:00");
@@ -18,7 +19,7 @@ function getMonday(date) {
 }
 
 function formatShortDate(date) {
-  return date.toLocaleDateString("en-AU", { month: "short", day: "numeric" });
+  return formatDateShort(date);
 }
 
 function getWeekPresets() {
@@ -117,6 +118,11 @@ export default function InteractiveLeadQueue() {
     navigateTo("bm-lead-detail");
   };
 
+  const mismatchCount = useMemo(
+    () => filteredLeads.filter((l) => l.mismatch).length,
+    [filteredLeads],
+  );
+
   const activePreset = PRESETS[selectedPreset];
   const subtitle = useCustom && customStart && customEnd
     ? `${formatShortDate(new Date(customStart))} – ${formatShortDate(new Date(customEnd))}`
@@ -130,7 +136,7 @@ export default function InteractiveLeadQueue() {
       <p className="text-sm text-[#6E6E6E] mb-4">{subtitle}</p>
 
       {/* Week filter bar */}
-      <div className="flex items-center gap-1.5 flex-wrap mb-3">
+      <div className="flex items-center gap-1.5 flex-nowrap mb-3 overflow-x-auto">
         {PRESETS.map((preset, i) => (
           <button
             key={preset.label}
@@ -178,7 +184,7 @@ export default function InteractiveLeadQueue() {
       </div>
 
       {/* Dropdown filters */}
-      <div className="flex items-center gap-3 flex-wrap mb-4">
+      <div className="flex items-center gap-3 flex-nowrap mb-4 overflow-x-auto">
         <label className="text-xs text-[#6E6E6E] font-medium">Res. Type</label>
         <select className={selectClass} value={resTypeFilter} onChange={(e) => setResTypeFilter(e.target.value)}>
           <option>All</option>
@@ -215,6 +221,7 @@ export default function InteractiveLeadQueue() {
       <LeadQueue
         leads={filteredLeads}
         bannerCount={bannerCount}
+        mismatchCount={mismatchCount}
         onLeadClick={handleLeadClick}
       />
     </div>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { formatTranslogTimestamp } from "../utils/dateTime";
 
 const typeColors = {
   system: "#6E6E6E",
@@ -8,10 +9,25 @@ const typeColors = {
   translog: "#6E6E6E",
 };
 
-/** Parse translog time "Feb 10, 9:15 AM" to timestamp for sorting (assumes current year) */
+/** Parse translog time to timestamp for sorting. Handles:
+ * - "Feb 10, 9:15 AM" (display format)
+ * - "20260105071232" (YYYYMMDDHHMMSS from TRANSLOG upload)
+ */
 function parseTimeToTs(timeStr) {
   if (!timeStr) return 0;
   try {
+    // TRANSLOG upload format: YYYYMMDDHHMMSS
+    const raw = String(timeStr).replace(/\D/g, "");
+    if (raw.length >= 14) {
+      const y = parseInt(raw.slice(0, 4), 10);
+      const m = parseInt(raw.slice(4, 6), 10) - 1;
+      const d = parseInt(raw.slice(6, 8), 10);
+      const h = parseInt(raw.slice(8, 10), 10);
+      const min = parseInt(raw.slice(10, 12), 10);
+      const sec = parseInt(raw.slice(12, 14), 10);
+      const date = new Date(y, m, d, h, min, sec);
+      return isNaN(date.getTime()) ? 0 : date.getTime();
+    }
     const year = new Date().getFullYear();
     const d = new Date(`${timeStr}, ${year}`);
     return isNaN(d.getTime()) ? 0 : d.getTime();
@@ -20,19 +36,30 @@ function parseTimeToTs(timeStr) {
   }
 }
 
+
 function formatValue(v) {
   return v && String(v).trim() ? v : "—";
 }
 
-export default function TranslogTimeline({ events = [], enrichmentLog = [], contactActivities = [], animate = true }) {
+export default function TranslogTimeline({ events = [], enrichmentLog = [], contactActivities = [], animate = true, showHeader = true }) {
   const [expandedKey, setExpandedKey] = useState(null);
 
   // Merge translog (HLES), enrichment_log (user edits), and contact activities (email/SMS/call), sort by time
-  const translogItems = (events ?? []).map((ev) => ({
-    ...ev,
-    _sortTs: parseTimeToTs(ev.time),
-    _source: "translog",
-  }));
+  // Normalize: display format uses { time, event, outcome }; upload format uses { date, type, detail }
+  const translogItems = (events ?? []).map((ev) => {
+    const time = ev.time ?? ev.date;
+    const event = ev.event ?? ev.type ?? ev.detail ?? "—";
+    const outcome = ev.outcome ?? (ev.detail && ev.detail !== event ? ev.detail : null);
+    const sortTs = parseTimeToTs(time);
+    return {
+      ...ev,
+      _time: time,
+      _event: event,
+      _outcome: outcome,
+      _sortTs: sortTs,
+      _source: "translog",
+    };
+  });
   const enrichmentItems = (enrichmentLog ?? []).map((ev) => ({
     ...ev,
     _sortTs: ev.timestamp ?? parseTimeToTs(ev.time) ?? 0,
@@ -47,14 +74,16 @@ export default function TranslogTimeline({ events = [], enrichmentLog = [], cont
 
   return (
     <div className="space-y-3">
-      <h3 className="text-xs font-semibold text-[var(--neutral-600)] uppercase tracking-wide mb-2">
-        TRANSLOG Activity
-      </h3>
+      {showHeader && (
+        <h3 className="text-xs font-semibold text-[var(--neutral-600)] uppercase tracking-wide mb-2">
+          TRANSLOG Activity
+        </h3>
+      )}
       {merged.length === 0 ? (
         <p className="text-sm text-[var(--color-error)] italic">No activity recorded</p>
       ) : (
         merged.map((ev, i) => {
-          const key = ev._source === "contact" ? `contact-${i}-${ev.id ?? ev.timestamp}` : ev._source === "enrichment" ? `enrich-${i}-${ev.timestamp}` : `trans-${i}-${ev.time}`;
+          const key = ev._source === "contact" ? `contact-${i}-${ev.id ?? ev.timestamp}` : ev._source === "enrichment" ? `enrich-${i}-${ev.timestamp}` : `trans-${i}-${ev._time ?? ev.time ?? ev.date ?? i}`;
           const hasEnrichmentDetails = ev._source === "enrichment" && ev.previous && ev.updated;
           const hasEmailDetails = ev._source === "contact" && ev.type === "email" && ev.metadata?.subject;
           const hasDetails = hasEnrichmentDetails || hasEmailDetails;
@@ -93,13 +122,10 @@ export default function TranslogTimeline({ events = [], enrichmentLog = [], cont
                     <p className="text-sm font-medium text-[var(--hertz-black)]">{ev.action}</p>
                     <p className="text-xs text-[var(--neutral-600)]">By {ev.author} · {ev.time}</p>
                     {hasEmailDetails && (
-                      <span className="inline-block mt-1.5 text-[9px] text-blue-700 px-1.5 py-0.5 rounded bg-blue-50 border border-blue-100">
+                      <span className="inline-block mt-1.5 text-[9px] text-[var(--neutral-600)] px-1.5 py-0.5 rounded bg-[var(--neutral-100)] border border-[var(--neutral-200)]">
                         {isExpanded ? "▼" : "▶"} Click to {isExpanded ? "collapse" : "view email"}
                       </span>
                     )}
-                    <span className="inline-block mt-1 text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
-                      Contact
-                    </span>
                   </button>
                   {hasEmailDetails && isExpanded && (
                     <motion.div
@@ -136,7 +162,7 @@ export default function TranslogTimeline({ events = [], enrichmentLog = [], cont
                           Enrichment
                         </span>
                         {hasEnrichmentDetails && (
-                          <span className="inline-block w-fit text-[9px] text-blue-700 px-1.5 py-0.5 rounded bg-blue-50 border border-blue-100">
+                          <span className="inline-block w-fit text-[9px] text-[var(--neutral-600)] px-1.5 py-0.5 rounded bg-[var(--neutral-100)] border border-[var(--neutral-200)]">
                             {isExpanded ? "▼" : "▶"} Click to {isExpanded ? "collapse" : "view changes"}
                           </span>
                         )}
@@ -169,10 +195,14 @@ export default function TranslogTimeline({ events = [], enrichmentLog = [], cont
                 ) : (
                   <>
                     <p className="text-sm text-[var(--hertz-black)]">
-                      {ev.event}
-                      {ev.outcome && <span className="text-[var(--neutral-600)]"> — {ev.outcome}</span>}
+                      {ev._event ?? ev.event}
+                      {(ev._outcome ?? ev.outcome) && (
+                        <span className="text-[var(--neutral-600)]"> — {ev._outcome ?? ev.outcome}</span>
+                      )}
                     </p>
-                    <p className="text-xs text-[var(--neutral-600)]">{ev.time}</p>
+                    <p className="text-xs text-[var(--neutral-600)]">
+                      {ev._time ? (String(ev._time).match(/^\d{14}$/) ? formatTranslogTimestamp(ev._time) : ev._time) : (ev.time ?? "—")}
+                    </p>
                   </>
                 )}
               </div>

@@ -1,33 +1,37 @@
 export const roleDefaults = {
   bm: "bm-dashboard",
-  gm: "gm-dashboard",
+  gm: "gm-overview",
   admin: "admin-dashboard",
 };
 
 export const roleNav = {
   bm: [
+    { id: "bm-work", label: "Work", icon: "briefcase", sectionId: "work" },
+    { id: "bm-meeting-prep", label: "Meeting Prep", icon: "columns", sectionId: "work", parentId: "bm-work" },
+    { id: "bm-leaderboard", label: "Leaderboard", icon: "trophy", sectionId: "leaderboard", parentId: "bm-work" },
     { id: "bm-dashboard", label: "Summary", icon: "grid", sectionId: "dashboard" },
-    { id: "bm-leads", label: "My Leads", icon: "list", sectionId: "lead-pipeline" },
-    { id: "bm-todo", label: "Open Tasks", icon: "check-circle", sectionId: "open-tasks" },
+    { id: "bm-leads", label: "My Leads", icon: "list", sectionId: "lead-pipeline", parentId: "bm-dashboard" },
+    { id: "bm-todo", label: "Open Tasks", icon: "check-circle", sectionId: "open-tasks", parentId: "bm-dashboard" },
   ],
   gm: [
-    { id: "gm-dashboard", label: "Dashboard", icon: "grid", sectionId: "dashboard" },
-    { id: "gm-compliance", label: "Compliance", icon: "bar-chart", sectionId: "compliance" },
-    { id: "gm-cancelled", label: "Cancelled Leads", icon: "x-circle", sectionId: "cancelled-leads" },
-    { id: "gm-unused", label: "Unused Leads", icon: "list", sectionId: "unused-leads" },
-    { id: "gm-review", label: "Lead Review", icon: "columns", sectionId: "lead-review" },
-    { id: "gm-spot-check", label: "Spot Check", icon: "search", sectionId: "spot-check" },
+    { id: "gm-todos", label: "Work", icon: "briefcase", sectionId: "todos" },
+    { id: "gm-meeting-prep", label: "Meeting Prep", icon: "columns", parentId: "gm-todos" },
+    { id: "gm-spot-check", label: "Spot Check", icon: "eye", parentId: "gm-todos" },
+    { id: "gm-overview", label: "Summary", icon: "grid" },
+    { id: "gm-business-metrics", label: "Business Metrics", icon: "bar-chart", sectionId: "business-metrics", parentId: "gm-overview" },
+    { id: "gm-team-performance", label: "Team Performance", icon: "users", sectionId: "team-performance", parentId: "gm-overview" },
+    { id: "gm-activity-report", label: "Activity Report", icon: "activity", parentId: "gm-overview" },
   ],
   admin: [
     { id: "admin-dashboard", label: "Dashboard", icon: "grid" },
     { id: "admin-uploads", label: "Data Uploads", icon: "upload" },
     { id: "admin-org-mapping", label: "Org Mapping", icon: "users" },
-    { id: "admin-legend", label: "Legend", icon: "book" },
+    { id: "admin-legend", label: "Cancellation Reasons", icon: "book" },
   ],
 };
 
 // Hidden drill-down views (not shown in sidebar)
-export const drillDownViews = ["bm-lead-detail", "bm-task-detail", "gm-review-detail"];
+export const drillDownViews = ["bm-lead-detail", "bm-task-detail", "gm-lead-detail", "gm-task-detail"];
 
 export const roleMeta = {
   bm: { label: "Branch View", shortLabel: "Branch", profileLabel: "Branch Manager" },

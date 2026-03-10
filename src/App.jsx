@@ -1,9 +1,11 @@
-import { AppProvider, useApp } from "./context/AppContext";
-import { AuthProvider, useAuth } from "./context/AuthContext";
+import { useApp } from "./context/AppContext";
+import { useAuth } from "./context/AuthContext";
 import { DataProvider } from "./context/DataContext";
+import { supabase } from "./lib/supabase";
 import AppLayout from "./components/layout/AppLayout";
 import JourneyMode from "./components/JourneyMode";
 import InteractiveShell from "./components/interactive/InteractiveShell";
+import Landing from "./components/Landing";
 import LoginScreen from "./components/LoginScreen";
 import LoadingScreen from "./components/LoadingScreen";
 
@@ -22,6 +24,7 @@ function AppRoot() {
   const { role } = useApp();
 
   if (loading) return <LoadingScreen />;
+  if (!role && !supabase) return <Landing />;
   if (!role) return <LoginScreen />;
   return (
     <AppLayout>
@@ -32,12 +35,8 @@ function AppRoot() {
 
 export default function App() {
   return (
-    <AppProvider>
-      <AuthProvider>
-        <DataProvider>
-          <AppRoot />
-        </DataProvider>
-      </AuthProvider>
-    </AppProvider>
+    <DataProvider>
+      <AppRoot />
+    </DataProvider>
   );
 }

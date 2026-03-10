@@ -2,7 +2,17 @@ import { createContext, useContext, useEffect, useState, useCallback } from "rea
 import { supabase } from "../lib/supabase";
 import { useApp } from "./AppContext";
 
-const AuthContext = createContext(null);
+const defaultAuthValue = {
+  signIn: async () => {},
+  signOut: async () => {},
+  loading: false,
+  userProfile: null,
+  profileError: null,
+  updateProfile: async () => {},
+  completeOnboarding: async () => {},
+};
+
+const AuthContext = createContext(defaultAuthValue);
 
 export function AuthProvider({ children }) {
   const { setRole } = useApp();
@@ -11,6 +21,7 @@ export function AuthProvider({ children }) {
   const [profileError, setProfileError] = useState(null);
 
   const syncAuth = useCallback(async () => {
+    if (!supabase) { setLoading(false); return; }
     setProfileError(null);
     try {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -29,7 +40,7 @@ export function AuthProvider({ children }) {
       }
       const { data: profile, error: profileErr } = await supabase
         .from("user_profiles")
-        .select("role, display_name, branch, phone, onboarding_completed_at")
+        .select("role, display_name, branch, phone, onboarding_completed_at, avatar_url, title")
         .eq("id", session.user.id)
         .maybeSingle();
       if (profileErr) {
@@ -49,6 +60,8 @@ export function AuthProvider({ children }) {
           phone: profile.phone ?? null,
           email: session.user.email ?? null,
           onboardingCompletedAt: profile.onboarding_completed_at ?? null,
+          avatarUrl: profile.avatar_url ?? null,
+          title: profile.title ?? null,
         });
       } else {
         setProfileError("No profile found. Run: npm run seed:users");
@@ -66,6 +79,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     syncAuth();
+    if (!supabase) return;
     const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
       setLoading(true);
       syncAuth();
@@ -79,16 +93,19 @@ export function AuthProvider({ children }) {
   }, [syncAuth]);
 
   const signIn = useCallback(async (email, password) => {
+    if (!supabase) return;
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
   }, []);
 
   const signOut = useCallback(async () => {
+    if (!supabase) return;
     await supabase.auth.signOut();
     setRole(null);
   }, [setRole]);
 
   const updateProfile = useCallback(async (updates) => {
+    if (!supabase) return;
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user?.id) return;
     const { error } = await supabase
@@ -111,7 +128,5 @@ export function AuthProvider({ children }) {
 }
 
 export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
-  return ctx;
+  return useContext(AuthContext);
 }

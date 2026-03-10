@@ -7,11 +7,10 @@ import { useState, useEffect } from "react";
 import { useData } from "../context/DataContext";
 import { useAuth } from "../context/AuthContext";
 import PhoneInput, { parsePhoneE164, flagForCode, formatLocalDisplay } from "./PhoneInput";
+import { formatDateTimeShort } from "../utils/dateTime";
 
 function formatNow() {
-  const d = new Date();
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) +
-    ", " + d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  return formatDateTimeShort(new Date());
 }
 
 const PencilIcon = () => (
@@ -81,7 +80,6 @@ export default function LeadContactCard({ lead }) {
   const hasChanges = email !== (lead?.email ?? "") || phone !== (lead?.phone ?? "");
   const isEmailBlank = !email?.trim();
   const isPhoneBlank = !phone?.trim();
-  const needsEnrichment = isEmailBlank || isPhoneBlank;
   const parsedPhone = parsePhoneE164(lead?.phone ?? "");
 
   return (
@@ -101,22 +99,33 @@ export default function LeadContactCard({ lead }) {
         )}
       </div>
 
+      {!isEditing && (isEmailBlank || isPhoneBlank) && (
+        <div className="flex items-start gap-2.5 px-3.5 py-2.5 mb-3 bg-[var(--color-warning-light)] border border-[var(--color-warning)]/40 rounded-lg">
+          <svg className="w-4 h-4 text-[var(--color-warning)] shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <p className="text-sm text-[var(--hertz-black)]">
+            {isEmailBlank && isPhoneBlank
+              ? "Email and phone are missing."
+              : isEmailBlank ? "Email is missing." : "Phone is missing."}
+            {" "}
+            <button
+              type="button"
+              onClick={() => setIsEditing(true)}
+              className="font-medium text-[var(--hertz-black)] underline underline-offset-2 hover:opacity-80 cursor-pointer"
+            >
+              Update now
+            </button>
+          </p>
+        </div>
+      )}
+
       {isEditing ? (
         <>
-          {needsEnrichment && (
-            <div className="mb-3 p-3 rounded-lg bg-[var(--color-warning-light)] border border-[var(--color-warning)]/30">
-              <p className="text-sm font-medium text-[var(--hertz-black)]">
-                Add email and phone here to enable Email, SMS, and Call.
-              </p>
-              <p className="text-xs text-[var(--neutral-600)] mt-1">
-                Required before you can contact this lead. Click Save when done.
-              </p>
-            </div>
-          )}
           <div className="space-y-3">
             <div>
               <label className="text-xs text-[var(--neutral-600)] block mb-1">
-                Email {isEmailBlank && <span className="text-[var(--color-warning)]">— add to enable Email</span>}
+                Email
               </label>
               <input
                 type="email"
@@ -124,19 +133,21 @@ export default function LeadContactCard({ lead }) {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="customer@example.com"
                 className={`w-full border rounded px-3 py-2 text-sm bg-white focus:border-[var(--hertz-primary)] focus:outline-none ${
-                  isEmailBlank ? "border-[var(--color-warning)]/50" : "border-[var(--neutral-200)]"
+                  isEmailBlank
+                    ? "border-[var(--hertz-primary)] animate-hertz-pulse"
+                    : "border-[var(--neutral-200)]"
                 }`}
               />
             </div>
             <div>
               <label className="text-xs text-[var(--neutral-600)] block mb-1">
-                Phone {isPhoneBlank && <span className="text-[var(--color-warning)]">— add to enable SMS & Call</span>}
+                Phone
               </label>
               <PhoneInput
                 value={phone}
                 onChange={setPhone}
                 showHint={true}
-                showWarning={isPhoneBlank}
+                showIncomplete={isPhoneBlank}
               />
             </div>
             <div className="flex items-center gap-2">

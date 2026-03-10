@@ -6,10 +6,13 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "start": "serve dist -s -l 8000",
     "lint": "eslint .",
     "preview": "vite preview",
     "test:supabase": "node --env-file=.env scripts/test-supabase.mjs",
     "seed:users": "node scripts/seed-demo-users.mjs",
+    "fix:vikram": "node scripts/fix-vikram-user.mjs",
+    "fix:bm-branch": "node scripts/fix-bm-branch.mjs",
     "diagnose:auth": "node --env-file=.env scripts/diagnose-auth.mjs"
   },
   "dependencies": {
@@ -18,8 +21,10 @@
     "@supabase/supabase-js": "^2.47.10",
     "canvas-confetti": "^1.9.3",
     "framer-motion": "^12.34.3",
+    "papaparse": "^5.5.3",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "serve": "^14.2.6"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
