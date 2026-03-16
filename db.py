@@ -2,13 +2,20 @@ import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
-# Databricks Apps injects secrets as env vars via app.yaml valueFrom
+# 1. Try env var first (local dev or app.yaml value)
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
+# 2. Fall back to Databricks workspace secrets via REST API
 if not DATABASE_URL:
-    raise RuntimeError(
-        "DATABASE_URL is not set. Check app.yaml env config and the 'lms' secret scope."
-    )
+    try:
+        from databricks.sdk import WorkspaceClient
+        w = WorkspaceClient()
+        resp = w.secrets.get_secret(scope="lms", key="database-url")
+        DATABASE_URL = resp.value
+    except Exception as e:
+        raise RuntimeError(
+            f"DATABASE_URL not set and could not read from Databricks secrets: {e}"
+        )
 
 def get_connection():
     return psycopg2.connect(DATABASE_URL)
