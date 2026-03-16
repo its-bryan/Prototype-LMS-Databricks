@@ -1,7 +1,8 @@
 /**
- * DataContext — provides leads from Supabase or mockData.
- * When VITE_USE_SUPABASE=true: fetches from Supabase, refetches after updates (persistent).
- * When false: uses mockData with localStorage persistence so enrichment survives logout/restart.
+ * DataContext — provides leads from Databricks/Supabase or mockData.
+ * When VITE_USE_DATABRICKS=true: fetches from FastAPI backend (Lakebase Postgres).
+ * When VITE_USE_SUPABASE=true: fetches from Supabase directly.
+ * When both false: uses mockData with localStorage persistence.
  */
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import {
@@ -16,38 +17,46 @@ import {
   leaderboardData as mockLeaderboardData,
   tasks as mockTasks,
 } from "../data/mockData";
-import {
+
+// Pick the right data service based on build-time env vars
+const USE_DATABRICKS = import.meta.env.VITE_USE_DATABRICKS === "true";
+const dataModule = USE_DATABRICKS
+  ? await import("../data/databricksData.js")
+  : await import("../data/supabaseData.js");
+
+const {
   fetchLeads,
   fetchUploadSummary,
-  fetchOrgMapping as apiFetchOrgMapping,
-  fetchBranchManagers as apiFetchBranchManagers,
-  fetchWeeklyTrends as apiFetchWeeklyTrends,
-  fetchLeaderboardData as apiFetchLeaderboardData,
-  fetchCancellationReasonCategories as apiFetchCancellationReasonCategories,
-  fetchNextActions as apiFetchNextActions,
-  fetchTasksForGM as apiFetchTasksForGM,
-  updateLeadEnrichment as apiUpdateLeadEnrichment,
-  updateLeadContact as apiUpdateLeadContact,
-  updateLeadDirective as apiUpdateLeadDirective,
-  markLeadReviewed as apiMarkLeadReviewed,
-  fetchGmDirectives as apiFetchGmDirectives,
-  insertGmDirective as apiInsertGmDirective,
-  fetchLeadActivities as apiFetchLeadActivities,
-  fetchTasksForBranch as apiFetchTasksForBranch,
-  fetchTasksForLead as apiFetchTasksForLead,
-  fetchTaskById as apiFetchTaskById,
-  updateTaskStatus as apiUpdateTaskStatus,
-  appendTaskNote as apiAppendTaskNote,
-  insertTask as apiInsertTask,
-  createComplianceTasksForBranch as apiCreateComplianceTasksForBranch,
-  fetchWinsLearnings as apiFetchWinsLearnings,
-  submitWinsLearning as apiSubmitWinsLearning,
-} from "../data/supabaseData";
+  fetchOrgMapping: apiFetchOrgMapping,
+  fetchBranchManagers: apiFetchBranchManagers,
+  fetchWeeklyTrends: apiFetchWeeklyTrends,
+  fetchLeaderboardData: apiFetchLeaderboardData,
+  fetchCancellationReasonCategories: apiFetchCancellationReasonCategories,
+  fetchNextActions: apiFetchNextActions,
+  fetchTasksForGM: apiFetchTasksForGM,
+  updateLeadEnrichment: apiUpdateLeadEnrichment,
+  updateLeadContact: apiUpdateLeadContact,
+  updateLeadDirective: apiUpdateLeadDirective,
+  markLeadReviewed: apiMarkLeadReviewed,
+  fetchGmDirectives: apiFetchGmDirectives,
+  insertGmDirective: apiInsertGmDirective,
+  fetchLeadActivities: apiFetchLeadActivities,
+  fetchTasksForBranch: apiFetchTasksForBranch,
+  fetchTasksForLead: apiFetchTasksForLead,
+  fetchTaskById: apiFetchTaskById,
+  updateTaskStatus: apiUpdateTaskStatus,
+  appendTaskNote: apiAppendTaskNote,
+  insertTask: apiInsertTask,
+  createComplianceTasksForBranch: apiCreateComplianceTasksForBranch,
+  fetchWinsLearnings: apiFetchWinsLearnings,
+  submitWinsLearning: apiSubmitWinsLearning,
+} = dataModule;
+
 import { setOrgMappingSource, setBranchManagersSource, setWeeklyTrendsSource, setNowFromLeads } from "../selectors/demoSelectors";
 
 const DataContext = createContext(null);
 
-const USE_SUPABASE = import.meta.env.VITE_USE_SUPABASE === "true";
+const USE_SUPABASE = USE_DATABRICKS || import.meta.env.VITE_USE_SUPABASE === "true";
 const STORAGE_KEY = "hertz_lms_leads";
 
 function loadLeadsFromStorage() {

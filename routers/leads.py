@@ -82,6 +82,17 @@ async def update_contact(lead_id: int, body: dict):
     )
     return {"ok": True}
 
+@router.put("/leads/{lead_id}/review")
+async def mark_lead_reviewed(lead_id: int):
+    execute(
+        "UPDATE leads SET status = 'Reviewed', archived = true, updated_at = now() WHERE id = %s",
+        (lead_id,)
+    )
+    rows = query("SELECT * FROM leads WHERE id = %s", (lead_id,))
+    if not rows:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    return rows[0]
+
 @router.put("/leads/{lead_id}/archive")
 async def archive_lead(lead_id: int):
     execute(
