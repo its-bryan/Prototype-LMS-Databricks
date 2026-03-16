@@ -2,7 +2,13 @@ import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
-DATABASE_URL = os.environ["DATABASE_URL"]
+# Try Databricks secrets first, fall back to env var
+try:
+    from databricks.sdk import WorkspaceClient
+    w = WorkspaceClient()
+    DATABASE_URL = w.dbutils.secrets.get(scope="lms", key="database-url")
+except Exception:
+    DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
 def get_connection():
     return psycopg2.connect(DATABASE_URL)
