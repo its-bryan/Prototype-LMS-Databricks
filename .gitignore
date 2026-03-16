@@ -31,3 +31,14 @@ dist-ssr
 CLAUDE.md
 twilio-mcp/
 .firecrawl/
+
+# Supabase (replaced by Lakebase Postgres)
+supabase/
+SUPABASE_SETUP.md
+
+# Dev-only scripts and docs
+scripts/
+docs/
+
+# Other deployment platforms
+vercel.json
