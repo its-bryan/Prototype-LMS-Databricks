@@ -18,11 +18,9 @@ import {
   tasks as mockTasks,
 } from "../data/mockData";
 
-// Pick the right data service based on build-time env vars
-const USE_DATABRICKS = import.meta.env.VITE_USE_DATABRICKS === "true";
-const dataModule = USE_DATABRICKS
-  ? await import("../data/databricksData.js")
-  : await import("../data/supabaseData.js");
+// Data service: Databricks (Lakebase Postgres via FastAPI)
+// To switch back to Supabase, change the import below to supabaseData.js
+const dataModule = await import("../data/databricksData.js");
 
 const {
   fetchLeads,
@@ -56,7 +54,8 @@ import { setOrgMappingSource, setBranchManagersSource, setWeeklyTrendsSource, se
 
 const DataContext = createContext(null);
 
-const USE_SUPABASE = USE_DATABRICKS || import.meta.env.VITE_USE_SUPABASE === "true";
+// true = use live database (Databricks or Supabase); false = use mock data
+const USE_SUPABASE = true;
 const STORAGE_KEY = "hertz_lms_leads";
 
 function loadLeadsFromStorage() {
