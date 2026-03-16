@@ -1,4 +1,5 @@
 import os
+import base64
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
@@ -11,7 +12,8 @@ if not DATABASE_URL:
         from databricks.sdk import WorkspaceClient
         w = WorkspaceClient()
         resp = w.secrets.get_secret(scope="lms", key="database-url")
-        DATABASE_URL = resp.value
+        # Secrets API returns base64-encoded bytes
+        DATABASE_URL = base64.b64decode(resp.value).decode("utf-8")
     except Exception as e:
         raise RuntimeError(
             f"DATABASE_URL not set and could not read from Databricks secrets: {e}"
