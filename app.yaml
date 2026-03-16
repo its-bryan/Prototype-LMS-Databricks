@@ -1,4 +1,10 @@
 command: ['uvicorn', 'main:app', '--host', '0.0.0.0', '--port', '8000']
+
+resources:
+  - name: database-url
+    description: "Lakebase Postgres connection URL"
+    type: secret
+
 env:
   - name: DATABASE_URL
-    valueFrom: lms.database-url
+    valueFrom: database-url
