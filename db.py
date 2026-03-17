@@ -1,4 +1,5 @@
 import os
+from contextlib import contextmanager
 import psycopg
 from psycopg.rows import dict_row
 from databricks.sdk import WorkspaceClient
@@ -42,6 +43,7 @@ def execute(sql: str, params: tuple = None):
         conn.commit()
 
 
+@contextmanager
 def with_connection():
     """Context manager: one connection for multiple operations. Caller must commit."""
     conn = get_connection()

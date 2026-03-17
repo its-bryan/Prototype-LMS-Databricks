@@ -1,10 +1,11 @@
-import { useState, useCallback, useRef, useMemo } from "react";
+import React, { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { parseHlesCsv, parseTranslogCsv } from "../../utils/csvParsers";
 import { reconcileHlesUpload, reconcileTranslogUpload, buildCommitPlan } from "../../utils/reconciliation";
 import { leads as mockLeads } from "../../data/mockData";
 import { useData } from "../../context/DataContext";
-import { uploadHlesFile } from "../../data/databricksData";
+import { useAuth } from "../../context/AuthContext";
+import { uploadHlesFile, fetchUploadHistory } from "../../data/databricksData";
 
 // ---------------------------------------------------------------------------
 // CSV export helper
@@ -754,6 +755,7 @@ function OrphanActionSelector({ orphanedLeads, orphanAction, onOrphanAction }) {
 // ---------------------------------------------------------------------------
 export default function InteractiveUploads() {
   const { leads: contextLeads, refetchLeads, refetchOrgMapping, refetchDataAsOfDate } = useData();
+  const { userProfile } = useAuth();
 
   const [step, setStep] = useState("select");
   const [hlesFile, setHlesFile] = useState(null);
@@ -778,6 +780,27 @@ export default function InteractiveUploads() {
   const [commitResult, setCommitResult] = useState(null);
   const [commitError, setCommitError] = useState(null);
   const [commitProgress, setCommitProgress] = useState({ phase: "", pct: 0, detail: "" });
+
+  // Upload history (past uploads list)
+  const [uploadHistory, setUploadHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyExpandedId, setHistoryExpandedId] = useState(null);
+
+  // Load upload history on mount and when returning to the page
+  const loadUploadHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    try {
+      const list = await fetchUploadHistory();
+      setUploadHistory(list);
+    } catch {
+      setUploadHistory([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+  useEffect(() => {
+    loadUploadHistory();
+  }, [loadUploadHistory]);
 
   // Use Supabase leads when available, fall back to mock leads
   const existingLeads = useMemo(() => {
@@ -860,7 +883,10 @@ export default function InteractiveUploads() {
           pct: 20,
           detail: "Landing in Volume & running ETL…",
         });
-        const result = await uploadHlesFile(hlesFile);
+        const result = await uploadHlesFile(hlesFile, {
+          uploadedBy: userProfile?.displayName ?? undefined,
+        });
+        loadUploadHistory();
         setCommitResult({
           hles: {
             inserted: result.newLeads ?? 0,
@@ -907,7 +933,7 @@ export default function InteractiveUploads() {
     });
     setCommitting(false);
     setStep("summary");
-  }, [hlesReconciliation, translogReconciliation, translogParsed, conflictResolutions, orphanAction, hlesParsed, hlesFile, translogFile, refetchLeads, refetchOrgMapping, refetchDataAsOfDate]);
+  }, [hlesReconciliation, translogReconciliation, translogParsed, conflictResolutions, orphanAction, hlesParsed, hlesFile, translogFile, refetchLeads, refetchOrgMapping, refetchDataAsOfDate, userProfile?.displayName, loadUploadHistory]);
 
   const handleResolveConflict = useCallback((idx, resolution) => {
     setConflictResolutions((prev) => ({ ...prev, [idx]: resolution }));
@@ -945,6 +971,104 @@ export default function InteractiveUploads() {
           detect conflicts with enriched data, and let you resolve them before committing.
         </p>
       </div>
+
+      {/* Upload history: past files, date, who, status, metadata */}
+      <section className="mb-8">
+        <h3 className="text-sm font-semibold text-[var(--hertz-black)] mb-3">Upload history</h3>
+        {historyLoading ? (
+          <p className="text-sm text-[var(--neutral-500)]">Loading history…</p>
+        ) : uploadHistory.length === 0 ? (
+          <p className="text-sm text-[var(--neutral-500)]">No uploads yet.</p>
+        ) : (
+          <div className="border border-[var(--neutral-200)] rounded-lg overflow-hidden">
+            <div className="overflow-x-auto max-h-[280px] overflow-y-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-[var(--neutral-100)] sticky top-0">
+                  <tr>
+                    <th className="text-left py-2 px-3 font-medium text-[var(--neutral-600)]">Date</th>
+                    <th className="text-left py-2 px-3 font-medium text-[var(--neutral-600)]">File</th>
+                    <th className="text-left py-2 px-3 font-medium text-[var(--neutral-600)]">Uploaded by</th>
+                    <th className="text-left py-2 px-3 font-medium text-[var(--neutral-600)]">Status</th>
+                    <th className="text-left py-2 px-3 font-medium text-[var(--neutral-600)] w-8" aria-label="Expand" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {uploadHistory.map((row) => {
+                    const isExpanded = historyExpandedId === row.id;
+                    const dateStr =
+                      row.createdAt != null
+                        ? new Date(row.createdAt).toLocaleString(undefined, {
+                            dateStyle: "short",
+                            timeStyle: "short",
+                          })
+                        : "—";
+                    const statusLabel =
+                      row.status === "success"
+                        ? "Success"
+                        : row.status === "partial"
+                          ? "Partial"
+                          : "Failed";
+                    const statusClass =
+                      row.status === "success"
+                        ? "bg-emerald-100 text-emerald-800"
+                        : row.status === "partial"
+                          ? "bg-amber-100 text-amber-800"
+                          : "bg-red-100 text-red-800";
+                    const m = row.metadata ?? {};
+                    return (
+                      <React.Fragment key={row.id}>
+                        <tr className="border-t border-[var(--neutral-200)] hover:bg-[var(--neutral-50)]">
+                          <td className="py-2 px-3 text-[var(--neutral-700)]">{dateStr}</td>
+                          <td className="py-2 px-3 text-[var(--hertz-black)]">{row.filename}</td>
+                          <td className="py-2 px-3 text-[var(--neutral-700)]">{row.uploadedBy}</td>
+                          <td className="py-2 px-3">
+                            <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${statusClass}`}>
+                              {statusLabel}
+                            </span>
+                          </td>
+                          <td className="py-2 px-3">
+                            <button
+                              type="button"
+                              onClick={() => setHistoryExpandedId(isExpanded ? null : row.id)}
+                              className="text-[var(--neutral-500)] hover:text-[var(--hertz-black)] p-1 rounded"
+                              aria-expanded={isExpanded}
+                            >
+                              {isExpanded ? (
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                              ) : (
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                </svg>
+                              )}
+                            </button>
+                          </td>
+                        </tr>
+                        {isExpanded && (
+                          <tr key={`detail-${row.id}`} className="border-t border-[var(--neutral-200)] bg-[var(--neutral-50)]">
+                            <td colSpan={5} className="px-3 py-3 text-sm">
+                              <p className="font-medium text-[var(--hertz-black)] mb-2">Metadata &amp; logs</p>
+                              <ul className="space-y-1 text-[var(--neutral-700)]">
+                                <li>Rows parsed: {Number(m.rowsParsed ?? 0).toLocaleString()}</li>
+                                <li>New leads: {Number(m.newLeads ?? 0).toLocaleString()}</li>
+                                <li>Updated: {Number(m.updated ?? 0).toLocaleString()}</li>
+                                <li>Skipped / failed: {Number(m.failed ?? 0).toLocaleString()}</li>
+                                {row.dataAsOfDate && <li>Data as of: {row.dataAsOfDate}</li>}
+                                {row.landedPath && <li className="truncate" title={row.landedPath}>Landed: {row.landedPath}</li>}
+                              </ul>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </section>
 
       <StepIndicator currentStep={step} />
 

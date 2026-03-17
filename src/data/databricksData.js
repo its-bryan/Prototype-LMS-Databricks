@@ -213,13 +213,53 @@ export async function fetchUploadSummary() {
 }
 
 /**
+ * Fetch full upload history for the upload page (past files, date, who, status, metadata).
+ * Returns list of { id, createdAt, filename, uploadedBy, status, metadata, logs }.
+ */
+export async function fetchUploadHistory() {
+  const rows = await apiGet("/upload/history");
+  if (!Array.isArray(rows)) return [];
+  return rows.map((r) => {
+    const hles = r.hles ?? {};
+    const failed = Number(hles.failed ?? 0);
+    const rowsParsedNum = Number(hles.rows_parsed ?? hles.rowsParsed) || 0;
+    const status =
+      failed > 0 && failed === rowsParsedNum
+        ? "failed"
+        : failed > 0
+          ? "partial"
+          : "success";
+    return {
+      id: r.id,
+      createdAt: r.created_at,
+      filename: hles.filename ?? hles.landedPath ?? "—",
+      uploadedBy: hles.uploaded_by ?? hles.uploadedBy ?? "—",
+      status,
+      metadata: {
+        rowsParsed: hles.rows_parsed ?? hles.rowsParsed ?? 0,
+        newLeads: hles.new_leads ?? hles.newLeads ?? 0,
+        updated: hles.updated ?? 0,
+        failed: hles.failed ?? 0,
+      },
+      dataAsOfDate: r.data_as_of_date ?? null,
+      landedPath: hles.landed_path ?? hles.landedPath ?? null,
+    };
+  });
+}
+
+/**
  * Upload HLES Excel file via backend. File is landed in the UC Volume
  * (datalabs.lab_lms_prod.hles_landing_prod) then ETL runs into Lakebase Postgres.
  * Returns { rowsParsed, newLeads, updated, failed, landedPath? }.
  */
-export async function uploadHlesFile(file) {
+/**
+ * @param {File} file - HLES file to upload
+ * @param {{ uploadedBy?: string }} [options] - Optional uploaded_by for history
+ */
+export async function uploadHlesFile(file, options = {}) {
   const formData = new FormData();
   formData.append("file", file);
+  if (options.uploadedBy) formData.append("uploaded_by", options.uploadedBy);
   const url = `${API_BASE}/upload/hles`;
   const res = await fetch(url, {
     method: "POST",

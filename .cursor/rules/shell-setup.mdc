@@ -5,16 +5,32 @@ alwaysApply: true
 
 # Shell Environment Setup
 
-Every shell session must prepend Python and append Git, Databricks CLI, and fnm to the PATH. Run this **once per session** before any dev command:
+Every shell session must prepend Python and append Git, Databricks CLI, fnm, and PostgreSQL (for `psql`) to the PATH. Run this **once per session** before any dev command:
 
 ```powershell
-$env:PATH = "C:\Users\NH136948\AppData\Local\Programs\Python\Python312;C:\Users\NH136948\AppData\Local\Programs\Python\Python312\Scripts;" + $env:PATH + ";C:\Users\NH136948\AppData\Local\Programs\Git\cmd;C:\Users\NH136948\AppData\Local\Microsoft\WinGet\Packages\Databricks.DatabricksCLI_Microsoft.Winget.Source_8wekyb3d8bbwe;C:\Users\NH136948\AppData\Local\Microsoft\WinGet\Packages\Schniz.fnm_Microsoft.Winget.Source_8wekyb3d8bbwe"
+$env:PATH = "C:\Users\NH136948\AppData\Local\Programs\Python\Python312;C:\Users\NH136948\AppData\Local\Programs\Python\Python312\Scripts;" + $env:PATH + ";C:\Users\NH136948\AppData\Local\Programs\Git\cmd;C:\Users\NH136948\AppData\Local\Microsoft\WinGet\Packages\Databricks.DatabricksCLI_Microsoft.Winget.Source_8wekyb3d8bbwe;C:\Users\NH136948\AppData\Local\Microsoft\WinGet\Packages\Schniz.fnm_Microsoft.Winget.Source_8wekyb3d8bbwe;C:\Program Files\PostgreSQL\17\bin"
 fnm env --use-on-cd --shell power-shell | Invoke-Expression
 ```
 
-Python must be prepended (not appended) to override the Windows Store `python.exe` alias.
+- Python must be prepended (not appended) to override the Windows Store `python.exe` alias.
+- If PostgreSQL is installed in a different version folder (e.g. `16`), use `PostgreSQL\16\bin` instead of `17`.
+
+## Running psql (Lakebase / agent)
+
+To run `psql` against Lakebase Postgres from the CLI or Cursor agent:
+
+1. **Install PostgreSQL** on Windows if needed: `winget install PostgreSQL.PostgreSQL.17` (then restart the terminal, or add the `bin` path above).
+2. **Set `DATABASE_URL`** in a local `.env` file (see `.env.example`; never commit `.env`).
+3. **Load `.env` and run psql** in PowerShell:
+   ```powershell
+   Get-Content .env -Raw | ForEach-Object { $_ -split "`n" | ForEach-Object { if ($_ -match '^\s*DATABASE_URL=(.+)$') { $env:DATABASE_URL = $matches[1].Trim() } } }
+   psql $env:DATABASE_URL -c "SELECT 1"
+   ```
+   For a SQL file: `psql $env:DATABASE_URL -f docs/lakebase-migrations/006_delete_demo_data.sql`
+
+The agent should use this pattern when running Postgres queries via the CLI.
 
 ## Verify with
 ```powershell
-python --version && node --version && npm --version && git --version && databricks --version
+python --version && node --version && npm --version && git --version && databricks --version && psql --version
 ```

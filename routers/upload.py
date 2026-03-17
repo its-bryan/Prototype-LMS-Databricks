@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File
+from fastapi import APIRouter, UploadFile, File, Form
 import pandas as pd
 import json
 import io
@@ -87,8 +87,20 @@ def _row_to_update_tuple(row, confirm_num):
     )
 
 
+@router.get("/upload/history")
+def get_upload_history():
+    """Return all upload_summary rows for the upload history UI (date, who, status, metadata)."""
+    rows = query(
+        "SELECT id, created_at, hles, translog, data_as_of_date FROM upload_summary ORDER BY created_at DESC LIMIT 200"
+    )
+    return rows or []
+
+
 @router.post("/upload/hles")
-async def upload_hles(file: UploadFile = File(...)):
+async def upload_hles(
+    file: UploadFile = File(...),
+    uploaded_by: str | None = Form(None),
+):
     """Upload HLES Excel file -> land in Volume (if configured) -> ETL -> batch insert/update leads."""
     contents = await file.read()
     landed_path = _land_file_in_volume(contents, file.filename or "hles.xlsx", HLES_LANDING_VOLUME_PATH)
@@ -100,6 +112,10 @@ async def upload_hles(file: UploadFile = File(...)):
     stats = {"rowsParsed": len(df), "newLeads": 0, "updated": 0, "failed": 0}
     if landed_path:
         stats["landedPath"] = landed_path
+    if file.filename:
+        stats["filename"] = file.filename
+    if uploaded_by:
+        stats["uploaded_by"] = uploaded_by
 
     # Build list of (confirm_num, row) for valid rows
     rows_to_process = []
