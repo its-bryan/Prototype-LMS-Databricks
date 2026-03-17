@@ -798,8 +798,8 @@ export default function InteractiveUploads() {
     }
 
     setParsing(false);
-    // Auto-advance if no errors prevent it
-    setTimeout(() => setStep("preview"), 500);
+    // Do not auto-advance: user must click "Continue to Preview" so they can read
+    // validation stats and any "rows skipped" errors before proceeding.
   }, [hlesFile, translogFile, existingLeads]);
 
   // ---- Step: Commit ----
@@ -1145,6 +1145,22 @@ export default function InteractiveUploads() {
                 />
               )}
             </div>
+            {!parsing && (
+              <div className="flex justify-between mt-6">
+                <button
+                  onClick={() => setStep("select")}
+                  className="px-4 py-2 text-sm text-[var(--neutral-500)] hover:text-[var(--hertz-black)] cursor-pointer"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={() => setStep("preview")}
+                  className="px-5 py-2.5 bg-[var(--hertz-primary)] text-[var(--hertz-black)] rounded-lg text-sm font-semibold hover:bg-[#E6BC00] transition-colors cursor-pointer"
+                >
+                  Continue to Preview
+                </button>
+              </div>
+            )}
           </motion.div>
         )}
 

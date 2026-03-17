@@ -37,12 +37,12 @@ function col(row, ...names) {
 }
 
 // ---------------------------------------------------------------------------
-// Status derivation from HLES indicator columns
+// Status derivation from HLES indicator columns (optional; defaults to Unused)
 // ---------------------------------------------------------------------------
 function deriveStatus(row) {
-  if (String(row.RENT_IND) === "1") return "Rented";
-  if (String(row.CANCEL_ID) === "1") return "Cancelled";
-  if (String(row.UNUSED_IND) === "1") return "Unused";
+  if (String(col(row, "RENT_IND")) === "1") return "Rented";
+  if (String(col(row, "CANCEL_ID")) === "1") return "Cancelled";
+  if (String(col(row, "UNUSED_IND")) === "1") return "Unused";
   return "Unused"; // default if none set
 }
 
@@ -84,19 +84,18 @@ function parseBranchName(rentLoc) {
 }
 
 // ---------------------------------------------------------------------------
-// HLES Required fields for validation
+// HLES validation — only CONFIRM_NUM is required; other fields have defaults
 // ---------------------------------------------------------------------------
-const HLES_REQUIRED = ["CONFIRM_NUM", "RENTER_LAST", "RENT_LOC"];
 
 /**
  * Validate a single HLES row. Returns null if valid, or an error string.
+ * Only CONFIRM_NUM is required (used for matching/reconciliation). RENTER_LAST,
+ * RENT_LOC, and status indicators are optional and default in hlesRowToLead.
  */
 function validateHlesRow(row, rowIndex) {
-  for (const field of HLES_REQUIRED) {
-    if (!row[field]) return `Row ${rowIndex}: Missing required field "${field}"`;
-  }
-  if (row.RENT_IND === undefined && row.CANCEL_ID === undefined && row.UNUSED_IND === undefined) {
-    return `Row ${rowIndex}: No status indicator (RENT_IND, CANCEL_ID, UNUSED_IND)`;
+  const confirmNum = col(row, "CONFIRM_NUM", "KNUM");
+  if (!confirmNum || String(confirmNum).trim() === "") {
+    return `Row ${rowIndex}: Missing required field CONFIRM_NUM (or KNUM)`;
   }
   return null;
 }
