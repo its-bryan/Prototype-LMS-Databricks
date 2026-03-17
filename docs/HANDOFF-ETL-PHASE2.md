@@ -72,6 +72,17 @@ A Databricks solution architect suggested introducing a **staging layer** before
 
 ---
 
+## Business semantics (2026-03-17) — Confirmation Number as UUID
+
+- **Unique identifier (UUID)** = **CONFIRM_NUM** (Confirmation Number). Match/upsert leads by `confirm_num`. The DB column `reservation_id` is set to `confirm_num` for display ("Reservation #" in the UI).
+- **Customer** = **RENTER_LAST** only (Customer Last Name). Not ADJ FNAME/LNAME.
+- **ADJ FNAME / ADJ LNAME** = Insurance adjuster names (not the customer).
+- **RES_ID** = Always 1 in the file (reservation = true). Not used as an identifier. Omitted from ETL key and from required fields.
+
+See **docs/PLAN-CONFIRM-NUM-AS-UUID.md** for the full change plan and migration 005.
+
+---
+
 ## What Needs Fixing: ETL
 
 ### The Problem

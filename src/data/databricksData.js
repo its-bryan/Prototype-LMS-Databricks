@@ -53,7 +53,7 @@ function leadFromRow(r) {
   return {
     id: r.id,
     customer: r.customer,
-    reservationId: r.reservation_id,
+    reservationId: r.confirm_num ?? r.reservation_id,
     confirmNum: r.confirm_num ?? r.reservation_id,
     knum: r.knum ?? null,
     email: r.email ?? null,
@@ -210,6 +210,27 @@ export async function fetchUploadSummary() {
     translog: data.translog,
     dataAsOfDate: data.created_at ?? data.data_as_of_date,
   };
+}
+
+/**
+ * Upload HLES Excel file via backend. File is landed in the UC Volume
+ * (datalabs.lab_lms_prod.hles_landing_prod) then ETL runs into Lakebase Postgres.
+ * Returns { rowsParsed, newLeads, updated, failed, landedPath? }.
+ */
+export async function uploadHlesFile(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+  const url = `${API_BASE}/upload/hles`;
+  const res = await fetch(url, {
+    method: "POST",
+    body: formData,
+    // Do not set Content-Type; browser sets multipart/form-data with boundary
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Upload failed: ${res.status} ${text}`);
+  }
+  return res.json();
 }
 
 /** Fetch the org-mapping (branch → BM/AM/GM/zone). */

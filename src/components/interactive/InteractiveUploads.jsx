@@ -15,6 +15,7 @@ import {
   insertUploadSummary,
   fetchLeads,
 } from "../../data/supabaseData";
+import { uploadHlesFile } from "../../data/databricksData";
 
 // ---------------------------------------------------------------------------
 // CSV export helper
@@ -812,7 +813,39 @@ export default function InteractiveUploads() {
       : { inserts: [], updates: [], archives: [], skips: [] };
 
     if (!useSupabase) {
-      // Mock mode: simulate commit with a delay
+      // Databricks mode: send HLES file to backend (lands in Volume + ETL to Postgres)
+      if (hlesFile) {
+        try {
+          setCommitProgress({
+            phase: "Uploading HLES",
+            pct: 20,
+            detail: "Landing in Volume & running ETL…",
+          });
+          const result = await uploadHlesFile(hlesFile);
+          setCommitResult({
+            hles: {
+              inserted: result.newLeads ?? 0,
+              updated: result.updated ?? 0,
+              failed: result.failed ?? 0,
+              rowsParsed: result.rowsParsed ?? 0,
+              landedPath: result.landedPath ?? null,
+              archived: 0,
+              skipped: 0,
+            },
+            translog: null,
+            orgMapping: null,
+          });
+          refetchLeads?.();
+          refetchDataAsOfDate?.();
+        } catch (err) {
+          setCommitError(err?.message ?? "Upload failed");
+        } finally {
+          setCommitting(false);
+          setStep("summary");
+        }
+        return;
+      }
+      // No HLES file: simulate (e.g. TRANSLOG-only in mock)
       await new Promise((r) => setTimeout(r, 1500));
       setCommitResult({
         hles: {
@@ -1272,9 +1305,12 @@ export default function InteractiveUploads() {
                     {[
                       { label: "New leads inserted", value: commitResult.hles.inserted },
                       { label: "Existing leads updated", value: commitResult.hles.updated },
-                      { label: "Leads archived", value: commitResult.hles.archived },
+                      { label: "Leads archived", value: commitResult.hles.archived ?? 0 },
                       commitResult.hles.deleted > 0 && { label: "Leads removed", value: commitResult.hles.deleted, color: "text-[#C62828]" },
-                      { label: "Leads skipped", value: commitResult.hles.skipped },
+                      { label: "Leads skipped", value: commitResult.hles.skipped ?? 0 },
+                      commitResult.hles.rowsParsed != null && { label: "Rows parsed", value: commitResult.hles.rowsParsed },
+                      (commitResult.hles.failed ?? 0) > 0 && { label: "Rows failed", value: commitResult.hles.failed, color: "text-[#C62828]" },
+                      commitResult.hles.landedPath && { label: "Landed in Volume", value: commitResult.hles.landedPath },
                     ].filter(Boolean).map((s) => (
                       <div key={s.label} className="flex justify-between text-sm">
                         <span className="text-[var(--neutral-500)]">{s.label}</span>

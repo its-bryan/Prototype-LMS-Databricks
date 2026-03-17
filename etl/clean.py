@@ -15,15 +15,14 @@ def clean_hles_data(df: pd.DataFrame, org_lookup: dict | None = None) -> pd.Data
     df.columns = [re.sub(r'\s+', '_', col.strip().lower()) for col in df.columns]
 
     # After normalization the HLES columns become:
-    #   res_id, confirm_num, claim, cdp, cdp_name, week_of, init_date,
+    #   confirm_num, renter_last, claim, cdp, cdp_name, week_of, init_date,
     #   htzregion, set_state, zone, area_mgr, general_mgr, rent_loc,
-    #   rent_ind, cancel_id, unused_ind, contact_group, contact_range,
-    #   adj_lname, adj_fname, body_shop, code, knum, month, zip,
-    #   cancel_reason, init_dt_final, fstdt_from_alpha1, day_dif, hrs_dif,
-    #   min_dif, date_out1
+    #   rent_ind, adj_lname, adj_fname, body_shop, code, knum, ...
+    # Business key = confirm_num (Confirmation Number). RES_ID is always 1 (flag), not used.
+    # Customer = RENTER_LAST (Customer Last Name). ADJ FNAME/LNAME = adjuster names.
     col_map = {
-        'res_id': 'reservation_id',
         'confirm_num': 'confirm_num',
+        'renter_last': 'customer',  # Customer Last Name
         'cdp_name': 'insurance_company',
         'rent_loc': 'branch',
         'general_mgr': 'general_mgr',
@@ -41,11 +40,6 @@ def clean_hles_data(df: pd.DataFrame, org_lookup: dict | None = None) -> pd.Data
     }
     df = df.rename(columns={k: v for k, v in col_map.items() if k in df.columns})
 
-    # Customer name = ADJ FNAME + ADJ LNAME (HLES has no single customer column)
-    if 'adj_fname' in df.columns or 'adj_lname' in df.columns:
-        fname = df.get('adj_fname', pd.Series('', index=df.index)).fillna('')
-        lname = df.get('adj_lname', pd.Series('', index=df.index)).fillna('')
-        df['customer'] = (fname + ' ' + lname).str.strip()
     if 'customer' not in df.columns:
         df['customer'] = ''
 
@@ -53,7 +47,7 @@ def clean_hles_data(df: pd.DataFrame, org_lookup: dict | None = None) -> pd.Data
     if 'branch' in df.columns:
         df['rent_loc'] = df['branch']
 
-    # Map RENT_IND to status
+    # Map RENT_IND to status (1 = Rented, 0 = Cancelled; RES_ID not used as identifier)
     if 'rent_ind' in df.columns:
         df['rent_ind'] = pd.to_numeric(df['rent_ind'], errors='coerce')
         df['status'] = df['rent_ind'].map({1: 'Rented', 0: 'Cancelled'}).fillna('Unused')
@@ -64,17 +58,15 @@ def clean_hles_data(df: pd.DataFrame, org_lookup: dict | None = None) -> pd.Data
     if 'week_of' in df.columns:
         df['week_of'] = pd.to_datetime(df['week_of'], errors='coerce').dt.date
 
-    # Ensure reservation_id is string (DB column is text); Excel often gives int
-    if 'reservation_id' in df.columns:
-        df['reservation_id'] = df['reservation_id'].astype(str).str.strip()
-
-    # Drop duplicates — keep last occurrence
-    if 'reservation_id' in df.columns:
-        df = df.drop_duplicates(subset='reservation_id', keep='last')
-
-    # Drop rows missing or invalid reservation_id (the only truly required field)
-    if 'reservation_id' in df.columns:
-        df = df[df['reservation_id'].notna() & (df['reservation_id'].str.strip() != '') & (df['reservation_id'] != 'nan')]
+    # Confirmation number is the business key (UUID). Ensure string, dedup, drop invalid.
+    if 'confirm_num' in df.columns:
+        df['confirm_num'] = df['confirm_num'].astype(str).str.strip()
+    if 'confirm_num' in df.columns:
+        df = df[df['confirm_num'].notna() & (df['confirm_num'].str.strip() != '') & (df['confirm_num'] != 'nan')]
+        df = df.drop_duplicates(subset='confirm_num', keep='last')
+    # For display/API compatibility, set reservation_id = confirm_num (DB can show "Reservation #" = confirmation number)
+    if 'confirm_num' in df.columns:
+        df['reservation_id'] = df['confirm_num']
 
     # BM name resolution: look up from org_mapping by branch, else leave None
     if org_lookup and 'branch' in df.columns:
@@ -106,6 +98,7 @@ def clean_translog_data(df: pd.DataFrame) -> pd.DataFrame:
     df.columns = [re.sub(r'\s+', '_', col.strip().lower()) for col in df.columns]
 
     col_map = {
+        'confirm_num': 'confirm_num',
         'res_id': 'reservation_id',
         'event_dt': 'event_time',
         'event_date': 'event_time',
@@ -120,8 +113,13 @@ def clean_translog_data(df: pd.DataFrame) -> pd.DataFrame:
     if 'event_time' in df.columns:
         df['event_time'] = pd.to_datetime(df['event_time'], errors='coerce')
 
-    # Drop rows without reservation_id
-    if 'reservation_id' in df.columns:
-        df = df.dropna(subset=['reservation_id'])
+    # Need at least one key to match leads (prefer confirm_num; fallback reservation_id)
+    if 'confirm_num' in df.columns:
+        df['confirm_num'] = df['confirm_num'].astype(str).str.strip()
+    if 'confirm_num' not in df.columns and 'reservation_id' in df.columns:
+        df['reservation_id'] = df['reservation_id'].astype(str).str.strip()
+    drop_key = 'confirm_num' if 'confirm_num' in df.columns else 'reservation_id'
+    if drop_key in df.columns:
+        df = df[df[drop_key].notna() & (df[drop_key].astype(str).str.strip() != '') & (df[drop_key].astype(str) != 'nan')]
 
     return df

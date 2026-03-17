@@ -2,10 +2,40 @@ from fastapi import APIRouter, UploadFile, File
 import pandas as pd
 import json
 import io
+import os
+import re
+from datetime import datetime
 from db import execute, query
 from etl.clean import clean_hles_data, clean_translog_data
 
 router = APIRouter()
+
+# Unity Catalog Volume for HLES landing: datalabs.lab_lms_prod.hles_landing_prod
+# Override with env HLES_LANDING_VOLUME_PATH (e.g. empty to skip Volume write when testing locally).
+# Behavior: see docs/VOLUME-LANDING-BEHAVIOR.md. Test: python scripts/test_volume_landing.py
+HLES_LANDING_VOLUME_PATH = os.getenv("HLES_LANDING_VOLUME_PATH", "/Volumes/datalabs/lab_lms_prod/hles_landing_prod")
+TRANSLOG_LANDING_VOLUME_PATH = os.getenv(
+    "TRANSLOG_LANDING_VOLUME_PATH", "/Volumes/datalabs/lab_lms_prod/translog_landing_prod"
+)
+
+
+def _land_file_in_volume(contents: bytes, original_filename: str, base_path: str) -> str | None:
+    """Write uploaded file to a Unity Catalog Volume. Returns path if written, else None."""
+    if not base_path or not contents:
+        return None
+    safe_name = re.sub(r"[^\w\-\.]", "_", original_filename or "upload.xlsx")
+    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    filename = f"{timestamp}_{safe_name}"
+    base = base_path.rstrip("/")
+    path = f"{base}/{filename}" if base else None
+    if not path:
+        return None
+    try:
+        with open(path, "wb") as f:
+            f.write(contents)
+        return path
+    except Exception:
+        return None
 
 
 def _build_org_lookup() -> dict:
@@ -28,44 +58,53 @@ def _val(row, col):
 
 @router.post("/upload/hles")
 async def upload_hles(file: UploadFile = File(...)):
-    """Upload HLES Excel file -> clean -> insert/update leads table."""
+    """Upload HLES Excel file -> land in Volume (if configured) -> ETL -> insert/update leads table."""
     contents = await file.read()
+    # Land raw file in Unity Catalog Volume for audit/re-run (datalabs.lab_lms_prod.hles_landing_prod)
+    landed_path = _land_file_in_volume(contents, file.filename or "hles.xlsx", HLES_LANDING_VOLUME_PATH)
     df = pd.read_excel(io.BytesIO(contents), engine="openpyxl")
 
     org_lookup = _build_org_lookup()
     df_clean = clean_hles_data(df, org_lookup)
 
     stats = {"rowsParsed": len(df), "newLeads": 0, "updated": 0, "failed": 0}
+    if landed_path:
+        stats["landedPath"] = landed_path
 
     for _, row in df_clean.iterrows():
         try:
+            confirm_num = _val(row, "confirm_num")
+            if not confirm_num:
+                stats["failed"] += 1
+                continue
+            # Match by confirmation number (business key); reservation_id = confirm_num for display
             existing = query(
-                "SELECT id FROM leads WHERE reservation_id = %s",
-                (row["reservation_id"],)
+                "SELECT id FROM leads WHERE confirm_num = %s",
+                (confirm_num,)
             )
             if existing:
                 execute(
                     """UPDATE leads SET
                         customer = %s, status = %s, branch = %s, bm_name = %s,
                         insurance_company = %s, hles_reason = %s, init_dt_final = %s,
-                        confirm_num = %s, knum = %s, body_shop = %s,
+                        confirm_num = %s, reservation_id = %s, knum = %s, body_shop = %s,
                         cdp_name = %s, htz_region = %s, set_state = %s,
                         zone = %s, area_mgr = %s, general_mgr = %s,
                         rent_loc = %s, week_of = %s, contact_range = %s,
                         updated_at = now()
-                    WHERE reservation_id = %s""",
+                    WHERE confirm_num = %s""",
                     (
                         _val(row, "customer"), _val(row, "status"),
                         _val(row, "branch"), _val(row, "bm_name"),
                         _val(row, "insurance_company"), _val(row, "hles_reason"),
                         _val(row, "init_dt_final"),
-                        _val(row, "confirm_num"), _val(row, "knum"),
-                        _val(row, "body_shop"), _val(row, "cdp_name"),
+                        confirm_num, confirm_num,
+                        _val(row, "knum"), _val(row, "body_shop"), _val(row, "cdp_name"),
                         _val(row, "htz_region"), _val(row, "set_state"),
                         _val(row, "zone"), _val(row, "area_mgr"),
                         _val(row, "general_mgr"), _val(row, "rent_loc"),
                         _val(row, "week_of"), _val(row, "contact_range"),
-                        row["reservation_id"],
+                        confirm_num,
                     )
                 )
                 stats["updated"] += 1
@@ -80,11 +119,11 @@ async def upload_hles(file: UploadFile = File(...)):
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
                             %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
                     (
-                        _val(row, "customer"), row["reservation_id"],
+                        _val(row, "customer"), confirm_num,
                         _val(row, "status"), _val(row, "branch"),
                         _val(row, "bm_name"), _val(row, "insurance_company"),
                         _val(row, "hles_reason"), _val(row, "init_dt_final"),
-                        _val(row, "confirm_num"), _val(row, "knum"),
+                        confirm_num, _val(row, "knum"),
                         _val(row, "body_shop"), _val(row, "cdp_name"),
                         _val(row, "htz_region"), _val(row, "set_state"),
                         _val(row, "zone"), _val(row, "area_mgr"),
@@ -105,18 +144,29 @@ async def upload_hles(file: UploadFile = File(...)):
 
 @router.post("/upload/translog")
 async def upload_translog(file: UploadFile = File(...)):
-    """Upload TRANSLOG Excel file -> match events to leads."""
+    """Upload TRANSLOG Excel file -> land in Volume (if configured) -> match events to leads."""
     contents = await file.read()
+    # Land raw file in Unity Catalog Volume (datalabs.lab_lms_prod.translog_landing_prod)
+    landed_path = _land_file_in_volume(
+        contents, file.filename or "translog.xlsx", TRANSLOG_LANDING_VOLUME_PATH
+    )
     df = pd.read_excel(io.BytesIO(contents), engine="openpyxl")
 
     df_clean = clean_translog_data(df)
 
     stats = {"eventsParsed": len(df), "matched": 0, "orphan": 0}
+    if landed_path:
+        stats["landedPath"] = landed_path
 
     for _, row in df_clean.iterrows():
+        # Match lead by confirm_num (preferred) or reservation_id for backward compatibility
+        key = row.get("confirm_num") or row.get("reservation_id")
+        if not key:
+            stats["orphan"] += 1
+            continue
         existing = query(
-            "SELECT id, translog FROM leads WHERE reservation_id = %s",
-            (row["reservation_id"],)
+            "SELECT id, translog FROM leads WHERE confirm_num = %s OR reservation_id = %s LIMIT 1",
+            (key, key)
         )
         if existing:
             lead = existing[0]
