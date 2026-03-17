@@ -1,26 +1,36 @@
 import os
 import base64
+from urllib.parse import urlparse
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from databricks.sdk import WorkspaceClient
 
-# 1. Try env var first (local dev or app.yaml value)
-DATABASE_URL = os.environ.get("DATABASE_URL", "")
+# Shared WorkspaceClient for token generation
+_ws = WorkspaceClient()
 
-# 2. Fall back to Databricks workspace secrets via REST API
-if not DATABASE_URL:
-    try:
-        from databricks.sdk import WorkspaceClient
-        w = WorkspaceClient()
-        resp = w.secrets.get_secret(scope="lms", key="database-url")
-        # Secrets API returns base64-encoded bytes
-        DATABASE_URL = base64.b64decode(resp.value).decode("utf-8")
-    except Exception as e:
-        raise RuntimeError(
-            f"DATABASE_URL not set and could not read from Databricks secrets: {e}"
-        )
+# Parse host/database/user from the stored connection string (once at startup)
+_raw_url = os.environ.get("DATABASE_URL", "")
+if not _raw_url:
+    resp = _ws.secrets.get_secret(scope="lms", key="database-url")
+    _raw_url = base64.b64decode(resp.value).decode("utf-8")
+
+_parsed = urlparse(_raw_url)
+_DB_HOST = _parsed.hostname
+_DB_NAME = _parsed.path.lstrip("/")
+_DB_USER = _parsed.username
+
 
 def get_connection():
-    return psycopg2.connect(DATABASE_URL)
+    # Generate a fresh OAuth token for every connection (tokens expire)
+    headers = _ws.config.authenticate()
+    token = headers.get("Authorization", "").replace("Bearer ", "")
+    return psycopg2.connect(
+        host=_DB_HOST,
+        database=_DB_NAME,
+        user=_DB_USER,
+        password=token,
+        sslmode="require",
+    )
 
 def query(sql: str, params: tuple = None) -> list[dict]:
     with get_connection() as conn:
