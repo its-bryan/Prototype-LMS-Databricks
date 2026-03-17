@@ -8,10 +8,12 @@
 import Papa from "papaparse";
 
 // ---------------------------------------------------------------------------
-// HLES column name normalisation (real exports often have leading \n)
+// HLES column name normalisation (BOM, leading \n, trim — Excel/CSV exports)
 // ---------------------------------------------------------------------------
 function cleanKey(key) {
-  return key.replace(/^\n/, "").trim();
+  const s = typeof key === "string" ? key : String(key ?? "");
+  // Strip UTF-8 BOM and leading newline (Excel "Save as CSV" often adds BOM to first header)
+  return s.replace(/^\uFEFF/, "").replace(/^\n/, "").trim();
 }
 
 function cleanRow(raw) {
@@ -22,15 +24,16 @@ function cleanRow(raw) {
   return out;
 }
 
-/** Case-insensitive column lookup — handles "BODY SHOP", "Body Shop", "body_shop", etc. */
+/** Case-insensitive column lookup — handles "BODY SHOP", "Body Shop", "body_shop", BOM on first column, etc. */
 function col(row, ...names) {
   for (const name of names) {
     if (row[name] !== undefined) return row[name];
   }
   const keys = Object.keys(row);
+  const normalize = (s) => cleanKey(s).toLowerCase().replace(/[_\s]+/g, "");
   for (const name of names) {
-    const lower = name.toLowerCase().replace(/[_\s]+/g, "");
-    const match = keys.find((k) => k.toLowerCase().replace(/[_\s]+/g, "") === lower);
+    const target = normalize(name);
+    const match = keys.find((k) => normalize(k) === target);
     if (match !== undefined) return row[match];
   }
   return "";
