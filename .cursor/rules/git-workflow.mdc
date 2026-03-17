@@ -1,0 +1,35 @@
+---
+description: Git commit and push workflow — use after every code change
+alwaysApply: false
+---
+
+# Git Commit & Push Pipeline
+
+Use this workflow after completing code changes. This does NOT deploy — use the deploy pipeline rule for that.
+
+## Prerequisites
+Ensure PATH is set (see shell-setup rule).
+
+## Steps
+
+### 1. Stage changes
+```powershell
+git status
+git diff --stat
+```
+Review what changed. Never commit `.env`, credentials, or secrets.
+
+### 2. Commit
+- Follow existing commit style: `type: description` (e.g. `feat:`, `fix:`, `docs:`, `refactor:`)
+- Use a HEREDOC for multi-line messages
+- Reference the component or area changed
+
+### 3. Push
+```powershell
+git push origin main
+```
+Verify push succeeded. If rejected, pull first: `git pull --rebase origin main && git push origin main`.
+
+## Repo details
+- **Remote**: `origin` → `https://github.com/popcornAlesto33/Prototype-LMS-Databricks.git`
+- **Branch**: `main`

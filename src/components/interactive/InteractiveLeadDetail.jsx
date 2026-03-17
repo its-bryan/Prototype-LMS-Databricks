@@ -1,13 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { useApp } from "../../context/AppContext";
 import BackButton from "../BackButton";
-import { useAuth } from "../../context/AuthContext";
 import { useData } from "../../context/DataContext";
-import { getLeadById, getTasksForLead, getUpcomingCommunications } from "../../selectors/demoSelectors";
+import { getLeadById, getTasksForLead } from "../../selectors/demoSelectors";
 import LeadDetail from "../LeadDetail";
 import LeadContactCard from "../LeadContactCard";
-import ContactButtons from "../ContactButtons";
-import UpcomingCommunications from "../UpcomingCommunications";
 import InteractiveEnrichmentForm from "./InteractiveEnrichmentForm";
 import GMDirectiveSection from "../GMDirectiveSection";
 
@@ -16,23 +13,9 @@ export default function InteractiveLeadDetail() {
   const isGMContext = activeView === "gm-lead-detail" || role === "gm";
   const backView = isGMContext ? "gm-lead-review" : "bm-leads";
   const backLabel = isGMContext ? "Back to Lead Review" : "Back to leads";
-  const { userProfile } = useAuth();
-  const { leads, fetchLeadActivities, fetchTasksForLead, refetchLeads, useSupabase, updateTaskStatus } = useData();
+  const { leads, fetchTasksForLead, useSupabase, updateTaskStatus } = useData();
   const lead = getLeadById(leads, selectedLeadId);
-  const [contactActivities, setContactActivities] = useState([]);
   const [leadTasks, setLeadTasks] = useState([]);
-
-  const loadActivities = useCallback(async () => {
-    if (!lead?.id || !fetchLeadActivities) return;
-    try {
-      const activities = await fetchLeadActivities(lead.id);
-      setContactActivities(activities);
-      refetchLeads?.();
-    } catch (err) {
-      console.error("[InteractiveLeadDetail] Failed to fetch activities:", err);
-      setContactActivities([]);
-    }
-  }, [lead?.id, fetchLeadActivities, refetchLeads]);
 
   const loadTasks = useCallback(async () => {
     if (!lead?.id) return;
@@ -48,10 +31,6 @@ export default function InteractiveLeadDetail() {
       setLeadTasks(getTasksForLead(lead.id));
     }
   }, [lead?.id, useSupabase, fetchTasksForLead]);
-
-  useEffect(() => {
-    loadActivities();
-  }, [loadActivities]);
 
   useEffect(() => {
     loadTasks();
@@ -72,20 +51,6 @@ export default function InteractiveLeadDetail() {
       <LeadDetail
         lead={lead}
         contactSlot={<LeadContactCard lead={lead} />}
-        contactButtonsSlot={
-          <ContactButtons
-            lead={lead}
-            agentPhone={userProfile?.phone}
-            userProfile={userProfile}
-            onContactSuccess={loadActivities}
-          />
-        }
-        upcomingCommsSlot={
-          (() => {
-            const upcomingItems = getUpcomingCommunications(lead, contactActivities);
-            return upcomingItems.length > 0 ? <UpcomingCommunications items={upcomingItems} /> : null;
-          })()
-        }
         enrichmentSlot={
           isGMContext
             ? <GMDirectiveSection lead={lead} />
@@ -145,7 +110,6 @@ export default function InteractiveLeadDetail() {
             )}
           </div>
         }
-        contactActivities={contactActivities}
       />
     </div>
   );

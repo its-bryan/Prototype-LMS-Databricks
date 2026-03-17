@@ -43,5 +43,9 @@ scripts/
 # Sample data (real HLES/TRANSLOG — don't push to public repos)
 data/samples/
 
+# Python bytecode
+__pycache__/
+*.pyc
+
 # Other deployment platforms
 vercel.json

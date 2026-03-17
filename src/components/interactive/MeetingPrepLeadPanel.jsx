@@ -7,41 +7,22 @@ import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import LeadDetail from "../LeadDetail";
 import LeadContactCard from "../LeadContactCard";
-import ContactButtons from "../ContactButtons";
 import InteractiveEnrichmentForm from "./InteractiveEnrichmentForm";
 import { useApp } from "../../context/AppContext";
-import { useAuth } from "../../context/AuthContext";
 import { useData } from "../../context/DataContext";
-import { getLeadById, getTasksForLead, getUpcomingCommunications } from "../../selectors/demoSelectors";
-import UpcomingCommunications from "../UpcomingCommunications";
+import { getLeadById, getTasksForLead } from "../../selectors/demoSelectors";
 
 export default function MeetingPrepLeadPanel({ lead, isReadOnly, onClose }) {
   const { navigateTo, selectTask } = useApp();
-  const { userProfile } = useAuth();
   const {
     leads,
-    fetchLeadActivities,
     fetchTasksForLead,
-    refetchLeads,
     useSupabase,
   } = useData();
 
   // Use live lead from context so updates reflect; fallback to prop
   const liveLead = getLeadById(leads ?? [], lead?.id) ?? lead;
-  const [contactActivities, setContactActivities] = useState([]);
   const [leadTasks, setLeadTasks] = useState([]);
-
-  const loadActivities = useCallback(async () => {
-    if (!liveLead?.id || !fetchLeadActivities) return;
-    try {
-      const activities = await fetchLeadActivities(liveLead.id);
-      setContactActivities(activities);
-      refetchLeads?.();
-    } catch (err) {
-      console.error("[MeetingPrepLeadPanel] Failed to fetch activities:", err);
-      setContactActivities([]);
-    }
-  }, [liveLead?.id, fetchLeadActivities, refetchLeads]);
 
   const loadTasks = useCallback(async () => {
     if (!liveLead?.id) return;
@@ -57,10 +38,6 @@ export default function MeetingPrepLeadPanel({ lead, isReadOnly, onClose }) {
       setLeadTasks(getTasksForLead(liveLead.id));
     }
   }, [liveLead?.id, useSupabase, fetchTasksForLead]);
-
-  useEffect(() => {
-    loadActivities();
-  }, [loadActivities]);
 
   useEffect(() => {
     loadTasks();
@@ -140,20 +117,6 @@ export default function MeetingPrepLeadPanel({ lead, isReadOnly, onClose }) {
             <LeadDetail
               lead={liveLead}
               contactSlot={<LeadContactCard lead={liveLead} />}
-              contactButtonsSlot={
-                <ContactButtons
-                  lead={liveLead}
-                  agentPhone={userProfile?.phone}
-                  userProfile={userProfile}
-                  onContactSuccess={loadActivities}
-                />
-              }
-              upcomingCommsSlot={
-                (() => {
-                  const upcomingItems = getUpcomingCommunications(liveLead, contactActivities);
-                  return upcomingItems.length > 0 ? <UpcomingCommunications items={upcomingItems} /> : null;
-                })()
-              }
               enrichmentSlot={enrichmentSlot}
               tasksSlot={
                 <div data-onboarding="tasks-section">
@@ -185,7 +148,6 @@ export default function MeetingPrepLeadPanel({ lead, isReadOnly, onClose }) {
                   )}
                 </div>
               }
-              contactActivities={contactActivities}
             />
           </div>
         </motion.div>

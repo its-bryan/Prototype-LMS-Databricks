@@ -1,0 +1,62 @@
+---
+description: Pre-deploy validation — run before every Databricks deployment
+alwaysApply: false
+---
+
+# Pre-Deploy Validation Checklist
+
+Run these checks locally before any deployment. **Stop the deploy if any check fails.**
+
+## 1. Vite build (catches broken imports, JSX errors)
+```powershell
+npm run build
+```
+Must exit 0. This is the most important gate — if the build fails, the deploy will fail on Databricks too.
+
+## 2. Python syntax check (catches syntax errors in backend)
+```powershell
+python -m py_compile main.py
+python -m py_compile db.py
+Get-ChildItem routers\*.py | ForEach-Object { python -m py_compile $_.FullName }
+```
+Must produce no errors.
+
+## 3. Linter checks
+- Run `ReadLints` on every file modified in this session
+- All errors introduced by this session must be resolved
+- Pre-existing warnings are acceptable (there are ~210 pre-existing ESLint issues)
+
+## 4. Critical file integrity
+Verify these files exist and are non-empty:
+- `app.yaml` — must contain the uvicorn command
+- `main.py` — FastAPI entry point
+- `db.py` — database connection module
+- `index.html` — frontend shell
+- `requirements.txt` — Python deps
+- `package.json` — Node deps with `build` script
+
+## 5. API contract check
+If any router (`routers/*.py`) endpoint signature changed:
+- Verify the matching frontend call in `src/data/databricksData.js` is updated
+- Check field names match between backend response and frontend expectations
+
+## 6. Post-deploy verification (after deploy succeeds)
+```powershell
+databricks apps get hertz-leo-leadsmgmtsystem --output json
+```
+- Confirm `app_status.state` is `RUNNING`
+- Confirm `active_deployment.status.state` is `SUCCEEDED`
+- Hit the app URL to verify: `https://hertz-leo-leadsmgmtsystem-1957546315544672.aws.databricksapps.com/`
+
+## 7. On deploy failure — check app logs
+If Step 6 shows a failed or unhealthy state, pull app logs immediately:
+```powershell
+databricks apps logs hertz-leo-leadsmgmtsystem --profile DanSiaoAuth --tail-lines 200
+```
+- `[SYSTEM]` lines = build/install errors (npm, pip, vite)
+- `[APP]` lines = Python runtime errors (tracebacks, import failures)
+- Filter for errors only:
+  ```powershell
+  databricks apps logs hertz-leo-leadsmgmtsystem --profile DanSiaoAuth --tail-lines 500 --search "ERROR"
+  ```
+Report the error to the user with the exact log lines before attempting any fix.

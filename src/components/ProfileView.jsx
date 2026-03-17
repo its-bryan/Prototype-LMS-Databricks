@@ -5,7 +5,6 @@ import { useApp } from "../context/AppContext";
 import BackButton from "./BackButton";
 import { roleMeta, roleDefaults } from "../config/navigation";
 import { getHierarchyForBranch } from "../selectors/demoSelectors";
-import PhoneInput from "./PhoneInput";
 
 function getInitials(displayName) {
   if (!displayName || typeof displayName !== "string") return "?";
@@ -19,14 +18,12 @@ function getInitials(displayName) {
 export default function ProfileView() {
   const { userProfile, updateProfile } = useAuth();
   const { role, navigateTo } = useApp();
-  const [phone, setPhone] = useState(userProfile?.phone ?? "");
   const [displayName, setDisplayName] = useState(userProfile?.displayName ?? "");
   const [editingName, setEditingName] = useState(false);
 
   useEffect(() => {
-    setPhone(userProfile?.phone ?? "");
     setDisplayName(userProfile?.displayName ?? "");
-  }, [userProfile?.phone, userProfile?.displayName]);
+  }, [userProfile?.displayName]);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
 
@@ -44,10 +41,6 @@ export default function ProfileView() {
       setSaving(false);
     }
   }, [updateProfile]);
-
-  const handleSavePhone = useCallback(() => {
-    handleSave({ phone: phone?.trim() || null });
-  }, [phone, handleSave]);
 
   const handleSaveName = useCallback(() => {
     if (!displayName.trim()) {
@@ -164,31 +157,11 @@ export default function ProfileView() {
                 </dd>
               </div>
             )}
-            <div>
-              <dt className="text-xs text-[var(--neutral-600)] uppercase tracking-wide mb-2">
-                Phone
-              </dt>
-              <div className="flex flex-wrap items-start gap-2">
-                <div className="flex-1 min-w-[200px]">
-                  <PhoneInput
-                    value={phone}
-                    onChange={setPhone}
-                    showHint={true}
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={handleSavePhone}
-                  disabled={saving}
-                  className="px-4 py-2 text-sm font-semibold bg-[var(--hertz-primary)] text-[var(--hertz-black)] rounded-[var(--radius-md)] hover:bg-[var(--hertz-primary-hover)] disabled:opacity-60 disabled:cursor-not-allowed transition-colors shrink-0"
-                >
-                  {saving ? "Saving…" : "Save"}
-                </button>
+            {saveError && (
+              <div>
+                <p className="text-sm text-[var(--color-error)]">{saveError}</p>
               </div>
-              {saveError && (
-                <p className="mt-2 text-sm text-[var(--color-error)]">{saveError}</p>
-              )}
-            </div>
+            )}
             {userProfile.email && (
               <div>
                 <dt className="text-xs text-[var(--neutral-600)] uppercase tracking-wide">Email</dt>

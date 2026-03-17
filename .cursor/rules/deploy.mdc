@@ -1,0 +1,80 @@
+---
+description: Full Databricks deploy pipeline — commit, push, sync, deploy, verify
+alwaysApply: false
+---
+
+# Databricks Deploy Pipeline
+
+Use this when the user says "deploy", "redeploy", or "push to production".
+
+## Pipeline overview
+1. Pre-deploy validation (testing rule)
+2. Git commit & push
+3. Sync Databricks Git folder
+4. Deploy app
+5. Post-deploy verification
+
+## Constants
+- **App name**: `hertz-leo-leadsmgmtsystem`
+- **Databricks Repo ID**: `2730039622390114`
+- **Source path**: `/Workspace/Users/nh136948@hertz.net/Prototype-LMS-Databricks`
+- **App URL**: `https://hertz-leo-leadsmgmtsystem-1957546315544672.aws.databricksapps.com/`
+- **Branch**: `main`
+
+## Step 1 — Pre-deploy validation
+Follow the `pre-deploy-check` rule. Run ReadLints on all changed files. Stop if critical issues found.
+
+## Step 2 — Git commit & push
+```powershell
+git add -A
+git status
+git commit -m "<type>: <description>"
+git push origin main
+```
+
+## Step 3 — Sync Databricks Git folder
+Pull the latest commit into the Databricks workspace repo:
+```powershell
+databricks repos update 2730039622390114 --branch main
+```
+Verify sync:
+```powershell
+databricks repos get 2730039622390114
+```
+Confirm `head_commit_id` matches the commit you just pushed.
+
+## Step 4 — Deploy
+```powershell
+databricks apps deploy hertz-leo-leadsmgmtsystem --source-code-path "/Workspace/Users/nh136948@hertz.net/Prototype-LMS-Databricks"
+```
+This triggers Databricks to: install npm deps, install pip deps, run `npm run build`, then start uvicorn.
+Wait for deployment to complete (default timeout 20m).
+
+## Step 5 — Post-deploy verification
+```powershell
+databricks apps get hertz-leo-leadsmgmtsystem
+```
+- Confirm `app_status.state` = `RUNNING`
+- Confirm `active_deployment.status.state` = `SUCCEEDED`
+- Report the app URL to the user
+
+## On failure — check app logs
+If deploy fails or `active_deployment.status.state` is not `SUCCEEDED`, immediately pull the app logs:
+```powershell
+databricks apps logs hertz-leo-leadsmgmtsystem --profile DanSiaoAuth --tail-lines 200
+```
+- Look for `[APP]` lines with Python tracebacks or startup errors
+- Look for `[SYSTEM]` lines with build failures (npm/pip install, vite build)
+- Use `--search "ERROR"` to filter:
+  ```powershell
+  databricks apps logs hertz-leo-leadsmgmtsystem --profile DanSiaoAuth --tail-lines 500 --search "ERROR"
+  ```
+- To stream logs in real time during a deploy:
+  ```powershell
+  databricks apps logs hertz-leo-leadsmgmtsystem --profile DanSiaoAuth --follow
+  ```
+
+Report the relevant error lines to the user before attempting a fix.
+
+## Rollback
+The previous deployment remains active until the new one succeeds.

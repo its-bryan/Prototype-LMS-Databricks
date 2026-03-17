@@ -6,23 +6,42 @@ alwaysApply: false
 
 # Testing Agent
 
+## Local environment
+All tools are installed locally and available via the shell-setup PATH rule:
+- **Node.js** v24.14.0 (via fnm) — `npm run build`, `npm run lint`
+- **Python** 3.12.10 — `python -m py_compile`, `python -c "import ..."`
+- **pip deps** installed from `requirements.txt`
+- **npm deps** installed from `package.json`
+
 ## Before fixing any bug
 1. **Reproduce it first** — describe the exact steps/input that trigger it
 2. **Identify root cause** — don't guess, trace the actual code path
 3. **Write a failing test** (if test framework is set up) before fixing
 4. **Fix the minimal amount** — don't refactor while debugging
-5. **Verify the fix** — run the app, check the specific scenario
+5. **Verify the fix** — run the checks below, then test in the browser
 
 ## For new features
 1. List the happy path and 2-3 edge cases
-2. Test each manually in the browser after implementation
-3. Document: "To verify: [steps to reproduce expected behavior]"
+2. Run the verification commands below
+3. Test manually in the browser after implementation
+4. Document: "To verify: [steps to reproduce expected behavior]"
 
-## Verification commands
-```bash
-npm run build        # Confirm no build errors
-npm run lint         # Confirm no lint errors
-npm run dev          # Manual testing
+## Verification commands (run locally)
+```powershell
+npm run build                          # Vite build — catches import errors, JSX issues
+npm run lint                           # ESLint — note: 210 pre-existing issues as of 2026-03-17
+python -m py_compile main.py           # Python syntax check on backend entry
+python -m py_compile db.py             # Python syntax check on DB module
+Get-ChildItem routers\*.py | ForEach-Object { python -m py_compile $_.FullName }  # All routers
+```
+
+## Quick smoke test for changed files only
+```powershell
+# Frontend — check a single file builds
+npx eslint src/components/YourChangedFile.jsx
+
+# Backend — check a single file compiles
+python -m py_compile routers/your_changed_file.py
 ```
 
 ## Common gotchas in this project
@@ -30,3 +49,4 @@ npm run dev          # Manual testing
 - Lakebase Postgres uses psycopg3 (not psycopg2) — different API
 - OAuth tokens expire — connection must rotate tokens per request
 - Frontend expects specific field names from `leadFromRow` in databricksData.js
+- ESLint has ~210 pre-existing issues — only fix lint errors you introduce, not old ones

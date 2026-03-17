@@ -50,7 +50,8 @@ async def update_enrichment(lead_id: int, body: dict):
             lead_id,
         )
     )
-    return {"ok": True}
+    rows = query("SELECT * FROM leads WHERE id = %s", (lead_id,))
+    return rows[0] if rows else {"ok": True}
 
 @router.put("/leads/{lead_id}/directive")
 async def update_directive(lead_id: int, body: dict):
@@ -58,7 +59,10 @@ async def update_directive(lead_id: int, body: dict):
         "UPDATE leads SET gm_directive = %s, updated_at = now() WHERE id = %s",
         (body.get("gm_directive"), lead_id)
     )
-    return {"ok": True}
+    rows = query("SELECT * FROM leads WHERE id = %s", (lead_id,))
+    if not rows:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    return rows[0]
 
 @router.put("/leads/{lead_id}/contact")
 async def update_contact(lead_id: int, body: dict):
@@ -80,7 +84,8 @@ async def update_contact(lead_id: int, body: dict):
         WHERE id = %s""",
         (body.get("email"), body.get("phone"), json.dumps(current_log), lead_id)
     )
-    return {"ok": True}
+    rows = query("SELECT * FROM leads WHERE id = %s", (lead_id,))
+    return rows[0] if rows else {"ok": True}
 
 @router.put("/leads/{lead_id}/review")
 async def mark_lead_reviewed(lead_id: int):

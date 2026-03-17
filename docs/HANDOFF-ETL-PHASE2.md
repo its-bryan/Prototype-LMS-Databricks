@@ -1,8 +1,8 @@
 # Handoff Brief: ETL Fix + Phase 2 Completion
 
 > **Date**: 2026-03-17
-> **Status**: Phase 2 backend is deployed. ETL needs fixing before real data can be uploaded. Communication features (email/SMS/call) flagged for removal to simplify the build.
-> **Priority**: Fix ETL column mappings → test upload → verify Phase 2 features end-to-end → strip communication features
+> **Status**: ~~Phase 2 backend is deployed. ETL needs fixing before real data can be uploaded.~~ **ETL fixed, communication features stripped, bug fixes applied.** Ready for migration 004 + deploy + test.
+> **Priority**: ~~Fix ETL column mappings → test upload → verify Phase 2 features end-to-end → strip communication features~~ **Run migration 004 in Lakebase → push & redeploy → test HLES upload end-to-end**
 
 ---
 
@@ -317,3 +317,67 @@ communicationRules.js ── imported by demoSelectors.js
 - Create real user profiles linked to Databricks/SSO IDs
 - Test TRANSLOG upload with real data
 - Replace demo role picker with real authentication
+
+---
+
+## Changelog: 2026-03-17 — ETL Fix + Communication Removal
+
+All items from the "What Needs Fixing" section above have been completed. Summary:
+
+### Migration 004 — `docs/lakebase-migrations/004_add_lead_columns.sql` (NEW)
+- Added 17 columns to `leads` table: `confirm_num`, `knum`, `body_shop`, `cdp_name`, `htz_region`, `set_state`, `zone`, `area_mgr`, `general_mgr`, `rent_loc`, `week_of`, `contact_range`, `source_email`, `source_phone`, `source_status`, `mismatch_reason`, `last_upload_id`
+- Made `bm_name` nullable (`DROP NOT NULL`) — HLES has no BM column; resolved via org_mapping lookup at ETL time
+- Added indexes on `zone`, `week_of`, `general_mgr`
+- **Status**: Script created. Must be run in Lakebase SQL editor before deploying.
+
+### ETL Fix — `etl/clean.py`
+- Replaced all incorrect column mappings (`cust_name`, `br_name`, `bm`, `ins_co`) with actual HLES columns after normalization (`cdp_name` → `insurance_company`, `rent_loc` → `branch`, etc.)
+- Added customer name concatenation: `adj_fname` + `adj_lname` → `customer`
+- Added `org_lookup` parameter: ETL now accepts a `dict[branch, bm_name]` from org_mapping for BM name resolution
+- Maps all 16 HLES fields into the leads table
+
+### Upload Router — `routers/upload.py`
+- Expanded INSERT from 8 fields to 20 fields
+- Expanded UPDATE to include all new fields
+- Added `_build_org_lookup()` — queries `org_mapping` table at upload time to resolve BM names by branch
+- Added `_val()` helper — safely converts pandas NaN/NaT to Python None for psycopg3
+- Added per-row try/except with `failed` counter in upload stats
+
+### Bug Fixes — `routers/leads.py`
+- **`PUT /leads/{id}/directive`** — was returning `{"ok": true}`, causing `leadFromRow({"ok": true})` to produce a broken lead object in React state. Now returns `SELECT * FROM leads WHERE id = %s` (full row).
+- **`PUT /leads/{id}/enrichment`** — same fix. Returns full lead row.
+- **`PUT /leads/{id}/contact`** — same fix. Returns full lead row.
+
+### Communication Feature Removal — 5 files deleted, 4 files cleaned
+
+**Deleted:**
+| File | What it was |
+|------|-------------|
+| `src/components/EmailComposeModal.jsx` | Email compose modal (4 templates) |
+| `src/components/SmsComposeModal.jsx` | SMS compose modal (4 templates + char counter) |
+| `src/components/ContactButtons.jsx` | Orchestrator — Supabase edge function calls |
+| `src/components/UpcomingCommunications.jsx` | Scheduled comms display |
+| `src/config/communicationRules.js` | Automated communication triggers (10 rules) |
+
+**Cleaned:**
+| File | What was removed |
+|------|-----------------|
+| `InteractiveLeadDetail.jsx` | `ContactButtons`, `UpcomingCommunications` imports + slot props + activity loading code + `useAuth` |
+| `MeetingPrepLeadPanel.jsx` | Same — plus removed `useAuth` import, `contactActivities` state, `loadActivities` callback |
+| `demoSelectors.js` | `COMMUNICATION_RULES`/`EMAIL_TEMPLATES`/`SMS_TEMPLATES` imports + entire `getUpcomingCommunications()` function (~80 lines) |
+| `ProfileView.jsx` | `PhoneInput` import + agent phone setup UI section |
+
+**Kept (as planned):**
+- `PhoneInput.jsx` — still used by `LeadContactCard` for contact editing
+- `LeadContactCard.jsx` — displays/edits lead contact info, not a sender
+- `LeadDetail.jsx` — slot props are optional, works fine without them
+- `contactParsers.js` — data utility, not communication-specific
+
+### What Remains Before Deploy
+
+1. **Run migration 004** in Lakebase SQL editor (or via Databricks CLI)
+2. **`npm run build`** to rebuild the frontend with communication features removed
+3. **Push to both remotes** via subtree split
+4. **Test HLES upload** via Admin → Upload view
+5. **Verify Phase 2 features** against real leads (directives, wins, compliance tasks)
+6. **Clean test data**: `DELETE FROM leads WHERE reservation_id LIKE 'RES-TEST-%';`

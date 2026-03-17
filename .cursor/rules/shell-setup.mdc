@@ -1,0 +1,20 @@
+---
+description: Ensures all dev tools are available in every shell session
+alwaysApply: true
+---
+
+# Shell Environment Setup
+
+Every shell session must prepend Python and append Git, Databricks CLI, and fnm to the PATH. Run this **once per session** before any dev command:
+
+```powershell
+$env:PATH = "C:\Users\NH136948\AppData\Local\Programs\Python\Python312;C:\Users\NH136948\AppData\Local\Programs\Python\Python312\Scripts;" + $env:PATH + ";C:\Users\NH136948\AppData\Local\Programs\Git\cmd;C:\Users\NH136948\AppData\Local\Microsoft\WinGet\Packages\Databricks.DatabricksCLI_Microsoft.Winget.Source_8wekyb3d8bbwe;C:\Users\NH136948\AppData\Local\Microsoft\WinGet\Packages\Schniz.fnm_Microsoft.Winget.Source_8wekyb3d8bbwe"
+fnm env --use-on-cd --shell power-shell | Invoke-Expression
+```
+
+Python must be prepended (not appended) to override the Windows Store `python.exe` alias.
+
+## Verify with
+```powershell
+python --version && node --version && npm --version && git --version && databricks --version
+```
