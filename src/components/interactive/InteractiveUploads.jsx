@@ -160,19 +160,23 @@ function FileDropZone({ label, accept, file, onFileSelect, disabled }) {
 function ValidateStepLoader({ progress }) {
   const { phase, pct } = progress;
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="border border-[var(--neutral-200)] rounded-lg p-6 bg-[var(--neutral-50)]"
+    <div
+      className="border border-[var(--neutral-200)] rounded-lg p-6 bg-[var(--neutral-100)] shadow-sm"
+      role="status"
+      aria-live="polite"
+      aria-label="Validating upload"
     >
       <div className="flex items-center gap-3 mb-4">
-        <div className="w-8 h-8 border-2 border-[var(--hertz-primary)] border-t-transparent rounded-full animate-spin shrink-0" />
+        <div
+          className="w-8 h-8 border-2 border-[var(--hertz-primary)] border-t-transparent rounded-full animate-spin shrink-0"
+          aria-hidden="true"
+        />
         <div>
           <p className="text-sm font-semibold text-[var(--hertz-black)]">Validating your file(s)</p>
-          <p className="text-sm text-[var(--neutral-500)]">{phase || "Starting…"}</p>
+          <p className="text-sm text-[var(--neutral-600)]">{phase || "Starting…"}</p>
         </div>
       </div>
-      <div className="h-2 bg-[var(--neutral-200)] rounded-full overflow-hidden">
+      <div className="h-2.5 bg-[var(--neutral-200)] rounded-full overflow-hidden">
         <motion.div
           className="h-full bg-[var(--hertz-primary)] rounded-full"
           initial={{ width: 0 }}
@@ -180,8 +184,8 @@ function ValidateStepLoader({ progress }) {
           transition={{ duration: 0.35, ease: "easeOut" }}
         />
       </div>
-      <p className="text-xs text-[var(--neutral-500)] mt-2">{Math.round(pct)}%</p>
-    </motion.div>
+      <p className="text-xs font-medium text-[var(--neutral-600)] mt-2">{Math.round(pct)}%</p>
+    </div>
   );
 }
 
@@ -786,6 +790,8 @@ export default function InteractiveUploads() {
     setParsing(true);
     setValidateProgress({ phase: "Preparing…", pct: 5 });
     setStep("validate");
+    // Yield so React can paint the loader before we block on parsing
+    await new Promise((r) => setTimeout(r, 50));
 
     const hasHles = !!hlesFile;
     const hasTranslog = !!translogFile;
@@ -866,11 +872,12 @@ export default function InteractiveUploads() {
         });
         refetchLeads?.();
         refetchDataAsOfDate?.();
+        setStep("summary");
       } catch (err) {
         setCommitError(err?.message ?? "Upload failed");
+        setStep("preview");
       } finally {
         setCommitting(false);
-        setStep("summary");
       }
       return;
     }
@@ -975,7 +982,7 @@ export default function InteractiveUploads() {
 
         {/* ---- STEP: VALIDATE ---- */}
         {step === "validate" && (
-          <motion.div key="validate" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div key="validate" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="min-h-[200px]">
             {parsing ? (
               <ValidateStepLoader progress={validateProgress} />
             ) : (
@@ -1168,6 +1175,19 @@ export default function InteractiveUploads() {
         )}
 
         {/* ---- STEP: SUMMARY ---- */}
+        {step === "summary" && !commitResult && !committing && (
+          <motion.div key="summary-empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <div className="text-center py-8 border border-[var(--neutral-200)] rounded-lg bg-[var(--neutral-50)]">
+              <p className="text-sm text-[var(--neutral-600)]">No summary data available. You can start a new upload.</p>
+              <button
+                onClick={handleReset}
+                className="mt-4 px-4 py-2 text-sm font-medium text-[var(--hertz-primary)] hover:underline cursor-pointer"
+              >
+                Back to File Selection
+              </button>
+            </div>
+          </motion.div>
+        )}
         {step === "summary" && commitResult && (
           <motion.div key="summary" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <div className="text-center mb-8">
