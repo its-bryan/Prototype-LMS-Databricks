@@ -1,0 +1,31 @@
+---
+description: Apply when editing Python backend files (FastAPI, ETL, database)
+globs: "*.py, routers/**/*.py, etl/**/*.py"
+alwaysApply: false
+---
+
+# Backend Rules
+
+## Stack
+- FastAPI (main.py, routers/)
+- psycopg3 for Lakebase Postgres (NOT psycopg2)
+- OAuth token rotation per connection — see db.py
+- Databricks Apps deployment with Database resource
+
+## Database connection pattern
+- Always use `get_conn()` from db.py — never create connections directly
+- Tokens expire — each request gets a fresh connection
+- Use parameterized queries: `execute("SELECT ... WHERE id = %s", (id,))`
+- Never use f-strings or string formatting in SQL
+
+## ETL (etl/clean.py)
+- HLES Excel columns have leading `\n` characters
+- Normalization: `re.sub(r'\s+', '_', col.strip().lower())`
+- See docs/HANDOFF-ETL-PHASE2.md for correct column mappings
+- Customer name = ADJ FNAME + ADJ LNAME concatenated
+- BM name comes from org_mapping lookup, not HLES data
+
+## Deployment
+- `npm run build` before deploying (frontend must be rebuilt)
+- Push via git to trigger Databricks Apps redeploy
+- Never push secrets or .env files

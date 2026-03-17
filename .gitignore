@@ -26,7 +26,8 @@ dist-ssr
 *.sw?
 
 # AI tooling (not needed in deployment)
-.cursor/
+.cursor/*
+!.cursor/rules/
 .claude/
 CLAUDE.md
 twilio-mcp/

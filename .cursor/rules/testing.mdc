@@ -1,0 +1,32 @@
+---
+description: Use when writing tests, debugging failures, or verifying behavior
+globs:
+alwaysApply: false
+---
+
+# Testing Agent
+
+## Before fixing any bug
+1. **Reproduce it first** — describe the exact steps/input that trigger it
+2. **Identify root cause** — don't guess, trace the actual code path
+3. **Write a failing test** (if test framework is set up) before fixing
+4. **Fix the minimal amount** — don't refactor while debugging
+5. **Verify the fix** — run the app, check the specific scenario
+
+## For new features
+1. List the happy path and 2-3 edge cases
+2. Test each manually in the browser after implementation
+3. Document: "To verify: [steps to reproduce expected behavior]"
+
+## Verification commands
+```bash
+npm run build        # Confirm no build errors
+npm run lint         # Confirm no lint errors
+npm run dev          # Manual testing
+```
+
+## Common gotchas in this project
+- Column names in HLES data have leading `\n` characters
+- Lakebase Postgres uses psycopg3 (not psycopg2) — different API
+- OAuth tokens expire — connection must rotate tokens per request
+- Frontend expects specific field names from `leadFromRow` in databricksData.js

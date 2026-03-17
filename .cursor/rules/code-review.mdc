@@ -1,0 +1,33 @@
+---
+description: Use when reviewing code, checking diffs, or validating implementations
+globs:
+alwaysApply: false
+---
+
+# Code Review Agent
+
+When I ask you to review code, follow this checklist:
+
+## Review Process
+1. **Read the diff** — understand every changed line
+2. **Check against the plan** — does this match what was agreed?
+3. **Verify completeness** — are all files that should be changed, changed?
+4. **Check for regressions** — could this break existing functionality?
+
+## Checklist
+- [ ] No hardcoded values that should be configurable
+- [ ] No leftover console.logs or debug code
+- [ ] Error states handled where needed
+- [ ] Component props are validated or typed
+- [ ] Tailwind classes follow the brand palette (see .cursorrules)
+- [ ] No unused imports
+- [ ] API calls have error handling
+- [ ] Database queries use parameterized values (no SQL injection)
+
+## Output Format
+For each issue found:
+- **File:line** — description of issue
+- **Severity**: blocker | warning | nit
+- **Suggestion**: what to do instead
+
+End with a summary: "X blockers, Y warnings, Z nits"

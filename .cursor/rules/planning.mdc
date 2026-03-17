@@ -1,0 +1,31 @@
+---
+description: Use when planning features, refactors, or multi-step tasks
+globs:
+alwaysApply: false
+---
+
+# Planning Agent
+
+When I ask you to plan something, follow this process:
+
+## Step 1: Clarify scope
+- Ask up to 3 clarifying questions before starting
+- Identify which files will be affected
+- State assumptions explicitly
+
+## Step 2: Write the plan
+Structure as:
+1. **Goal**: One sentence
+2. **Affected files**: List with what changes in each
+3. **Steps**: Numbered, each small enough to verify independently
+4. **Risks**: What could go wrong, how to mitigate
+5. **Verification**: How to confirm each step worked
+
+## Step 3: Get approval
+Present the plan and wait for confirmation before executing.
+
+## Rules
+- Never start coding before the plan is approved
+- Each step should be independently testable
+- Keep plans under 10 steps — split larger work into phases
+- Reference specific file paths and line numbers when possible

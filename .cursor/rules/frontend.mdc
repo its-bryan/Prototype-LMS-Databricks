@@ -1,0 +1,31 @@
+---
+description: Apply when editing React components, JSX, or Tailwind styles
+globs: src/**/*.jsx, src/**/*.js, src/**/*.css
+alwaysApply: false
+---
+
+# Frontend Rules
+
+## Component patterns
+- Use functional components with hooks (no class components)
+- State management via React Context (AppContext, AuthContext, DataContext)
+- Navigation via `useApp().navigateTo(viewId)` — no router library
+- Data fetching via `useData()` hook (wraps databricksData.js API calls)
+
+## Styling
+- Tailwind CSS v4 utility classes only
+- Brand colors as arbitrary values: `text-[#1A1A1A]`, `bg-[#F5C400]`, etc.
+- No gradients, no shadows heavier than `shadow-sm`
+- Keep it clean, light, professional — reference: Linear, Vercel Dashboard
+
+## UX principles (from HANDOFF-BRIEF)
+- Zero learning curve — obvious at first glance
+- One thing per screen — single clear purpose
+- Show, don't ask — smart defaults ("This Week", "My Branch")
+- Use domain language: "Comments" not "Enrichment", "Zone" not "Region"
+
+## Before editing any component
+1. Read the component file fully
+2. Check what imports it (grep for the component name)
+3. Understand the data flow (props, context, selectors)
+4. Make the minimal change needed
