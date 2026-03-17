@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from routers import leads, tasks, config, upload
+from routers import leads, tasks, config, upload, directives, wins
 
 app = FastAPI(title="Hertz LMS API")
 
@@ -10,6 +10,8 @@ app.include_router(leads.router, prefix="/api")
 app.include_router(tasks.router, prefix="/api")
 app.include_router(config.router, prefix="/api")
 app.include_router(upload.router, prefix="/api")
+app.include_router(directives.router, prefix="/api")
+app.include_router(wins.router, prefix="/api")
 
 # Serve React static files
 app.mount("/assets", StaticFiles(directory="dist/assets"), name="assets")

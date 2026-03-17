@@ -48,6 +48,44 @@ async def create_task(body: dict):
     rows = query("SELECT * FROM tasks ORDER BY id DESC LIMIT 1")
     return rows[0] if rows else {"ok": True}
 
+@router.post("/tasks/compliance")
+async def create_compliance_tasks(body: dict):
+    """Bulk-create tasks for outstanding leads in a branch."""
+    branch = body.get("branch")
+    bm_name = body.get("bmName") or body.get("bm_name")
+    due_date = body.get("dueDateStr") or body.get("due_date")
+    gm_name = body.get("gmName") or body.get("gm_name", "GM")
+    gm_user_id = body.get("gmUserId") or body.get("gm_user_id")
+    lead_ids = body.get("outstandingLeads", [])
+
+    if not branch or not lead_ids:
+        return {"created": 0, "errors": []}
+
+    created = 0
+    errors = []
+    for lead_id in lead_ids:
+        try:
+            execute(
+                """INSERT INTO tasks
+                    (title, description, due_date, lead_id, assigned_to_name,
+                     created_by, created_by_name, source, priority, status)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, 'gm_assigned', 'Normal', 'Open')""",
+                (
+                    f"Review lead #{lead_id}",
+                    f"Compliance review assigned by {gm_name}",
+                    due_date,
+                    lead_id,
+                    bm_name,
+                    gm_user_id,
+                    gm_name,
+                )
+            )
+            created += 1
+        except Exception as e:
+            errors.append({"lead_id": lead_id, "error": str(e)})
+
+    return {"created": created, "errors": errors}
+
 @router.get("/tasks/gm")
 async def get_tasks_for_gm(branches: str = ""):
     """Fetch tasks for multiple branches (comma-separated)."""

@@ -379,51 +379,85 @@ export async function insertTask({
   return taskFromRow(row);
 }
 
-/**
- * Create compliance tasks for every lead in a branch.
- * STUB — not yet implemented on the backend.
- */
+/** Create compliance tasks for outstanding leads in a branch. */
 export async function createComplianceTasksForBranch(params) {
-  console.warn("createComplianceTasksForBranch: not yet implemented");
-  return { created: 0, errors: [{ error: "Not yet implemented" }] };
+  return apiPost("/tasks/compliance", {
+    branch: params.branch,
+    bm_name: params.bmName,
+    due_date: params.dueDateStr,
+    gm_name: params.gmName,
+    gm_user_id: params.gmUserId,
+    outstandingLeads: params.outstandingLeads,
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GM Directives  (STUB — tables not yet created)
+// GM Directives
 // ─────────────────────────────────────────────────────────────────────────────
+
+function directiveFromRow(r) {
+  if (!r) return null;
+  return {
+    id: r.id,
+    leadId: r.lead_id,
+    directiveText: r.directive_text,
+    priority: r.priority,
+    dueDate: r.due_date ? String(r.due_date).slice(0, 10) : null,
+    createdBy: r.created_by,
+    createdByName: r.created_by_name ?? "GM",
+    createdAt: r.created_at,
+  };
+}
 
 /** Fetch GM directives for a lead. */
 export async function fetchGmDirectives(leadId) {
-  // TODO: implement when backend table & endpoint exist
-  return [];
+  const rows = await apiGet(`/leads/${leadId}/directives`);
+  return (rows ?? []).map(directiveFromRow);
 }
 
 /** Insert a new GM directive. */
 export async function insertGmDirective(params) {
-  // TODO: implement when backend table & endpoint exist
-  return {
-    id: `temp-${Date.now()}`,
-    ...params,
-    createdAt: new Date().toISOString(),
-  };
+  const row = await apiPost(`/leads/${params.leadId}/directives`, {
+    directive_text: params.directiveText,
+    priority: params.priority ?? "normal",
+    due_date: params.dueDate,
+    created_by: params.createdBy,
+    created_by_name: params.createdByName,
+  });
+  return directiveFromRow(row);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Wins & Learnings  (STUB — tables not yet created)
+// Wins & Learnings
 // ─────────────────────────────────────────────────────────────────────────────
+
+function winsLearningFromRow(r) {
+  if (!r) return null;
+  return {
+    id: r.id,
+    bmName: r.bm_name,
+    branch: r.branch,
+    gmName: r.gm_name,
+    content: r.content,
+    weekOf: r.week_of ? String(r.week_of).slice(0, 10) : null,
+    createdAt: r.created_at,
+  };
+}
 
 /** Fetch all wins/learnings entries. */
 export async function fetchWinsLearnings() {
-  // TODO: implement when backend table & endpoint exist
-  return [];
+  const rows = await apiGet("/wins-learnings");
+  return (rows ?? []).map(winsLearningFromRow);
 }
 
 /** Submit a new wins/learning entry. */
 export async function submitWinsLearning(entry) {
-  // TODO: implement when backend table & endpoint exist
-  return {
-    id: `temp-${Date.now()}`,
-    ...entry,
-    createdAt: new Date().toISOString(),
-  };
+  const row = await apiPost("/wins-learnings", {
+    bm_name: entry.bmName,
+    branch: entry.branch,
+    gm_name: entry.gmName,
+    content: entry.content,
+    week_of: entry.weekOf,
+  });
+  return winsLearningFromRow(row);
 }
