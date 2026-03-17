@@ -1,11 +1,12 @@
 /**
- * HLES + TRANSLOG CSV parsers.
+ * HLES + TRANSLOG CSV/Excel parsers.
  *
- * Parses raw CSV files into normalised objects the reconciliation engine
- * can compare against existing leads. Uses Papa Parse for robust CSV handling
- * (quoted fields, encoding edge-cases, streaming for large files).
+ * Parses CSV and .xlsx files into normalised objects the reconciliation engine
+ * can compare against existing leads. Uses Papa Parse for CSV; SheetJS (xlsx)
+ * for Excel. Headers are normalized (BOM, trim); CONFIRM_NUM can be by name or first column.
  */
 import Papa from "papaparse";
+import * as XLSX from "xlsx";
 
 // ---------------------------------------------------------------------------
 // HLES column name normalisation (BOM, leading \n, trim — Excel/CSV exports)
@@ -87,18 +88,29 @@ function parseBranchName(rentLoc) {
 }
 
 // ---------------------------------------------------------------------------
+// CONFIRM_NUM: by name or first column (Excel often has header in first col)
+// ---------------------------------------------------------------------------
+function getConfirmNum(row) {
+  const byName = col(row, "CONFIRM_NUM", "KNUM", "Confirm Num", "Confirmation Number", "Reservation ID");
+  if (byName != null && String(byName).trim() !== "") return String(byName).trim();
+  const keys = Object.keys(row);
+  if (keys.length === 0) return "";
+  const firstVal = row[keys[0]];
+  return firstVal != null ? String(firstVal).trim() : "";
+}
+
+// ---------------------------------------------------------------------------
 // HLES validation — only CONFIRM_NUM is required; other fields have defaults
 // ---------------------------------------------------------------------------
 
 /**
  * Validate a single HLES row. Returns null if valid, or an error string.
- * Only CONFIRM_NUM is required (used for matching/reconciliation). RENTER_LAST,
- * RENT_LOC, and status indicators are optional and default in hlesRowToLead.
+ * CONFIRM_NUM is required; we look for named columns or use first column value.
  */
 function validateHlesRow(row, rowIndex) {
-  const confirmNum = col(row, "CONFIRM_NUM", "KNUM");
-  if (!confirmNum || String(confirmNum).trim() === "") {
-    return `Row ${rowIndex}: Missing required field CONFIRM_NUM (or KNUM)`;
+  const confirmNum = getConfirmNum(row);
+  if (!confirmNum) {
+    return `Row ${rowIndex}: Missing required field CONFIRM_NUM (or KNUM) or first column is empty`;
   }
   return null;
 }
@@ -109,11 +121,12 @@ function validateHlesRow(row, rowIndex) {
  */
 function hlesRowToLead(row) {
   const status = deriveStatus(row);
+  const confirmNum = getConfirmNum(row);
   return {
-    confirmNum: col(row, "CONFIRM_NUM"),
-    knum: col(row, "KNUM") || col(row, "CONFIRM_NUM"),
+    confirmNum,
+    knum: col(row, "KNUM") || confirmNum,
     customer: col(row, "RENTER_LAST") || "Unknown",
-    reservationId: col(row, "CONFIRM_NUM"),
+    reservationId: confirmNum,
     status,
     sourceStatus: status,
     branch: parseBranchName(col(row, "RENT_LOC")),
@@ -189,11 +202,58 @@ function translogRowToEvent(row) {
 // ---------------------------------------------------------------------------
 
 /**
- * Parse an HLES CSV file.
+ * Process an array of raw row objects (from CSV or Excel) into leads + errors.
+ */
+function processHlesRows(rawRows) {
+  const leads = [];
+  const errors = [];
+  const orgSet = new Map();
+  let rowIndex = 0;
+  for (const rawRow of rawRows) {
+    rowIndex++;
+    const row = cleanRow(rawRow);
+    const err = validateHlesRow(row, rowIndex);
+    if (err) {
+      errors.push(err);
+      continue;
+    }
+    const lead = hlesRowToLead(row);
+    leads.push(lead);
+    const orgKey = lead.rentLoc;
+    if (orgKey && !orgSet.has(orgKey)) {
+      orgSet.set(orgKey, {
+        branch: lead.branch,
+        rentLoc: lead.rentLoc,
+        am: lead.areaMgr,
+        gm: lead.generalMgr,
+        zone: lead.zone,
+      });
+    }
+  }
+  return { leads, errors, orgRows: Array.from(orgSet.values()), rawRowCount: rowIndex };
+}
+
+/**
+ * Parse an HLES file (CSV or .xlsx). First column is treated as CONFIRM_NUM if header doesn't match.
  * @param {File} file — browser File object
  * @returns {Promise<{ leads: object[], errors: string[], orgRows: object[], rawRowCount: number }>}
  */
 export function parseHlesCsv(file) {
+  const isXlsx = (file.name || "").toLowerCase().endsWith(".xlsx");
+  if (isXlsx) {
+    return file.arrayBuffer().then((ab) => {
+      const wb = XLSX.read(ab, { type: "array" });
+      const firstSheet = wb.SheetNames[0];
+      if (!firstSheet) {
+        return { leads: [], errors: ["Excel workbook has no sheets"], orgRows: [], rawRowCount: 0 };
+      }
+      const ws = wb.Sheets[firstSheet];
+      // First row = headers; defval so we get strings
+      const rawRows = XLSX.utils.sheet_to_json(ws, { defval: "", raw: false });
+      return processHlesRows(rawRows);
+    });
+  }
+
   return new Promise((resolve) => {
     const leads = [];
     const errors = [];
@@ -215,8 +275,6 @@ export function parseHlesCsv(file) {
           }
           const lead = hlesRowToLead(row);
           leads.push(lead);
-
-          // Collect unique org mappings
           const orgKey = lead.rentLoc;
           if (orgKey && !orgSet.has(orgKey)) {
             orgSet.set(orgKey, {
