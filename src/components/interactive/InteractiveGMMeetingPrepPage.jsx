@@ -19,6 +19,8 @@ import {
   getWinsLearningsForGM,
   relChange,
   resolveGMName,
+  getBranchesForGM,
+  normalizeGmName,
 } from "../../selectors/demoSelectors";
 import StatusBadge from "../StatusBadge";
 import GMMetricDrilldownModal from "../GMMetricDrilldownModal";
@@ -87,7 +89,7 @@ function MetricCard({ label, value, subtext, onClick, relChange: relChangeVal, s
 function formatDueDate(dueStr) {
   if (!dueStr) return "—";
   const d = new Date(dueStr + "T23:59:59");
-  const now = new Date("2026-02-22T09:00:00");
+  const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const dueDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
   const diffDays = Math.ceil((dueDay - today) / 86400000);
@@ -124,13 +126,13 @@ export default function InteractiveGMMeetingPrepPage() {
 
   const gmName = useMemo(() => {
     const name = userProfile?.displayName;
-    if (name && (orgMapping ?? []).some((r) => r.gm === name)) return name;
+    if (!name) return resolveGMName(null, userProfile?.id);
+    const nm = normalizeGmName(name);
+    if ((orgMapping ?? []).some((r) => r.gm && normalizeGmName(r.gm) === nm)) return name;
+    if ((leads ?? []).some((l) => normalizeGmName(l.generalMgr ?? l.general_mgr) === nm)) return name;
     return resolveGMName(name, userProfile?.id);
-  }, [userProfile?.displayName, userProfile?.id, orgMapping]);
-  const gmBranches = useMemo(
-    () => (orgMapping ?? []).filter((r) => r.gm === gmName).map((r) => r.branch),
-    [orgMapping, gmName]
-  );
+  }, [userProfile?.displayName, userProfile?.id, orgMapping, leads]);
+  const gmBranches = useMemo(() => getBranchesForGM(gmName, leads ?? []), [gmName, leads]);
 
   useEffect(() => {
     if (gmBranches.length > 0 && fetchGMTasks) {
@@ -140,9 +142,9 @@ export default function InteractiveGMMeetingPrepPage() {
 
   const gmFilteredLeads = useMemo(() => {
     if (!gmName) return leads ?? [];
-    const myBranches = (orgMapping ?? []).filter((r) => r.gm === gmName).map((r) => r.branch);
+    const myBranches = getBranchesForGM(gmName, leads ?? []);
     return (leads ?? []).filter((l) => myBranches.includes(l.branch));
-  }, [leads, gmName, orgMapping]);
+  }, [leads, gmName]);
   const stats = useMemo(() => getGMDashboardStats(leads, dateRange, gmName), [leads, dateRange, gmName]);
   const prevStats = useMemo(() => (comparisonRange ? getGMDashboardStats(leads, comparisonRange, gmName) : null), [leads, comparisonRange, gmName]);
   const prevUnreachable = useMemo(() => (comparisonRange ? getUnreachableLeadsStats(leads, comparisonRange, gmName) : null), [leads, comparisonRange, gmName]);
@@ -150,8 +152,8 @@ export default function InteractiveGMMeetingPrepPage() {
   const meetingPrepData = useMemo(() => getGMMeetingPrepData(leads, dateRange, gmName), [leads, dateRange, gmName]);
   const gmTasksLoading = gmTasks === null;
   const effectiveGmTasks = gmTasksLoading ? [] : gmTasks;
-  const openTasks = useMemo(() => getTasksForGMBranches(effectiveGmTasks, gmName), [effectiveGmTasks, gmName]);
-  const tasksProgress = useMemo(() => getGMTasksProgress(effectiveGmTasks, gmName), [effectiveGmTasks, gmName]);
+  const openTasks = useMemo(() => getTasksForGMBranches(effectiveGmTasks, gmName, leads), [effectiveGmTasks, gmName, leads]);
+  const tasksProgress = useMemo(() => getGMTasksProgress(effectiveGmTasks, gmName, leads), [effectiveGmTasks, gmName, leads]);
   const leadsToReview = useMemo(() => getGMLeads(leads, dateRange, {}, gmName), [leads, dateRange, gmName]);
   const leadsReviewed = useMemo(() => leadsToReview.filter((l) => l.gmDirective).length, [leadsToReview]);
   const leadsProgressPct = leadsToReview.length > 0 ? Math.round((leadsReviewed / leadsToReview.length) * 100) : 100;
@@ -701,7 +703,7 @@ export default function InteractiveGMMeetingPrepPage() {
                             <tbody>
                               {openTasks.slice(0, 15).map((task) => {
                                 const lead = task.leadId ? getLeadById(leads, task.leadId) : null;
-                                const overdue = task.dueDate && new Date(task.dueDate + "T23:59:59") < new Date("2026-02-22T09:00:00");
+                                const overdue = task.dueDate && new Date(task.dueDate + "T23:59:59") < new Date();
                                 return (
                                   <tr
                                     key={task.id}

@@ -41,17 +41,28 @@ let NOW = new Date("2026-02-22T09:00:00");
  */
 export function setNowFromLeads(leads) {
   if (!Array.isArray(leads) || leads.length === 0) return;
-  let maxWeek = null;
+  let maxMondayStr = null;
   for (const l of leads) {
     const w = l.weekOf ?? l.week_of;
-    if (w && (!maxWeek || w > maxWeek)) maxWeek = w;
+    if (w && (!maxMondayStr || w > maxMondayStr)) maxMondayStr = w;
+    const init = l.initDtFinal ?? l.init_dt_final;
+    if (init && typeof init === "string") {
+      const mon = getMonday(new Date(init + "T00:00:00"));
+      if (!isNaN(mon.getTime())) {
+        const key = `${mon.getFullYear()}-${String(mon.getMonth() + 1).padStart(2, "0")}-${String(mon.getDate()).padStart(2, "0")}`;
+        if (!maxMondayStr || key > maxMondayStr) maxMondayStr = key;
+      }
+    }
   }
-  if (!maxWeek) return;
-  const monday = new Date(maxWeek + "T00:00:00");
+  if (!maxMondayStr) return;
+  const monday = new Date(maxMondayStr + "T00:00:00");
   if (isNaN(monday.getTime())) return;
-  const sunday = new Date(monday.getTime() + 6 * 86400000);
-  sunday.setHours(9, 0, 0, 0);
-  NOW = sunday;
+  const dataSunday = new Date(monday.getTime() + 6 * 86400000);
+  dataSunday.setHours(9, 0, 0, 0);
+  const calMonday = getMonday(new Date());
+  const calSunday = new Date(calMonday.getTime() + 6 * 86400000);
+  calSunday.setHours(9, 0, 0, 0);
+  NOW = dataSunday.getTime() >= calSunday.getTime() ? dataSunday : calSunday;
 }
 
 const TREND_TIMEFRAME_WEEKS = { this_week: 1, trailing_4_weeks: 4, this_month: 5, this_year: 13 };
@@ -65,13 +76,12 @@ function getMonday(date) {
   return d;
 }
 
-/** Weekly compliance meeting is on Thursdays. Returns next meeting date and days left. */
+/** Weekly compliance meeting is on Thursdays. Uses real calendar so the date is never stuck in demo month. */
 export function getNextComplianceMeetingDate() {
-  const now = new Date(NOW);
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const dayOfWeek = today.getDay(); // 0=Sun, 4=Thu
+  const real = new Date();
+  const today = new Date(real.getFullYear(), real.getMonth(), real.getDate());
+  const dayOfWeek = today.getDay();
   const daysUntilThursday = (4 - dayOfWeek + 7) % 7;
-  // If today is Thursday, next meeting is today (0 days); otherwise advance to next Thu
   const nextThursday = new Date(today);
   nextThursday.setDate(today.getDate() + (daysUntilThursday === 0 ? 0 : daysUntilThursday));
   const daysLeft = Math.ceil((nextThursday.getTime() - today.getTime()) / 86400000);
@@ -290,12 +300,44 @@ function resolveBMName(orgRow, branchLeads) {
  * Get branches for a GM user. Uses gm_user_id (FK) as primary lookup,
  * falls back to gm text name match.
  */
-export function getGMBranches(userId = null, gmName = null) {
+/** Normalize GM name for matching org_mapping and HLES general_mgr (case/spacing). */
+export function normalizeGmName(s) {
+  if (s == null || s === "") return "";
+  return String(s).trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+/**
+ * Branches under a GM: org_mapping rows whose gm matches (case-insensitive) plus any branch
+ * in leads where general_mgr matches. Ensures live HLES data shows under the correct GM even
+ * if org_mapping names drift slightly.
+ */
+export function getBranchesForGM(gmName, leads = null) {
+  if (!gmName) return [];
+  const nm = normalizeGmName(gmName);
+  const fromOrg = orgMapping.filter((r) => r.gm && normalizeGmName(r.gm) === nm).map((r) => r.branch);
+  const fromLeads =
+    Array.isArray(leads) && leads.length > 0
+      ? [
+          ...new Set(
+            leads
+              .filter((l) => {
+                const g = l.generalMgr ?? l.general_mgr;
+                return g != null && String(g).trim() !== "" && normalizeGmName(g) === nm;
+              })
+              .map((l) => l.branch)
+              .filter(Boolean),
+          ),
+        ]
+      : [];
+  return [...new Set([...fromOrg, ...fromLeads])];
+}
+
+export function getGMBranches(userId = null, gmName = null, leads = null) {
   if (userId) {
     const byId = orgMapping.filter((r) => r.gmUserId === userId);
     if (byId.length > 0) return byId.map((r) => r.branch);
   }
-  if (gmName) return orgMapping.filter((r) => r.gm === gmName).map((r) => r.branch);
+  if (gmName) return getBranchesForGM(gmName, leads);
   return [];
 }
 
@@ -1088,9 +1130,9 @@ export function getTasksForLead(leadId, tasksList) {
 }
 
 /** Open tasks across GM's branches — for meeting prep "chase up" view. Sorted by urgency: overdue first, then due soon, then by priority. */
-export function getTasksForGMBranches(tasksList, gmName = "D. Williams") {
+export function getTasksForGMBranches(tasksList, gmName = "D. Williams", leads = null) {
   const list = tasksList ?? defaultTasks;
-  const myBranches = orgMapping.filter((r) => r.gm === gmName).map((r) => r.branch);
+  const myBranches = getBranchesForGM(gmName, leads);
   const open = list.filter((t) => t.status !== "Done" && myBranches.includes(t.assignedBranch));
   const now = new Date(NOW);
   const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
@@ -1109,9 +1151,9 @@ export function getTasksForGMBranches(tasksList, gmName = "D. Williams") {
 }
 
 /** GM tasks progress: total, completed, open, and progress % for meeting prep modules. */
-export function getGMTasksProgress(tasksList, gmName = "D. Williams") {
+export function getGMTasksProgress(tasksList, gmName = "D. Williams", leads = null) {
   const list = tasksList ?? defaultTasks;
-  const myBranches = orgMapping.filter((r) => r.gm === gmName).map((r) => r.branch);
+  const myBranches = getBranchesForGM(gmName, leads);
   const gmTasks = list.filter((t) => myBranches.includes(t.assignedBranch));
   const total = gmTasks.length;
   const completed = gmTasks.filter((t) => t.status === "Done").length;
@@ -1514,7 +1556,7 @@ export function getTrendsChartDataStacked(leads, dateRange, branch, groupBy, pre
 export function getGMDashboardStats(leads, dateRange = null, gmName = null) {
   let filtered = leads ?? [];
   if (gmName) {
-    const myBranches = orgMapping.filter((r) => r.gm === gmName).map((r) => r.branch);
+    const myBranches = getBranchesForGM(gmName, leads);
     filtered = filtered.filter((l) => myBranches.includes(l.branch));
   }
   if (dateRange?.start || dateRange?.end) {
@@ -1565,7 +1607,7 @@ export function getGMDashboardStats(leads, dateRange = null, gmName = null) {
 export function getUnreachableLeads(leads, dateRange = null, gmName = null) {
   let filtered = leads ?? [];
   if (gmName) {
-    const myBranches = orgMapping.filter((r) => r.gm === gmName).map((r) => r.branch);
+    const myBranches = getBranchesForGM(gmName, leads);
     filtered = filtered.filter((l) => myBranches.includes(l.branch));
   }
   if (dateRange?.start || dateRange?.end) {
@@ -1588,7 +1630,7 @@ export function getUnreachableLeads(leads, dateRange = null, gmName = null) {
 export function getUnreachableLeadsStats(leads, dateRange = null, gmName = null) {
   let allFiltered = leads ?? [];
   if (gmName) {
-    const myBranches = orgMapping.filter((r) => r.gm === gmName).map((r) => r.branch);
+    const myBranches = getBranchesForGM(gmName, leads);
     allFiltered = allFiltered.filter((l) => myBranches.includes(l.branch));
   }
   if (dateRange?.start || dateRange?.end) {
@@ -1742,7 +1784,7 @@ export function getGMMetricTrendByWeek(leads, opts = {}) {
 /** GM branch leaderboard: per-branch metrics, ranked by sortMetric. scope = "my_branches" | "all". */
 export function getGMBranchLeaderboard(leads, dateRange, sortMetric = "conversionRate", scope = "all", gmName = "D. Williams") {
   const allBranches = [...new Set(orgMapping.map((r) => r.branch))];
-  const myBranches = orgMapping.filter((r) => r.gm === gmName).map((r) => r.branch);
+  const myBranches = getBranchesForGM(gmName, leads);
   const branches = scope === "my_branches" ? myBranches : allBranches;
 
   const branchData = branches.map((branch) => {
@@ -1865,7 +1907,7 @@ export function getGMLeads(leads, dateRange = null, filters = {}, gmName = null)
 
   let filtered = leads ?? [];
   if (gmName) {
-    const myBranches = orgMapping.filter((r) => r.gm === gmName).map((r) => r.branch);
+    const myBranches = getBranchesForGM(gmName, leads);
     filtered = filtered.filter((l) => myBranches.includes(l.branch));
   }
   if (dateRange?.start || dateRange?.end) {
@@ -1897,7 +1939,7 @@ export function getGMLeads(leads, dateRange = null, filters = {}, gmName = null)
 
 /** GM meeting prep data: per-branch compliance checklist + zone-level outstanding items. */
 export function getGMMeetingPrepData(leads, dateRange = null, gmName = "D. Williams") {
-  const myBranches = orgMapping.filter((r) => r.gm === gmName).map((r) => r.branch);
+  const myBranches = getBranchesForGM(gmName, leads);
 
   const branchChecklist = myBranches.map((branch) => {
     const branchLeads = getLeadsForBranchInRange(leads ?? [], dateRange, branch);
@@ -1951,7 +1993,7 @@ export function getGMOutstandingCount(leads, dateRange = null, gmName = "D. Will
 export function getGMLeadsToReviewCount(leads, dateRange = null, gmName = null) {
   let filtered = leads ?? [];
   if (gmName) {
-    const myBranches = orgMapping.filter((r) => r.gm === gmName).map((r) => r.branch);
+    const myBranches = getBranchesForGM(gmName, filtered);
     filtered = filtered.filter((l) => myBranches.includes(l.branch));
   }
   if (dateRange?.start || dateRange?.end) {
@@ -1969,7 +2011,7 @@ export function getGMLeadsToReviewCount(leads, dateRange = null, gmName = null) 
  * Returns branches sorted by conversion rate desc, with current/prev period stats and trend delta.
  */
 export function getConversionByBranch(leads, dateRange, compRange = null, gmName = "D. Williams") {
-  const myBranches = orgMapping.filter((r) => r.gm === gmName).map((r) => r.branch);
+  const myBranches = getBranchesForGM(gmName, leads);
 
   const data = myBranches.map((branch) => {
     const curr = getLeadsForBranchInRange(leads ?? [], dateRange, branch);
@@ -2002,7 +2044,7 @@ export function getConversionByBranch(leads, dateRange, compRange = null, gmName
  * Returns insurers sorted by total volume desc (State Farm typically first), with trend delta.
  */
 export function getConversionByInsurer(leads, dateRange, compRange = null, gmName = "D. Williams") {
-  const myBranches = orgMapping.filter((r) => r.gm === gmName).map((r) => r.branch);
+  const myBranches = getBranchesForGM(gmName, leads);
 
   let currLeads = (leads ?? []).filter((l) => myBranches.includes(l.branch));
   if (dateRange?.start || dateRange?.end) {
@@ -2042,7 +2084,7 @@ export function getConversionByInsurer(leads, dateRange, compRange = null, gmNam
 }
 
 export function getConversionByBodyShop(leads, dateRange, compRange = null, gmName = "D. Williams") {
-  const myBranches = orgMapping.filter((r) => r.gm === gmName).map((r) => r.branch);
+  const myBranches = getBranchesForGM(gmName, leads);
 
   let currLeads = (leads ?? []).filter((l) => myBranches.includes(l.branch));
   if (dateRange?.start || dateRange?.end) {
@@ -2086,7 +2128,7 @@ export function getConversionByBodyShop(leads, dateRange, compRange = null, gmNa
  * Always returns the last 4 calendar weeks. Used for presentation stacked bar charts.
  */
 export function getStackedWeeklyByBranch(leads, branch = null, gmName = "D. Williams") {
-  const myBranches = orgMapping.filter((r) => r.gm === gmName).map((r) => r.branch);
+  const myBranches = getBranchesForGM(gmName, leads);
 
   // Trailing 4 weeks from NOW
   const end = new Date(NOW);
@@ -2183,7 +2225,7 @@ export function getSpotCheckData(leads, branch, dateRange = null) {
 
 /** Zone-wide benchmark averages for comparison with a single branch. */
 export function getZoneBenchmark(leads, dateRange = null, gmName = "D. Williams") {
-  const myBranches = orgMapping.filter((r) => r.gm === gmName).map((r) => r.branch);
+  const myBranches = getBranchesForGM(gmName, leads);
   const stats = getGMDashboardStats(
     (leads ?? []).filter((l) => myBranches.includes(l.branch)),
     dateRange
@@ -2198,18 +2240,21 @@ export function getZoneBenchmark(leads, dateRange = null, gmName = "D. Williams"
 
 /** Branches that have red flags (untouched leads or mismatches) for the spot check module card. */
 export function getBranchesWithFlags(leads, dateRange = null, gmName = "D. Williams") {
-  const myBranches = orgMapping.filter((r) => r.gm === gmName);
+  const branchNames = getBranchesForGM(gmName, leads);
   const flagged = [];
-  for (const row of myBranches) {
-    const data = getSpotCheckData(leads, row.branch, dateRange);
+  for (const branch of branchNames) {
+    const row = orgMapping.find((r) => r.branch === branch);
+    const branchLeads = (leads ?? []).filter((l) => l.branch === branch);
+    const bm = row?.bm ?? branchLeads[0]?.bmName ?? branchLeads[0]?.bm_name ?? "";
+    const data = getSpotCheckData(leads, branch, dateRange);
     if (data.untouched.length > 0 || data.mismatches.length > 0) {
       flagged.push({
-        branch: row.branch,
-        bm: row.bm,
+        branch,
+        bm,
         untouched: data.untouched.length,
         mismatches: data.mismatches.length,
       });
     }
   }
-  return { flaggedBranches: flagged.length, totalBranches: myBranches.length, flagged };
+  return { flaggedBranches: flagged.length, totalBranches: branchNames.length, flagged };
 }

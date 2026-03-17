@@ -13,6 +13,8 @@ import {
   getComparisonDateRange,
   getLeadById,
   resolveGMName,
+  getBranchesForGM,
+  normalizeGmName,
 } from "../../selectors/demoSelectors";
 import MetricDrilldownModal from "../MetricDrilldownModal";
 
@@ -59,14 +61,14 @@ export default function InteractiveGMSpotCheckPage() {
   const presets = useMemo(() => getDateRangePresets(), [loading]);
   const gmName = useMemo(() => {
     const name = userProfile?.displayName;
-    if (name && (orgMapping ?? []).some((r) => r.gm === name)) return name;
+    if (!name) return resolveGMName(null, userProfile?.id);
+    const nm = normalizeGmName(name);
+    if ((orgMapping ?? []).some((r) => r.gm && normalizeGmName(r.gm) === nm)) return name;
+    if ((leads ?? []).some((l) => normalizeGmName(l.generalMgr ?? l.general_mgr) === nm)) return name;
     return resolveGMName(name, userProfile?.id);
-  }, [userProfile?.displayName, userProfile?.id, orgMapping]);
+  }, [userProfile?.displayName, userProfile?.id, orgMapping, leads]);
 
-  const myBranches = useMemo(
-    () => orgMapping.filter((r) => r.gm === gmName).map((r) => r.branch),
-    [orgMapping, gmName]
-  );
+  const myBranches = useMemo(() => getBranchesForGM(gmName, leads ?? []), [gmName, leads]);
 
   const [selectedPresetKey, setSelectedPresetKey] = useState("this_week");
   const [selectedBranch, setSelectedBranch] = useState(myBranches[0] ?? null);
@@ -76,6 +78,13 @@ export default function InteractiveGMSpotCheckPage() {
   const [directiveSaved, setDirectiveSaved] = useState(false);
   const [directiveSaving, setDirectiveSaving] = useState(false);
   const panelRef = useRef(null);
+
+  useEffect(() => {
+    if (myBranches.length === 0) return;
+    if (!selectedBranch || !myBranches.includes(selectedBranch)) {
+      setSelectedBranch(myBranches[0]);
+    }
+  }, [myBranches, selectedBranch]);
 
   const currentPreset = presets.find((p) => p.key === selectedPresetKey);
   const dateRange = currentPreset ? { start: currentPreset.start, end: currentPreset.end } : null;

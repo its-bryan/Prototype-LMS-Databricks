@@ -2,7 +2,14 @@ import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { useData } from "../context/DataContext";
-import { getGMOutstandingCount, getTasksForGMBranches, getDateRangePresets, getNextComplianceMeetingDate, resolveGMName } from "../selectors/demoSelectors";
+import {
+  getGMOutstandingCount,
+  getTasksForGMBranches,
+  getDateRangePresets,
+  getNextComplianceMeetingDate,
+  resolveGMName,
+  normalizeGmName,
+} from "../selectors/demoSelectors";
 
 const cardAnim = (i, reduced = false) => ({
   initial: reduced ? false : { opacity: 0, y: 20 },
@@ -28,7 +35,7 @@ export default function GMMeetingPrepModule({ navigateTo, leads, dateRange, redu
   const outstandingCount = useMemo(() => {
     const range = thisWeekRange ?? dateRange;
     const outstanding = getGMOutstandingCount(leads ?? [], range, gmName);
-    const openTasks = getTasksForGMBranches(gmTasks, gmName).length;
+    const openTasks = getTasksForGMBranches(gmTasks, gmName, leads).length;
     return outstanding + openTasks;
   }, [leads, thisWeekRange, dateRange, gmTasks, gmName]);
 

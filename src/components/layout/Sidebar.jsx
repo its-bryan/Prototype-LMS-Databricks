@@ -13,6 +13,7 @@ import {
   getTasksForGMBranches,
   getBranchesWithFlags,
   resolveGMName,
+  normalizeGmName,
 } from "../../selectors/demoSelectors";
 
 const iconMap = {
@@ -135,9 +136,12 @@ export default function Sidebar() {
 
   const gmName = useMemo(() => {
     const name = userProfile?.displayName;
-    if (name && (orgMapping ?? []).some((r) => r.gm === name)) return name;
+    if (!name) return resolveGMName(null, userProfile?.id);
+    const nm = normalizeGmName(name);
+    if ((orgMapping ?? []).some((r) => r.gm && normalizeGmName(r.gm) === nm)) return name;
+    if ((leads ?? []).some((l) => normalizeGmName(l.generalMgr ?? l.general_mgr) === nm)) return name;
     return resolveGMName(name, userProfile?.id);
-  }, [userProfile?.displayName, userProfile?.id, orgMapping]);
+  }, [userProfile?.displayName, userProfile?.id, orgMapping, leads]);
 
   // GM Meeting Prep: outstanding branch items + open tasks to chase
   const gmMeetingPrepOutstanding = useMemo(() => {
@@ -147,7 +151,7 @@ export default function Sidebar() {
     if (!thisWeek) return 0;
     const dateRange = { start: thisWeek.start, end: thisWeek.end };
     const outstanding = getGMOutstandingCount(leads ?? [], dateRange, gmName);
-    const openTasks = getTasksForGMBranches(gmTasks, gmName);
+    const openTasks = getTasksForGMBranches(gmTasks, gmName, leads);
     return outstanding + openTasks.length;
   }, [role, leads, gmTasks, gmName]);
 

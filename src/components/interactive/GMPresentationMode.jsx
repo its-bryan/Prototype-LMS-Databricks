@@ -19,8 +19,8 @@ import {
   getStackedWeeklyByBranch,
   getWinsLearningsForGM,
   getDateRangePresets,
+  getBranchesForGM,
 } from "../../selectors/demoSelectors";
-import { useData } from "../../context/DataContext";
 import { formatDateShort } from "../../utils/dateTime";
 
 // ─── Design tokens (2024 Hertz Sustainability Report palette) ──────────────────
@@ -1498,11 +1498,7 @@ function SpotCheckLeadDetailPanel({ lead, onBack }) {
 }
 
 function SlideSpotCheck({ frozenLeads, gmName, initialBranch }) {
-  const { orgMapping } = useData();
-  const myBranches = useMemo(
-    () => orgMapping.filter((r) => r.gm === gmName).map((r) => r.branch),
-    [orgMapping, gmName]
-  );
+  const myBranches = useMemo(() => getBranchesForGM(gmName, frozenLeads ?? []), [gmName, frozenLeads]);
 
   const [selectedBranch, setSelectedBranch] = useState(initialBranch ?? myBranches[0] ?? null);
   const [statusFilter, setStatusFilter] = useState(null);

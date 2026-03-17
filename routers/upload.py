@@ -87,6 +87,38 @@ def _row_to_update_tuple(row, confirm_num):
     )
 
 
+def _upsert_org_mapping_from_hles(rows_to_process, cur):
+    """Upsert org_mapping from distinct (branch, bm_name, area_mgr, general_mgr, zone) in uploaded HLES rows."""
+    # One row per branch (last occurrence wins)
+    by_branch = {}
+    for _confirm_num, row in rows_to_process:
+        branch = _val(row, "branch")
+        if not branch or not str(branch).strip():
+            continue
+        bm = _val(row, "bm_name") or ""
+        am = _val(row, "area_mgr") or ""
+        gm = _val(row, "general_mgr")  # nullable in org_mapping
+        zone = _val(row, "zone")
+        if zone is None:
+            zone = ""
+        by_branch[str(branch).strip()] = (bm, am, gm, str(zone).strip() or "")
+
+    if not by_branch:
+        return
+    sql = """
+        INSERT INTO org_mapping (bm, branch, am, gm, zone)
+        VALUES (%s, %s, %s, %s, %s)
+        ON CONFLICT (branch) DO UPDATE SET
+            bm = EXCLUDED.bm,
+            am = EXCLUDED.am,
+            gm = EXCLUDED.gm,
+            zone = EXCLUDED.zone,
+            updated_at = now()
+    """
+    for branch, (bm, am, gm, zone) in by_branch.items():
+        cur.execute(sql, (bm, branch, am, gm, zone))
+
+
 @router.get("/upload/history")
 def get_upload_history():
     """Return all upload_summary rows for the upload history UI (date, who, status, metadata)."""
@@ -185,6 +217,9 @@ async def upload_hles(
                 WHERE leads.confirm_num = v.confirm_num"""
                 cur.execute(sql, tuple(x for t in values_tuples for x in t))
                 stats["updated"] += n
+
+            # 5) Sync org_mapping from HLES (branch -> bm, am, gm, zone) so GM view and org mapping UI stay in sync
+            _upsert_org_mapping_from_hles(rows_to_process, cur)
 
     execute(
         "INSERT INTO upload_summary (hles, translog, data_as_of_date) VALUES (%s::jsonb, %s::jsonb, %s)",

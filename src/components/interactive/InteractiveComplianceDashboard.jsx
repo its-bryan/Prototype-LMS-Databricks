@@ -12,6 +12,8 @@ import {
   getZones,
   relChange,
   resolveGMName,
+  getBranchesForGM,
+  normalizeGmName,
 } from "../../selectors/demoSelectors";
 import GMMetricDrilldownModal from "../GMMetricDrilldownModal";
 
@@ -35,17 +37,20 @@ export default function InteractiveComplianceDashboard() {
 
   const gmName = useMemo(() => {
     const name = userProfile?.displayName;
-    if (name && (orgMapping ?? []).some((r) => r.gm === name)) return name;
+    if (!name) return resolveGMName(null, userProfile?.id);
+    const nm = normalizeGmName(name);
+    if ((orgMapping ?? []).some((r) => r.gm && normalizeGmName(r.gm) === nm)) return name;
+    if ((leads ?? []).some((l) => normalizeGmName(l.generalMgr ?? l.general_mgr) === nm)) return name;
     return resolveGMName(name, userProfile?.id);
-  }, [userProfile?.displayName, userProfile?.id, orgMapping]);
-  const gmBranches = useMemo(
-    () => orgMapping.filter((r) => r.gm === gmName).map((r) => r.branch),
-    [orgMapping, gmName]
-  );
+  }, [userProfile?.displayName, userProfile?.id, orgMapping, leads]);
+  const gmBranches = useMemo(() => getBranchesForGM(gmName, leads ?? []), [gmName, leads]);
   const gmZone = useMemo(() => {
-    const row = orgMapping.find((r) => r.gm === gmName && r.zone);
-    return row?.zone ?? null;
-  }, [orgMapping, gmName]);
+    const row = orgMapping.find((r) => r.gm && normalizeGmName(r.gm) === normalizeGmName(gmName) && r.zone);
+    if (row?.zone) return row.zone;
+    const b = gmBranches[0];
+    const fromLead = b ? (leads ?? []).find((l) => l.branch === b) : null;
+    return fromLead?.zone ?? null;
+  }, [orgMapping, gmName, gmBranches, leads]);
 
   const gmBranchesHaveData = useMemo(
     () => gmBranches.length > 0 && (leads ?? []).some((l) => gmBranches.includes(l.branch)),

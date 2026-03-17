@@ -810,6 +810,11 @@ export default function InteractiveUploads() {
 
   // ---- Step: Validate ----
   const handleValidate = useCallback(async () => {
+    // Clear previous results so the validate step always shows the loader (no stale cards).
+    setHlesParsed(null);
+    setTranslogParsed(null);
+    setHlesReconciliation(null);
+    setTranslogReconciliation(null);
     setParsing(true);
     setValidateProgress({ phase: "Preparing…", pct: 5 });
     setStep("validate");
@@ -901,6 +906,7 @@ export default function InteractiveUploads() {
           orgMapping: null,
         });
         refetchLeads?.();
+        refetchOrgMapping?.();
         refetchDataAsOfDate?.();
         setStep("summary");
       } catch (err) {
