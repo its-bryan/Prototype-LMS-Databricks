@@ -1076,8 +1076,10 @@ function BranchChecklistRow({
               Creating…
             </>
           ) : createResult ? (
-            createResult.created > 0 ? (
-              <span className="text-[var(--color-success)]">✓ {createResult.created} created</span>
+            (createResult.created > 0 || createResult.reminded > 0) ? (
+              <span className="text-[var(--color-success)]">
+                ✓ {[createResult.created > 0 && `${createResult.created} created`, createResult.reminded > 0 && `${createResult.reminded} reminded`].filter(Boolean).join(", ")}
+              </span>
             ) : (
               <span className="text-red-600" title={createResult.errors?.[0]?.error ?? "Request failed"}>
                 {createResult.errors?.length ? "Failed: " + (createResult.errors[0].error || "see tooltip").slice(0, 60) : "Failed"}

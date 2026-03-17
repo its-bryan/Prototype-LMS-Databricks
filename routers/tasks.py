@@ -63,7 +63,7 @@ async def create_task(body: dict):
 
 @router.post("/tasks/compliance")
 async def create_compliance_tasks(body: dict):
-    """Bulk-create tasks for outstanding leads in a branch."""
+    """Bulk-create tasks for outstanding leads in a branch. If a lead already has an open task, append a reminder note instead of creating a duplicate."""
     branch = body.get("branch")
     bm_name = body.get("bmName") or body.get("bm_name")
     due_date_raw = body.get("dueDateStr") or body.get("due_date")
@@ -71,10 +71,10 @@ async def create_compliance_tasks(body: dict):
     gm_user_id = body.get("gmUserId") or body.get("gm_user_id")
     raw_leads = body.get("outstandingLeads", [])
     # Frontend may send full lead objects or plain IDs
-    lead_ids = [l["id"] if isinstance(l, dict) else l for l in raw_leads]
+    lead_ids_raw = [l["id"] if isinstance(l, dict) else l for l in raw_leads]
 
-    if not branch or not lead_ids:
-        return {"created": 0, "errors": []}
+    if not branch or not lead_ids_raw:
+        return {"created": 0, "reminded": 0, "errors": []}
 
     # Normalize due_date to YYYY-MM-DD or None (tasks.due_date is date type)
     due_date = None
@@ -87,37 +87,82 @@ async def create_compliance_tasks(body: dict):
     created_by_uuid = _parse_uuid(gm_user_id)
 
     created = 0
+    reminded = 0
     errors = []
-    for raw_id in lead_ids:
-        try:
-            try:
-                lead_id = int(raw_id)
-            except (TypeError, ValueError):
-                errors.append({"lead_id": raw_id, "error": "invalid lead_id"})
-                continue
-            execute(
-                """INSERT INTO tasks
-                    (title, description, due_date, lead_id, assigned_to, assigned_to_name,
-                     created_by, created_by_name, source, priority, status)
-                VALUES (%s, %s, %s, %s, NULL, %s, %s, %s, 'gm_assigned', 'Normal', 'Open')""",
-                (
-                    f"Review lead #{lead_id}",
-                    f"Compliance review assigned by {gm_name}",
-                    due_date,
-                    lead_id,
-                    bm_name,
-                    created_by_uuid,
-                    gm_name,
-                )
-            )
-            created += 1
-        except Exception as e:
-            err_msg = str(e)
-            log.warning("Compliance task INSERT failed for lead_id=%s: %s", raw_id, err_msg)
-            print(f"[COMPLIANCE_INSERT_ERROR] lead_id={raw_id} error={err_msg}", flush=True)
-            errors.append({"lead_id": raw_id, "error": err_msg})
 
-    return {"created": created, "errors": errors}
+    # Resolve valid integer lead_ids and collect invalid ones
+    lead_ids = []
+    for raw_id in lead_ids_raw:
+        try:
+            lead_ids.append(int(raw_id))
+        except (TypeError, ValueError):
+            errors.append({"lead_id": raw_id, "error": "invalid lead_id"})
+
+    if not lead_ids:
+        return {"created": 0, "reminded": 0, "errors": errors}
+
+    # Bulk lookup: one open task per lead (latest by created_at)
+    open_tasks_by_lead = {}
+    if lead_ids:
+        rows = query(
+            """SELECT DISTINCT ON (lead_id) lead_id, id, notes_log
+               FROM tasks
+               WHERE lead_id = ANY(%s) AND status IN ('Open', 'In Progress')
+               ORDER BY lead_id, created_at DESC""",
+            (lead_ids,),
+        )
+        for r in rows or []:
+            open_tasks_by_lead[r["lead_id"]] = (r["id"], r.get("notes_log") or [])
+
+    reminder_note = "Compliance reminder from GM (meeting prep)."
+    now = datetime.now()
+    reminder_entry = {
+        "time": now.strftime("%b %d, %I:%M %p"),
+        "timestamp": int(time.time() * 1000),
+        "author": gm_name,
+        "note": reminder_note,
+    }
+
+    for lead_id in lead_ids:
+        raw_id = lead_id
+        if lead_id in open_tasks_by_lead:
+            task_id, current_log = open_tasks_by_lead[lead_id]
+            try:
+                new_log = list(current_log) + [reminder_entry]
+                execute(
+                    "UPDATE tasks SET notes_log = %s::jsonb, notes = %s, updated_at = now() WHERE id = %s",
+                    (json.dumps(new_log), reminder_note, task_id),
+                )
+                reminded += 1
+            except Exception as e:
+                err_msg = str(e)
+                log.warning("Compliance reminder UPDATE failed for lead_id=%s task_id=%s: %s", lead_id, task_id, err_msg)
+                errors.append({"lead_id": raw_id, "error": err_msg})
+        else:
+            try:
+                execute(
+                    """INSERT INTO tasks
+                        (title, description, due_date, lead_id, assigned_to, assigned_to_name,
+                         created_by, created_by_name, source, priority, status)
+                    VALUES (%s, %s, %s, %s, NULL, %s, %s, %s, 'gm_assigned', 'Normal', 'Open')""",
+                    (
+                        f"Review lead #{lead_id}",
+                        f"Compliance review assigned by {gm_name}",
+                        due_date,
+                        lead_id,
+                        bm_name,
+                        created_by_uuid,
+                        gm_name,
+                    ),
+                )
+                created += 1
+            except Exception as e:
+                err_msg = str(e)
+                log.warning("Compliance task INSERT failed for lead_id=%s: %s", raw_id, err_msg)
+                print(f"[COMPLIANCE_INSERT_ERROR] lead_id={raw_id} error={err_msg}", flush=True)
+                errors.append({"lead_id": raw_id, "error": err_msg})
+
+    return {"created": created, "reminded": reminded, "errors": errors}
 
 @router.get("/tasks/gm")
 async def get_tasks_for_gm(branches: str = ""):
