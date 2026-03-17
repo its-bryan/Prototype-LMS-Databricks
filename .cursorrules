@@ -1,0 +1,125 @@
+# Hertz LMS Prototype — Project Orientation
+
+## GitHub Repositories
+
+- **Prototype (static):** https://github.com/popcornAlesto33/Prototype-LMS (remote: `prototype-lms`)
+- **Prototype (Databricks):** https://github.com/popcornAlesto33/Prototype-LMS-Databricks (remote: `origin`)
+
+Push normally with `git push origin main`. This is a standalone clone of the Databricks variant.
+
+## What is this?
+
+**Hertz LMS (Lead Management System)** — an interactive prototype for insurance replacement lead conversion workflows. Users pick a role (Branch Manager, General Manager, or Admin) and explore the system in Interactive Demo or Guided Tour mode.
+
+**Backend**: FastAPI on Databricks Apps, connected to Lakebase Postgres (psycopg3 + OAuth token rotation). See `docs/DatabricksLearnings.md`.
+
+## Tech Stack
+
+- **React 19** with JSX (no TypeScript source files, but types installed for editor support)
+- **Vite 7** for dev server and builds
+- **Tailwind CSS v4** (utility-first, imported via `@import "tailwindcss"` in `index.css`)
+- **Framer Motion** for step transitions and UI animations
+- **FastAPI** backend (`main.py`, `routers/`, `db.py`)
+- **ESLint** for linting (no test framework configured)
+- **ES Modules** throughout (`"type": "module"`)
+
+## Project Structure
+
+```
+├── .cursorrules             # This file (project orientation for Cursor)
+├── main.py                  # FastAPI app entry point
+├── db.py                    # Lakebase Postgres connection (psycopg3 + OAuth)
+├── app.yaml                 # Databricks Apps deployment config
+├── routers/
+│   ├── leads.py             # Lead CRUD + search
+│   └── upload.py            # HLES/TRANSLOG file upload + ETL
+├── etl/
+│   └── clean.py             # HLES data cleaning + column mapping
+├── src/
+│   ├── App.jsx              # Root — mode router (demo vs journey)
+│   ├── main.jsx             # React DOM mount
+│   ├── index.css            # Tailwind import
+│   ├── components/          # Shared presentational components
+│   ├── components/interactive/  # Interactive demo view components
+│   ├── components/layout/   # App chrome (top bar, sidebar)
+│   ├── config/              # Navigation, communication rules
+│   ├── context/             # AppContext, AuthContext, DataContext
+│   ├── selectors/           # Data selectors (demoSelectors.js)
+│   ├── walkthroughs/        # Role-specific guided tour steps
+│   └── data/                # databricksData.js (API layer), mockData.js (fallback)
+├── docs/                    # Handoff docs, PRD, migrations
+│   ├── HANDOFF-BRIEF.md     # Original design brief
+│   ├── HANDOFF-ETL-PHASE2.md # Current work: ETL fix + communication removal
+│   ├── DatabricksLearnings.md
+│   ├── DATABRICKS-DATABASE-SETUP.md
+│   ├── PORTING-TO-DATABRICKS.md
+│   ├── PROD-READY.md
+│   ├── 2026-02-21-lead-management-system-design.md  # Full PRD
+│   ├── Initial_brief.md     # Kickoff transcript with Zone GM
+│   └── lakebase-migrations/ # SQL schema + seed files
+├── data/
+│   └── samples/             # Sample HLES + TRANSLOG CSVs
+└── public/                  # Static assets
+```
+
+## Architecture & Patterns
+
+- **Two app modes** — `App.jsx` switches between **Interactive Demo** (sidebar-navigated) and **Customer Journeys** (step-by-step walkthroughs). State lives in `AppContext`.
+- **No router library** — view navigation is state-driven via `AppContext.navigateTo(viewId)`
+- **Data layer** — `src/data/databricksData.js` makes real API calls to the FastAPI backend; `mockData.js` is the fallback
+- **Slot pattern** — `LeadDetail` accepts slot props for composing enrichment forms, contact buttons, etc.
+- **Dashboard pattern** — "This Week" snapshot cards + "4-Week Trend" MiniBarChart grids
+
+## Commands
+
+```bash
+npm run dev      # Start Vite dev server (frontend only)
+npm run build    # Production build (run before deploying)
+npm run preview  # Preview production build
+npm run lint     # ESLint
+```
+
+## Current Work (see docs/HANDOFF-ETL-PHASE2.md)
+
+1. **ETL column mappings** need fixing to match actual HLES Excel format
+2. **Communication features** (email/SMS/call) need removing to simplify the build
+3. **Leads table** needs ALTER TABLE for missing columns
+4. **Upload router** INSERT needs expanding to include all mapped fields
+
+## Styling Conventions
+
+Tailwind utility classes with Hertz brand palette:
+
+| Color | Hex | Usage |
+|-------|-----|-------|
+| Dark | `#1A1A1A` | Primary text |
+| Gray | `#6E6E6E` | Secondary text |
+| Light | `#E6E6E6` | Borders |
+| Gold | `#F5C400` | Accent, highlights (use sparingly) |
+| Green | `#2E7D32` | Success, rented status |
+| Red | `#C62828` | Errors, cancellations |
+
+## Domain Glossary
+
+- **HLES** — Hertz Lead Entry System; source of lead data via EDI
+- **EDI** — Electronic Data Interchange; automated data feed
+- **Lead** — an insurance replacement vehicle rental request
+- **TRANSLOG** — activity log tracking contact attempts and system events
+- **Enrichment/Comments** — BM-provided context on why a lead was cancelled/unused
+- **Conversion Rate** — % of leads rented. Currently ~67-70%, target 80%+
+- **RENT_IND** — `1` = converted, `0` = not converted. Formula: `sum(RENT_IND) / count(RES_ID) * 100%`
+- **GM Directive** — instructions from General Manager to Branch Manager
+- **HRD** — Hertz Replacement Desk (centralised call centre, Oklahoma City)
+- **Org Mapping** — BM -> Branch -> AM -> GM -> Zone hierarchy
+
+## Lead Statuses
+
+`Rented` (converted) | `Cancelled` (lost, with reason) | `Unused` (no action taken) | `Reviewed` (GM reviewed)
+
+## Role Workflows
+
+**Branch Manager**: Reviews weekly cancelled/unused leads -> enriches each with reason, notes, next action -> tracks progress toward full enrichment compliance.
+
+**General Manager**: Views compliance dashboard with conversion rates -> reviews cancelled leads in 3-column layout (HLES reason vs. TRANSLOG vs. BM enrichment) -> flags mismatches -> adds directives -> spot-checks branches.
+
+**Admin**: Uploads HLES and TRANSLOG data files -> reviews validation summaries -> manages org mapping table.

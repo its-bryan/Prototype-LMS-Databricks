@@ -36,9 +36,11 @@ twilio-mcp/
 supabase/
 SUPABASE_SETUP.md
 
-# Dev-only scripts and docs
+# Dev-only scripts
 scripts/
-docs/
+
+# Sample data (real HLES/TRANSLOG — don't push to public repos)
+data/samples/
 
 # Other deployment platforms
 vercel.json

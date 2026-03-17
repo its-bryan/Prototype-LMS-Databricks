@@ -1,0 +1,319 @@
+# Handoff Brief: ETL Fix + Phase 2 Completion
+
+> **Date**: 2026-03-17
+> **Status**: Phase 2 backend is deployed. ETL needs fixing before real data can be uploaded. Communication features (email/SMS/call) flagged for removal to simplify the build.
+> **Priority**: Fix ETL column mappings → test upload → verify Phase 2 features end-to-end → strip communication features
+
+---
+
+## What's Done
+
+### Database (Lakebase Postgres — 13 tables)
+- All tables created and working in `databricks_postgres` database
+- Schema: `001_full_schema.sql` (11 tables) + `003_phase2_tables.sql` (2 tables: `gm_directives`, `wins_learnings`)
+- Seed data: `002_seed_config.sql` — org_mapping (15 demo branches), cancel reasons, next actions, demo user profiles
+- 5 test leads inserted manually for testing Phase 2 features
+- App has GRANT access to all tables via DATABRICKS_CLIENT_ID
+
+### Backend (FastAPI)
+- All endpoints working: leads, tasks, config, upload, directives, wins
+- Connection uses psycopg3 + OAuth token rotation (see `DatabricksLearnings.md`)
+- Phase 2 endpoints:
+  - `GET/POST /api/leads/{id}/directives` — GM directives per lead
+  - `GET/POST /api/wins-learnings` — wins & learnings submissions
+  - `POST /api/tasks/compliance` — bulk compliance task creation
+
+### Frontend (React)
+- `databricksData.js` — all stubs replaced with real API calls
+- Hardcoded to use Databricks backend (no build flags needed)
+- `npm run build` required after frontend changes, then redeploy
+
+### Deployment
+- Databricks Apps with Database resource configured
+- Push process: `git subtree split --prefix=docs/Prototype-LeadMgmtsys/prototype-lms` then push to both `prototype-lms` and `prototype-lms-databricks` remotes (NEVER push full repo)
+- See `DatabricksLearnings.md` for full deployment workflow
+
+---
+
+## What Needs Fixing: ETL
+
+### The Problem
+
+The HLES upload ETL (`etl/clean.py` + `routers/upload.py`) doesn't match the actual HLES Excel file format. The column names, mappings, and the set of fields inserted into the `leads` table are all incomplete.
+
+### Actual HLES File Format
+
+File: `data/raw/HLES Conversion Data 2025.06.09 - 1000 records.xlsx`
+
+Columns (with leading `\n` characters from Excel formatting):
+```
+\nCONFIRM_NUM    — Confirmation number (e.g., "208-9441926")
+\nCLAIM          — Claim number
+\nCDP            — CDP code
+\nCDP NAME       — Insurance company name (e.g., "COOPERATORS (CGIC) HIRS")
+\nWeek Of        — Week date
+\nINIT_DATE       — Initial date
+\nHTZREGION      — Hertz region (e.g., "Canada")
+\nSET_STATE      — State/province (e.g., "AB")
+\nZONE           — Zone (e.g., "Canada")
+\nAREA_MGR       — Area manager name
+\nGENERAL_MGR    — General manager name
+\nRENT_LOC       — Rental location / branch (e.g., "8036-25    - EDMONTON SOUTH")
+\nRES_ID         — Reservation ID (primary identifier)
+\nRENT_IND       — Rental indicator: 1=Rented, 0=Not rented
+\nCANCEL_ID      — Cancel indicator
+\nUNUSED_IND     — Unused indicator
+\nCONTACT_GROUP  — Contact group (e.g., "COUNTER")
+\nCONTACT RANGE  — Time to contact range (e.g., "(c)1-3 hrs")
+\nADJ LNAME      — Customer last name
+\nADJ FNAME      — Customer first name
+\nBODY SHOP      — Body shop name
+\nCODE           — Country code
+\nKNUM           — K-number
+\nMONTH          — Month (YYYYMM format)
+\nZIP            — ZIP/postal code
+\nCANCEL REASON  — Cancellation reason text
+\nINIT_DT_FINAL  — Final initial date (date reservation was received)
+FST\nDT_FROM_ALPHA1 — First contact datetime
+\nDAY_DIF        — Days difference
+\nHRS_DIF        — Hours difference
+\nMIN_DIF        — Minutes difference
+\nDATE_OUT1      — Date out
+```
+
+**Important**: Column names have leading `\n` characters. The ETL's regex normalization (`re.sub(r'\s+', '_', col.strip().lower())`) converts these to clean lowercase_underscore format (e.g., `\nCONFIRM_NUM` → `confirm_num`, `\nADJ LNAME` → `adj_lname`).
+
+### Current ETL Mappings (etl/clean.py)
+
+```python
+col_map = {
+    'res_id': 'reservation_id',        # ✓ Works
+    'cust_name': 'customer',            # ✗ Column doesn't exist in HLES
+    'cust_nm': 'customer',              # ✗ Column doesn't exist in HLES
+    'br_name': 'branch',               # ✗ Column doesn't exist in HLES
+    'branch_name': 'branch',            # ✗ Column doesn't exist in HLES
+    'bm': 'bm_name',                   # ✗ Column doesn't exist in HLES
+    'branch_manager': 'bm_name',        # ✗ Column doesn't exist in HLES
+    'ins_co': 'insurance_company',      # ✗ Column doesn't exist in HLES
+    'insurance': 'insurance_company',   # ✗ Column doesn't exist in HLES
+    'cancel_reason': 'hles_reason',     # ✓ Works
+    'reason': 'hles_reason',            # (fallback, fine)
+    'rent_ind': 'rent_ind',             # ✓ Works
+    'init_dt_final': 'init_dt_final',   # ✓ Works
+}
+```
+
+### Required ETL Mappings
+
+After column normalization, the HLES columns become:
+```python
+col_map = {
+    'res_id': 'reservation_id',
+    'confirm_num': 'confirm_num',
+    'cdp_name': 'insurance_company',        # "CDP NAME" = insurance company
+    'rent_loc': 'branch',                   # "RENT_LOC" = branch/location
+    'general_mgr': 'general_mgr',
+    'area_mgr': 'area_mgr',
+    'zone': 'zone',
+    'htzregion': 'htz_region',
+    'set_state': 'set_state',
+    'cancel_reason': 'hles_reason',
+    'rent_ind': 'rent_ind',
+    'init_dt_final': 'init_dt_final',
+    'week_of': 'week_of',
+    'contact_range': 'contact_range',
+    'body_shop': 'body_shop',
+    'knum': 'knum',
+}
+
+# Customer name: combine ADJ FNAME + ADJ LNAME
+df['customer'] = (df['adj_fname'].fillna('') + ' ' + df['adj_lname'].fillna('')).str.strip()
+
+# BM name: look up from org_mapping table by branch, or leave empty
+# (HLES doesn't have BM — only GENERAL_MGR and AREA_MGR)
+```
+
+### Leads Table — Missing Columns
+
+The `leads` table (from `001_full_schema.sql`) is missing these columns that the frontend's `leadFromRow` in `databricksData.js` already expects:
+
+```sql
+-- Add to leads table:
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS confirm_num text;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS knum text;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS source_email text;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS source_phone text;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS source_status text;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS body_shop text;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS mismatch_reason text;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS cdp_name text;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS htz_region text;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS set_state text;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS zone text;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS area_mgr text;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS general_mgr text;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS rent_loc text;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS week_of date;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS contact_range text;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS last_upload_id bigint;
+```
+
+Run these ALTER TABLEs in the Lakebase SQL editor, then GRANT access if needed.
+
+### Upload Router — Needs More Fields
+
+`routers/upload.py` currently only inserts 8 fields. After fixing the ETL and adding columns, update the INSERT to include all mapped fields.
+
+Current INSERT (upload.py line 41-49):
+```python
+execute(
+    """INSERT INTO leads
+        (customer, reservation_id, status, branch, bm_name,
+         insurance_company, hles_reason, init_dt_final)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
+    (...)
+)
+```
+
+Needs to become:
+```python
+execute(
+    """INSERT INTO leads
+        (customer, reservation_id, status, branch, bm_name,
+         insurance_company, hles_reason, init_dt_final,
+         confirm_num, knum, body_shop, cdp_name, htz_region,
+         set_state, zone, area_mgr, general_mgr, rent_loc,
+         week_of, contact_range)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+    (...)
+)
+```
+
+Similarly update the UPDATE statement for existing leads.
+
+### BM Name Resolution
+
+The HLES file doesn't contain BM names — only `GENERAL_MGR` and `AREA_MGR`. The `bm_name` field (which is `NOT NULL` in the leads table) needs to be resolved by looking up the org_mapping table by branch. If no match, use a fallback like the area manager name or empty string.
+
+Two approaches:
+1. Look up `org_mapping` during ETL: `SELECT bm FROM org_mapping WHERE branch = %s`
+2. Change `bm_name` to nullable in the leads table: `ALTER TABLE leads ALTER COLUMN bm_name DROP NOT NULL;`
+
+Option 2 is simpler for now.
+
+---
+
+## Files to Modify
+
+| File | What to change |
+|------|---------------|
+| `etl/clean.py` | Fix column mappings to match actual HLES format, add customer name concatenation |
+| `routers/upload.py` | Add all new fields to INSERT/UPDATE statements |
+| `lakebase-migrations/004_add_lead_columns.sql` | New migration: ALTER TABLE leads ADD COLUMN for missing fields |
+
+## Files for Reference
+
+| File | Contains |
+|------|----------|
+| `DatabricksLearnings.md` | Lakebase connection patterns, deployment workflow, gotchas |
+| `PROD-READY.md` | Production readiness checklist |
+| `lakebase-migrations/001_full_schema.sql` | Current leads table schema |
+| `lakebase-migrations/003_phase2_tables.sql` | GM directives + wins/learnings tables |
+| `src/data/databricksData.js` | Frontend data layer — `leadFromRow` shows all expected fields |
+| `src/context/DataContext.jsx` | How the frontend consumes the data functions |
+| `data/raw/HLES Conversion Data 2025.06.09 - 1000 records.xlsx` | Sample HLES file for testing |
+| `CLAUDE.md` (root) | Project overview, data domain glossary, conversion variable definition |
+| `docs/Prototype-LeadMgmtsys/CLAUDE.md` | Prototype architecture, push instructions, tech stack |
+
+## Key Domain Context
+
+- **RENT_IND**: `1` = converted (Rented), `0` = not converted. Formula: `Conversion Rate = sum(RENT_IND) / count(RES_ID) × 100%`
+- **HLES**: Hertz Lead Entry System — source of lead data via EDI
+- **Lead statuses**: Rented | Cancelled | Unused | Reviewed
+- **Org hierarchy**: BM (Branch Manager) → Branch → AM (Area Manager) → GM (General Manager) → Zone
+- The `branch` field in the HLES data is `RENT_LOC` which looks like `"8036-25    - EDMONTON SOUTH"` — may need cleaning to match org_mapping
+
+## Testing Plan
+
+1. Run ALTER TABLE migration in Lakebase SQL editor
+2. Update `etl/clean.py` with correct mappings
+3. Update `routers/upload.py` with all fields
+4. Push to both remotes via subtree split
+5. Pull + rebuild + redeploy on Hertz laptop
+6. Test: upload the HLES file via Admin → Upload view
+7. Verify leads appear in the app with correct data
+8. Test Phase 2 features against real leads:
+   - GM Directives: open a lead as GM, submit a directive
+   - Wins & Learnings: submit as BM from Meeting Prep
+   - Compliance Tasks: create bulk tasks for a branch as GM
+
+## Deployment Reminder
+
+```bash
+# From HertzDataAnalysis repo root — NEVER push full repo
+git subtree split --prefix=docs/Prototype-LeadMgmtsys/prototype-lms -b prototype-only
+git push prototype-lms prototype-only:main --force
+git push prototype-lms-databricks prototype-only:main --force
+git branch -D prototype-only
+```
+
+## Simplification: Remove Email / SMS / Call Features
+
+The prototype currently has full send-email, send-SMS, and initiate-call functionality (via Supabase Edge Functions). These need to be **removed or excluded from the build** to simplify the prototype before the next round of stakeholder demos.
+
+### Files to DELETE
+
+| File | What it does |
+|------|-------------|
+| `src/components/EmailComposeModal.jsx` | Email compose modal with 4 templates |
+| `src/components/SmsComposeModal.jsx` | SMS compose modal with 4 templates + character counter |
+| `src/components/ContactButtons.jsx` | **Orchestrator** — calls Supabase Edge Functions: `send-email`, `send-sms`, `initiate-call` |
+| `src/components/UpcomingCommunications.jsx` | Displays scheduled automated emails/SMS |
+| `src/config/communicationRules.js` | All automated communication triggers & templates (10 rules) |
+
+### Files to MODIFY (remove imports + usage)
+
+| File | What to remove |
+|------|---------------|
+| `src/components/interactive/InteractiveLeadDetail.jsx` | Remove `ContactButtons`, `UpcomingCommunications` imports; remove `contactButtonsSlot` and `upcomingCommsSlot` passed to `LeadDetail` |
+| `src/components/interactive/MeetingPrepLeadPanel.jsx` | Same — remove `ContactButtons`, `UpcomingCommunications` imports + slots |
+| `src/selectors/demoSelectors.js` | Remove `COMMUNICATION_RULES`, `EMAIL_TEMPLATES`, `SMS_TEMPLATES` imports; remove `getUpcomingCommunications()` function |
+| `src/components/ProfileView.jsx` | Remove `PhoneInput` import + agent phone setup UI |
+
+### Files to DECIDE (keep or remove)
+
+| File | Notes |
+|------|-------|
+| `src/components/PhoneInput.jsx` | Phone input + `parsePhoneE164`/`formatLocalDisplay` utilities. Used by `ContactButtons` (being removed) and `LeadContactCard` (contact editing). Keep if you still want phone display/editing on leads. |
+| `src/components/LeadContactCard.jsx` | Displays/edits lead email + phone. Not a sender itself. Probably keep. |
+
+### Files that are SAFE (no changes needed)
+
+| File | Why it's fine |
+|------|--------------|
+| `src/components/LeadDetail.jsx` | Receives communication components via optional slot props — won't break when slots aren't passed |
+| `src/data/contactParsers.js` | Data parsing utility for HLES/TRANSLOG import — not communication-specific |
+
+### Dependency Map
+
+```
+EmailComposeModal ─┐
+SmsComposeModal  ──┤
+PhoneInput ────────┤── imported by ContactButtons (ORCHESTRATOR)
+                   │     └── calls supabase.functions.invoke("send-email"|"send-sms"|"initiate-call")
+                   │
+ContactButtons ────┤── imported by InteractiveLeadDetail, MeetingPrepLeadPanel
+UpcomingCommunications ── imported by InteractiveLeadDetail, MeetingPrepLeadPanel
+communicationRules.js ── imported by demoSelectors.js
+```
+
+---
+
+## Post-ETL Tasks (from PROD-READY.md)
+
+- Delete test leads: `DELETE FROM leads WHERE reservation_id LIKE 'RES-TEST-%';`
+- Delete demo seed data (org_mapping, user_profiles) before production
+- Load real org mapping from client
+- Create real user profiles linked to Databricks/SSO IDs
+- Test TRANSLOG upload with real data
+- Replace demo role picker with real authentication
