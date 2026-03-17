@@ -40,3 +40,13 @@ def execute(sql: str, params: tuple = None):
         with conn.cursor() as cur:
             cur.execute(sql, params)
         conn.commit()
+
+
+def with_connection():
+    """Context manager: one connection for multiple operations. Caller must commit."""
+    conn = get_connection()
+    try:
+        yield conn
+        conn.commit()
+    finally:
+        conn.close()

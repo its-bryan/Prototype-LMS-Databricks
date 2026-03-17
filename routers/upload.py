@@ -5,10 +5,15 @@ import io
 import os
 import re
 from datetime import datetime
-from db import execute, query
+from db import execute, query, with_connection
 from etl.clean import clean_hles_data, clean_translog_data
 
 router = APIRouter()
+
+# Batch sizes to reduce DB round-trips and stay under gateway timeout (e.g. 60s)
+HLES_SELECT_CHUNK = 2000
+HLES_INSERT_BATCH = 500
+HLES_UPDATE_BATCH = 500
 
 # Unity Catalog Volume for HLES landing: datalabs.lab_lms_prod.hles_landing_prod
 # Override with env HLES_LANDING_VOLUME_PATH (e.g. empty to skip Volume write when testing locally).
@@ -56,11 +61,36 @@ def _val(row, col):
     return v
 
 
+def _row_to_tuple(row, confirm_num):
+    """One row as tuple for INSERT (customer, reservation_id, status, ..., contact_range)."""
+    return (
+        _val(row, "customer"), confirm_num,
+        _val(row, "status"), _val(row, "branch"), _val(row, "bm_name"),
+        _val(row, "insurance_company"), _val(row, "hles_reason"), _val(row, "init_dt_final"),
+        confirm_num, _val(row, "knum"), _val(row, "body_shop"), _val(row, "cdp_name"),
+        _val(row, "htz_region"), _val(row, "set_state"), _val(row, "zone"),
+        _val(row, "area_mgr"), _val(row, "general_mgr"), _val(row, "rent_loc"),
+        _val(row, "week_of"), _val(row, "contact_range"),
+    )
+
+
+def _row_to_update_tuple(row, confirm_num):
+    """One row as tuple for UPDATE FROM VALUES (confirm_num, customer, status, ..., contact_range)."""
+    return (
+        confirm_num,
+        _val(row, "customer"), _val(row, "status"), _val(row, "branch"), _val(row, "bm_name"),
+        _val(row, "insurance_company"), _val(row, "hles_reason"), _val(row, "init_dt_final"),
+        confirm_num, confirm_num, _val(row, "knum"), _val(row, "body_shop"), _val(row, "cdp_name"),
+        _val(row, "htz_region"), _val(row, "set_state"), _val(row, "zone"),
+        _val(row, "area_mgr"), _val(row, "general_mgr"), _val(row, "rent_loc"),
+        _val(row, "week_of"), _val(row, "contact_range"),
+    )
+
+
 @router.post("/upload/hles")
 async def upload_hles(file: UploadFile = File(...)):
-    """Upload HLES Excel file -> land in Volume (if configured) -> ETL -> insert/update leads table."""
+    """Upload HLES Excel file -> land in Volume (if configured) -> ETL -> batch insert/update leads."""
     contents = await file.read()
-    # Land raw file in Unity Catalog Volume for audit/re-run (datalabs.lab_lms_prod.hles_landing_prod)
     landed_path = _land_file_in_volume(contents, file.filename or "hles.xlsx", HLES_LANDING_VOLUME_PATH)
     df = pd.read_excel(io.BytesIO(contents), engine="openpyxl")
 
@@ -71,75 +101,79 @@ async def upload_hles(file: UploadFile = File(...)):
     if landed_path:
         stats["landedPath"] = landed_path
 
+    # Build list of (confirm_num, row) for valid rows
+    rows_to_process = []
     for _, row in df_clean.iterrows():
-        try:
-            confirm_num = _val(row, "confirm_num")
-            if not confirm_num:
-                stats["failed"] += 1
-                continue
-            # Match by confirmation number (business key); reservation_id = confirm_num for display
-            existing = query(
-                "SELECT id FROM leads WHERE confirm_num = %s",
-                (confirm_num,)
-            )
-            if existing:
-                execute(
-                    """UPDATE leads SET
-                        customer = %s, status = %s, branch = %s, bm_name = %s,
-                        insurance_company = %s, hles_reason = %s, init_dt_final = %s,
-                        confirm_num = %s, reservation_id = %s, knum = %s, body_shop = %s,
-                        cdp_name = %s, htz_region = %s, set_state = %s,
-                        zone = %s, area_mgr = %s, general_mgr = %s,
-                        rent_loc = %s, week_of = %s, contact_range = %s,
-                        updated_at = now()
-                    WHERE confirm_num = %s""",
-                    (
-                        _val(row, "customer"), _val(row, "status"),
-                        _val(row, "branch"), _val(row, "bm_name"),
-                        _val(row, "insurance_company"), _val(row, "hles_reason"),
-                        _val(row, "init_dt_final"),
-                        confirm_num, confirm_num,
-                        _val(row, "knum"), _val(row, "body_shop"), _val(row, "cdp_name"),
-                        _val(row, "htz_region"), _val(row, "set_state"),
-                        _val(row, "zone"), _val(row, "area_mgr"),
-                        _val(row, "general_mgr"), _val(row, "rent_loc"),
-                        _val(row, "week_of"), _val(row, "contact_range"),
-                        confirm_num,
-                    )
-                )
-                stats["updated"] += 1
-            else:
-                execute(
-                    """INSERT INTO leads
-                        (customer, reservation_id, status, branch, bm_name,
-                         insurance_company, hles_reason, init_dt_final,
-                         confirm_num, knum, body_shop, cdp_name, htz_region,
-                         set_state, zone, area_mgr, general_mgr, rent_loc,
-                         week_of, contact_range)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
-                    (
-                        _val(row, "customer"), confirm_num,
-                        _val(row, "status"), _val(row, "branch"),
-                        _val(row, "bm_name"), _val(row, "insurance_company"),
-                        _val(row, "hles_reason"), _val(row, "init_dt_final"),
-                        confirm_num, _val(row, "knum"),
-                        _val(row, "body_shop"), _val(row, "cdp_name"),
-                        _val(row, "htz_region"), _val(row, "set_state"),
-                        _val(row, "zone"), _val(row, "area_mgr"),
-                        _val(row, "general_mgr"), _val(row, "rent_loc"),
-                        _val(row, "week_of"), _val(row, "contact_range"),
-                    )
-                )
-                stats["newLeads"] += 1
-        except Exception as e:
+        confirm_num = _val(row, "confirm_num")
+        if not confirm_num:
             stats["failed"] += 1
+            continue
+        rows_to_process.append((confirm_num, row))
+
+    if not rows_to_process:
+        execute(
+            "INSERT INTO upload_summary (hles, translog, data_as_of_date) VALUES (%s::jsonb, %s::jsonb, %s)",
+            (json.dumps(stats), "{}", str(pd.Timestamp.now().date())),
+        )
+        return stats
+
+    with with_connection() as conn:
+        with conn.cursor() as cur:
+            # 1) Bulk-fetch existing confirm_nums (chunked)
+            confirm_nums = [c for c, _ in rows_to_process]
+            existing_confirm_nums = set()
+            for i in range(0, len(confirm_nums), HLES_SELECT_CHUNK):
+                chunk = confirm_nums[i : i + HLES_SELECT_CHUNK]
+                placeholders = ",".join(["%s"] * len(chunk))
+                cur.execute(
+                    f"SELECT confirm_num FROM leads WHERE confirm_num IN ({placeholders})",
+                    tuple(chunk),
+                )
+                for r in cur.fetchall():
+                    existing_confirm_nums.add(r["confirm_num"])
+
+            # 2) Split into insert vs update
+            to_insert = [(c, r) for c, r in rows_to_process if c not in existing_confirm_nums]
+            to_update = [(c, r) for c, r in rows_to_process if c in existing_confirm_nums]
+
+            # 3) Batch INSERT
+            cols = (
+                "customer, reservation_id, status, branch, bm_name, insurance_company, hles_reason, init_dt_final, "
+                "confirm_num, knum, body_shop, cdp_name, htz_region, set_state, zone, area_mgr, general_mgr, rent_loc, week_of, contact_range"
+            )
+            for i in range(0, len(to_insert), HLES_INSERT_BATCH):
+                batch = to_insert[i : i + HLES_INSERT_BATCH]
+                values_tuples = [_row_to_tuple(r, c) for c, r in batch]
+                n = len(values_tuples)
+                one = "(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+                placeholders = ",".join([one] * n)
+                sql = f"INSERT INTO leads ({cols}) VALUES {placeholders}"
+                cur.execute(sql, tuple(x for t in values_tuples for x in t))
+                stats["newLeads"] += n
+
+            # 4) Batch UPDATE (UPDATE ... FROM (VALUES ...))
+            for i in range(0, len(to_update), HLES_UPDATE_BATCH):
+                batch = to_update[i : i + HLES_UPDATE_BATCH]
+                values_tuples = [_row_to_update_tuple(r, c) for c, r in batch]
+                n = len(values_tuples)
+                one = "(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+                placeholders = ",".join([one] * n)
+                sql = f"""UPDATE leads SET
+                    customer = v.customer, status = v.status, branch = v.branch, bm_name = v.bm_name,
+                    insurance_company = v.insurance_company, hles_reason = v.hles_reason, init_dt_final = v.init_dt_final,
+                    confirm_num = v.confirm_num, reservation_id = v.reservation_id, knum = v.knum, body_shop = v.body_shop,
+                    cdp_name = v.cdp_name, htz_region = v.htz_region, set_state = v.set_state,
+                    zone = v.zone, area_mgr = v.area_mgr, general_mgr = v.general_mgr, rent_loc = v.rent_loc,
+                    week_of = v.week_of, contact_range = v.contact_range, updated_at = now()
+                FROM (VALUES {placeholders}) AS v(confirm_num, customer, status, branch, bm_name, insurance_company, hles_reason, init_dt_final, confirm_num2, reservation_id, knum, body_shop, cdp_name, htz_region, set_state, zone, area_mgr, general_mgr, rent_loc, week_of, contact_range)
+                WHERE leads.confirm_num = v.confirm_num"""
+                cur.execute(sql, tuple(x for t in values_tuples for x in t))
+                stats["updated"] += n
 
     execute(
         "INSERT INTO upload_summary (hles, translog, data_as_of_date) VALUES (%s::jsonb, %s::jsonb, %s)",
-        (json.dumps(stats), '{}', str(pd.Timestamp.now().date()))
+        (json.dumps(stats), "{}", str(pd.Timestamp.now().date())),
     )
-
     return stats
 
 @router.post("/upload/translog")

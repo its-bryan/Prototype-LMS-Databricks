@@ -790,8 +790,12 @@ export default function InteractiveUploads() {
     setParsing(true);
     setValidateProgress({ phase: "Preparing…", pct: 5 });
     setStep("validate");
-    // Yield so React can paint the loader before we block on parsing
-    await new Promise((r) => setTimeout(r, 50));
+
+    // Yield so React can commit and the browser can paint the loader before we parse.
+    // Double rAF + minimum delay so the loader is visible even on slow devices.
+    await new Promise((r) => requestAnimationFrame(r));
+    await new Promise((r) => requestAnimationFrame(r));
+    await new Promise((r) => setTimeout(r, 250));
 
     const hasHles = !!hlesFile;
     const hasTranslog = !!translogFile;
@@ -982,8 +986,14 @@ export default function InteractiveUploads() {
 
         {/* ---- STEP: VALIDATE ---- */}
         {step === "validate" && (
-          <motion.div key="validate" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="min-h-[200px]">
-            {parsing ? (
+          <motion.div
+            key="validate"
+            initial={false}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="min-h-[200px]"
+          >
+            {parsing || (hlesFile && !hlesParsed) || (translogFile && !translogParsed) ? (
               <ValidateStepLoader progress={validateProgress} />
             ) : (
               <>
