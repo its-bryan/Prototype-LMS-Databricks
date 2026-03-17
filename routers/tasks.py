@@ -56,7 +56,9 @@ async def create_compliance_tasks(body: dict):
     due_date = body.get("dueDateStr") or body.get("due_date")
     gm_name = body.get("gmName") or body.get("gm_name", "GM")
     gm_user_id = body.get("gmUserId") or body.get("gm_user_id")
-    lead_ids = body.get("outstandingLeads", [])
+    raw_leads = body.get("outstandingLeads", [])
+    # Frontend may send full lead objects or plain IDs
+    lead_ids = [l["id"] if isinstance(l, dict) else l for l in raw_leads]
 
     if not branch or not lead_ids:
         return {"created": 0, "errors": []}
