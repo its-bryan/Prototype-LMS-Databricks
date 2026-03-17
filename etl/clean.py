@@ -64,13 +64,17 @@ def clean_hles_data(df: pd.DataFrame, org_lookup: dict | None = None) -> pd.Data
     if 'week_of' in df.columns:
         df['week_of'] = pd.to_datetime(df['week_of'], errors='coerce').dt.date
 
+    # Ensure reservation_id is string (DB column is text); Excel often gives int
+    if 'reservation_id' in df.columns:
+        df['reservation_id'] = df['reservation_id'].astype(str).str.strip()
+
     # Drop duplicates — keep last occurrence
     if 'reservation_id' in df.columns:
         df = df.drop_duplicates(subset='reservation_id', keep='last')
 
-    # Drop rows missing reservation_id (the only truly required field)
+    # Drop rows missing or invalid reservation_id (the only truly required field)
     if 'reservation_id' in df.columns:
-        df = df.dropna(subset=['reservation_id'])
+        df = df[df['reservation_id'].notna() & (df['reservation_id'].str.strip() != '') & (df['reservation_id'] != 'nan')]
 
     # BM name resolution: look up from org_mapping by branch, else leave None
     if org_lookup and 'branch' in df.columns:

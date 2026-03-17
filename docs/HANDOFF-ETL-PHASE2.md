@@ -1,8 +1,8 @@
 # Handoff Brief: ETL Fix + Phase 2 Completion
 
 > **Date**: 2026-03-17
-> **Status**: ~~Phase 2 backend is deployed. ETL needs fixing before real data can be uploaded.~~ **ETL fixed, communication features stripped, bug fixes applied.** Ready for migration 004 + deploy + test.
-> **Priority**: ~~Fix ETL column mappings → test upload → verify Phase 2 features end-to-end → strip communication features~~ **Run migration 004 in Lakebase → push & redeploy → test HLES upload end-to-end**
+> **Status**: **ETL Phase 2 complete.** Migration 004 run in Lakebase; ETL fixed; communication stripped; directive/enrichment/contact return full row; cdp_name bug fixed in upload; app redeployed. **Architect recommendation (Volume staging) reviewed and documented below.**
+> **Priority**: Test HLES upload end-to-end → verify Phase 2 (directives, wins, compliance) → then PROD-READY items when moving to production.
 
 ---
 
@@ -32,6 +32,43 @@
 - Databricks Apps with Database resource configured
 - Push process: `git subtree split --prefix=docs/Prototype-LeadMgmtsys/prototype-lms` then push to both `prototype-lms` and `prototype-lms-databricks` remotes (NEVER push full repo)
 - See `DatabricksLearnings.md` for full deployment workflow
+
+---
+
+## Solution Architect Recommendation: Volume-Based Staging (Plan Double-Check)
+
+A Databricks solution architect suggested introducing a **staging layer** before loading into Postgres:
+
+1. **Land Excel in Unity Catalog**  
+   Create **Volumes** (or volume-backed locations) inside a **Catalogue** (Unity Catalog). Users paste or upload Excel files there instead of (or in addition to) uploading via the app.
+
+2. **Parse from Volume → Postgres**  
+   A separate process (scheduled job or triggered pipeline) reads the Excel files from the Volume, runs the same ETL logic (column mapping, cleaning), and inserts/updates the **Lakebase Postgres** `leads` table.
+
+### Terminology Clarification
+
+- **“Volume tables”** in this context means **Unity Catalog Volumes** — governed storage for non-tabular data (e.g. `.xlsx` files). Volumes live under a catalog/schema (e.g. `catalog.schema.volume_name`). Optionally you can have a **table** (e.g. Delta or external) that tracks which files landed in the volume.
+- **“Data parsed into Postgres”** = the same target as today: **Lakebase Postgres** (`databricks_postgres`), i.e. the existing `leads` (and related) tables. The architect is not replacing Postgres; they are adding a governed landing zone (Volume) before load.
+
+### Current Plan vs Architect’s Proposal
+
+| Aspect | Current handoff (this doc) | Architect’s proposal |
+|--------|----------------------------|----------------------|
+| **Landing** | Excel uploaded via app → FastAPI receives file in memory | Excel lands in a Unity Catalog **Volume** (paste/upload into catalogue) |
+| **ETL** | `etl/clean.py` + `routers/upload.py`: read from bytes, clean, map columns | Same ETL logic, but **input** = read from Volume path (e.g. `dbfs:/Volumes/catalog/schema/volume/file.xlsx`) |
+| **Target** | Lakebase Postgres `leads` table | Same — Lakebase Postgres `leads` table |
+| **Trigger** | User clicks Upload in app | Job/pipeline (scheduled or file-triggered) runs after files land in Volume |
+
+### Plan double-check — Conclusion
+
+- **The handoff plan is correct** for the current scope: ETL mappings, `leads` columns, and upload router all target Lakebase Postgres. The architect’s idea does **not** change the target or the ETL logic; it adds a **governed landing stage** (Volume) and moves “where the file comes from” from “app upload” to “file in Volume”.
+- **Compatibility**: The same `clean_hles_data()` (and column mappings) in `etl/clean.py` can be reused whether the Excel is read from in-memory bytes (app upload) or from a path in a Volume. Only the **source** of the bytes changes (FastAPI `UploadFile` vs `pd.read_excel(volume_path)` or equivalent).
+- **If you adopt the Volume approach later**:  
+  - Create a Volume (and optional metadata table) in your Unity Catalog catalogue.  
+  - Add a job (Notebook or Python job) that lists new files in the Volume, runs `clean_hles_data()` on each, and performs the same INSERT/UPDATE to Postgres as `routers/upload.py` does today.  
+  - Optionally keep the app upload path as a convenience; both can write to the same Postgres tables.
+
+**Note**: Writing Excel *to* a Unity Catalog Volume from code has a [known limitation](https://kb.databricks.com/en_US/unity-catalog/trying-to-write-excel-files-to-a-unity-catalog-volume-fails) (no direct-append). Workaround: write to local disk first, then copy into the Volume. Reading Excel *from* a Volume (for the parse → Postgres step) is supported.
 
 ---
 
@@ -373,11 +410,11 @@ All items from the "What Needs Fixing" section above have been completed. Summar
 - `LeadDetail.jsx` — slot props are optional, works fine without them
 - `contactParsers.js` — data utility, not communication-specific
 
-### What Remains Before Deploy
+### What Remains (post–Phase 2)
 
-1. **Run migration 004** in Lakebase SQL editor (or via Databricks CLI)
-2. **`npm run build`** to rebuild the frontend with communication features removed
-3. **Push to both remotes** via subtree split
-4. **Test HLES upload** via Admin → Upload view
-5. **Verify Phase 2 features** against real leads (directives, wins, compliance tasks)
-6. **Clean test data**: `DELETE FROM leads WHERE reservation_id LIKE 'RES-TEST-%';`
+1. ~~**Run migration 004**~~ — Done (run in Lakebase SQL editor).
+2. ~~**Push & deploy**~~ — Repo now deploys from **Prototype-LMS-Databricks** via `databricks repos update` + `databricks apps deploy` (see `DatabricksLearnings.md`). No subtree split.
+3. **Test HLES upload** via Admin → Upload view with a real/sample HLES file.
+4. **Verify Phase 2 features** against real leads: GM directives, wins & learnings, compliance tasks.
+5. **Clean test data** when ready: `DELETE FROM leads WHERE reservation_id LIKE 'RES-TEST-%';`
+6. Before production: see **PROD-READY.md** (seed data cleanup, real org mapping, auth, known bugs).

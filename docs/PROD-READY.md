@@ -48,19 +48,11 @@ DELETE FROM org_mapping;
 
 ## Frontend — Switch from Mock Data to Live Database
 
-The React app currently runs on mock data (`src/data/mockData.js`). To connect it to the live Lakebase Postgres via the FastAPI backend:
-
-1. Rebuild the React app with the Databricks flag:
-   ```bash
-   cd prototype-lms
-   VITE_USE_DATABRICKS=true npm run build
-   ```
-2. This makes `DataContext` import from `databricksData.js` (which calls `/api/*`) instead of using mock data
-3. Redeploy the app so the new `dist/` is served by FastAPI
+The deployed app uses the Databricks backend: `DataContext` imports `databricksData.js` (calls `/api/*`). No build flag — it's the default in this repo. After frontend changes: `npm run build`, then redeploy via `databricks apps deploy` (see `DatabricksLearnings.md`).
 
 ### Additional frontend tasks
 
-- [ ] Build React app with `VITE_USE_DATABRICKS=true`
+- [x] Use live API (databricksData.js) — done
 - [ ] Verify all API endpoints work against production database
 - [ ] Remove or disable demo role picker (replace with real auth)
 
@@ -76,9 +68,9 @@ The React app currently runs on mock data (`src/data/mockData.js`). To connect i
 
 ## Known Bugs
 
-- [ ] **Compliance task creation fails** — "Create tasks" button in GM Meeting Prep branch compliance returns an error. The backend `POST /api/tasks/compliance` endpoint was fixed to extract lead IDs from full lead objects, but task creation still fails. Needs debugging — check the Databricks App logs for the actual error. Likely a schema mismatch (missing column) or constraint violation in the `tasks` table INSERT.
-- [ ] **`PUT /leads/{id}/directive` returns `{"ok": true}` instead of the full lead row** — after saving a GM directive, the lead object in React state gets replaced with a broken object from `leadFromRow({"ok": true})`. Fix: return `SELECT * FROM leads WHERE id = %s` after the UPDATE.
-- [ ] **`week_of` column missing from leads table** — `setNowFromLeads()` looks for `weekOf`/`week_of` to set the app's demo date. Column doesn't exist yet — part of the ETL migration (`HANDOFF-ETL-PHASE2.md`). Until added, the app defaults to Feb 22, 2026 as "now".
+- [x] **Compliance task creation fails** — Fixed. Backend was sending `created_by` from demo role (`demo-gm`), which is not a valid UUID. Now we coerce invalid IDs to NULL and normalize `due_date` to YYYY-MM-DD.
+- [x] **`PUT /leads/{id}/directive` returns `{"ok": true}`** — Fixed. Endpoint now returns full lead row after UPDATE.
+- [x] **`week_of` column missing from leads table** — Fixed. Migration 004 added `week_of` and other HLES columns to `leads`.
 
 ---
 

@@ -1,10 +1,21 @@
 from fastapi import APIRouter, HTTPException
 import json
 import time
+import uuid
 from datetime import datetime
 from db import query, execute
 
 router = APIRouter()
+
+
+def _parse_uuid(s):
+    """Return UUID string if s is valid UUID, else None. Avoids INSERT failure on created_by/assigned_to."""
+    if s is None:
+        return None
+    try:
+        return str(uuid.UUID(str(s))) if s else None
+    except (ValueError, TypeError):
+        return None
 
 @router.get("/tasks")
 async def get_tasks(lead_id: int = None, branch: str = None):
@@ -53,7 +64,7 @@ async def create_compliance_tasks(body: dict):
     """Bulk-create tasks for outstanding leads in a branch."""
     branch = body.get("branch")
     bm_name = body.get("bmName") or body.get("bm_name")
-    due_date = body.get("dueDateStr") or body.get("due_date")
+    due_date_raw = body.get("dueDateStr") or body.get("due_date")
     gm_name = body.get("gmName") or body.get("gm_name", "GM")
     gm_user_id = body.get("gmUserId") or body.get("gm_user_id")
     raw_leads = body.get("outstandingLeads", [])
@@ -63,22 +74,32 @@ async def create_compliance_tasks(body: dict):
     if not branch or not lead_ids:
         return {"created": 0, "errors": []}
 
+    # Normalize due_date to YYYY-MM-DD or None (tasks.due_date is date type)
+    due_date = None
+    if due_date_raw:
+        s = str(due_date_raw).strip()
+        if len(s) >= 10:
+            due_date = s[:10]
+
+    # created_by must be a valid UUID or NULL (demo role sends e.g. "demo-gm")
+    created_by_uuid = _parse_uuid(gm_user_id)
+
     created = 0
     errors = []
     for lead_id in lead_ids:
         try:
             execute(
                 """INSERT INTO tasks
-                    (title, description, due_date, lead_id, assigned_to_name,
+                    (title, description, due_date, lead_id, assigned_to, assigned_to_name,
                      created_by, created_by_name, source, priority, status)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, 'gm_assigned', 'Normal', 'Open')""",
+                VALUES (%s, %s, %s, %s, NULL, %s, %s, %s, 'gm_assigned', 'Normal', 'Open')""",
                 (
                     f"Review lead #{lead_id}",
                     f"Compliance review assigned by {gm_name}",
                     due_date,
                     lead_id,
                     bm_name,
-                    gm_user_id,
+                    created_by_uuid,
                     gm_name,
                 )
             )
