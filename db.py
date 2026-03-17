@@ -1,42 +1,39 @@
 import os
-import base64
-from urllib.parse import urlparse
-import psycopg2
-from psycopg2.extras import RealDictCursor
+import psycopg
+from psycopg.rows import dict_row
 from databricks.sdk import WorkspaceClient
+from databricks.sdk.core import Config
 
-# Shared WorkspaceClient for token generation
+# Databricks Apps auto-sets PGHOST, PGUSER, DATABRICKS_CLIENT_ID
+# when you add a Database resource
+app_config = Config()
 _ws = WorkspaceClient()
 
-# Parse host/database/user from the stored connection string (once at startup)
-_raw_url = os.environ.get("DATABASE_URL", "")
-if not _raw_url:
-    resp = _ws.secrets.get_secret(scope="lms", key="database-url")
-    _raw_url = base64.b64decode(resp.value).decode("utf-8")
-
-_parsed = urlparse(_raw_url)
-_DB_HOST = _parsed.hostname
-_DB_NAME = _parsed.path.lstrip("/")
-_DB_USER = _parsed.username
+_DB_HOST = os.getenv("PGHOST")
+_DB_USER = app_config.client_id
+_DB_NAME = os.getenv("PGDATABASE", "databricks_postgres")
+_DB_PORT = os.getenv("PGPORT", "5432")
 
 
 def get_connection():
-    # Generate a fresh OAuth token for every connection (tokens expire)
-    headers = _ws.config.authenticate()
-    token = headers.get("Authorization", "").replace("Bearer ", "")
-    return psycopg2.connect(
+    token = _ws.config.oauth_token().access_token
+    return psycopg.connect(
         host=_DB_HOST,
-        database=_DB_NAME,
+        dbname=_DB_NAME,
         user=_DB_USER,
         password=token,
+        port=_DB_PORT,
         sslmode="require",
+        row_factory=dict_row,
     )
+
 
 def query(sql: str, params: tuple = None) -> list[dict]:
     with get_connection() as conn:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        with conn.cursor() as cur:
             cur.execute(sql, params)
             return cur.fetchall()
+
 
 def execute(sql: str, params: tuple = None):
     with get_connection() as conn:

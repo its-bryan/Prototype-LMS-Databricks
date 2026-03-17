@@ -36,8 +36,8 @@ async def update_enrichment(lead_id: int, body: dict):
 
     execute(
         """UPDATE leads SET
-            enrichment = %s,
-            enrichment_log = %s,
+            enrichment = %s::jsonb,
+            enrichment_log = %s::jsonb,
             enrichment_complete = %s,
             status = COALESCE(%s, status),
             updated_at = now()
@@ -75,7 +75,7 @@ async def update_contact(lead_id: int, body: dict):
         """UPDATE leads SET
             email = COALESCE(%s, email),
             phone = COALESCE(%s, phone),
-            enrichment_log = %s,
+            enrichment_log = %s::jsonb,
             updated_at = now()
         WHERE id = %s""",
         (body.get("email"), body.get("phone"), json.dumps(current_log), lead_id)

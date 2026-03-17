@@ -51,7 +51,7 @@ async def upload_hles(file: UploadFile = File(...)):
             stats["newLeads"] += 1
 
     execute(
-        "INSERT INTO upload_summary (hles, translog, data_as_of_date) VALUES (%s, %s, %s)",
+        "INSERT INTO upload_summary (hles, translog, data_as_of_date) VALUES (%s::jsonb, %s::jsonb, %s)",
         (json.dumps(stats), '{}', str(pd.Timestamp.now().date()))
     )
 
@@ -82,7 +82,7 @@ async def upload_translog(file: UploadFile = File(...)):
             })
             execute(
                 """UPDATE leads SET
-                    translog = %s,
+                    translog = %s::jsonb,
                     last_activity = now(),
                     updated_at = now()
                 WHERE id = %s""",

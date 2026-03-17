@@ -103,7 +103,7 @@ async def append_task_note(task_id: int, body: dict):
     })
 
     execute(
-        "UPDATE tasks SET notes_log = %s, notes = %s, updated_at = now() WHERE id = %s",
+        "UPDATE tasks SET notes_log = %s::jsonb, notes = %s, updated_at = now() WHERE id = %s",
         (json.dumps(current_log), body.get("note", ""), task_id)
     )
     return {"ok": True}
