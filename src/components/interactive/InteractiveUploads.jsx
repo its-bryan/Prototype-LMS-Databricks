@@ -4,17 +4,6 @@ import { parseHlesCsv, parseTranslogCsv } from "../../utils/csvParsers";
 import { reconcileHlesUpload, reconcileTranslogUpload, buildCommitPlan } from "../../utils/reconciliation";
 import { leads as mockLeads } from "../../data/mockData";
 import { useData } from "../../context/DataContext";
-import {
-  createUploadRecord,
-  commitHlesUpload,
-  commitTranslogUpload,
-  updateOrgMappingFromHles,
-  cleanupStaleSeedBranches,
-  applyCodeMappings,
-  updateUploadRecord,
-  insertUploadSummary,
-  fetchLeads,
-} from "../../data/supabaseData";
 import { uploadHlesFile } from "../../data/databricksData";
 
 // ---------------------------------------------------------------------------
@@ -162,6 +151,37 @@ function FileDropZone({ label, accept, file, onFileSelect, disabled }) {
         </>
       )}
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Validate step: loader with progress bar (shown while parsing)
+// ---------------------------------------------------------------------------
+function ValidateStepLoader({ progress }) {
+  const { phase, pct } = progress;
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="border border-[var(--neutral-200)] rounded-lg p-6 bg-[var(--neutral-50)]"
+    >
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-8 h-8 border-2 border-[var(--hertz-primary)] border-t-transparent rounded-full animate-spin shrink-0" />
+        <div>
+          <p className="text-sm font-semibold text-[var(--hertz-black)]">Validating your file(s)</p>
+          <p className="text-sm text-[var(--neutral-500)]">{phase || "Starting…"}</p>
+        </div>
+      </div>
+      <div className="h-2 bg-[var(--neutral-200)] rounded-full overflow-hidden">
+        <motion.div
+          className="h-full bg-[var(--hertz-primary)] rounded-full"
+          initial={{ width: 0 }}
+          animate={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
+          transition={{ duration: 0.35, ease: "easeOut" }}
+        />
+      </div>
+      <p className="text-xs text-[var(--neutral-500)] mt-2">{Math.round(pct)}%</p>
+    </motion.div>
   );
 }
 
@@ -729,7 +749,7 @@ function OrphanActionSelector({ orphanedLeads, orphanAction, onOrphanAction }) {
 // Main Upload Wizard
 // ---------------------------------------------------------------------------
 export default function InteractiveUploads() {
-  const { leads: contextLeads, refetchLeads, refetchOrgMapping, refetchDataAsOfDate, useSupabase } = useData();
+  const { leads: contextLeads, refetchLeads, refetchOrgMapping, refetchDataAsOfDate } = useData();
 
   const [step, setStep] = useState("select");
   const [hlesFile, setHlesFile] = useState(null);
@@ -739,6 +759,7 @@ export default function InteractiveUploads() {
   const [hlesParsed, setHlesParsed] = useState(null);
   const [translogParsed, setTranslogParsed] = useState(null);
   const [parsing, setParsing] = useState(false);
+  const [validateProgress, setValidateProgress] = useState({ phase: "", pct: 0 });
 
   // Reconciliation
   const [hlesReconciliation, setHlesReconciliation] = useState(null);
@@ -756,26 +777,34 @@ export default function InteractiveUploads() {
 
   // Use Supabase leads when available, fall back to mock leads
   const existingLeads = useMemo(() => {
-    const source = useSupabase && contextLeads.length > 0 ? contextLeads : mockLeads;
+    const source = contextLeads.length > 0 ? contextLeads : mockLeads;
     return source.map((l) => ({ ...l, confirmNum: l.confirmNum || l.reservationId }));
-  }, [useSupabase, contextLeads]);
+  }, [contextLeads]);
 
   // ---- Step: Validate ----
   const handleValidate = useCallback(async () => {
     setParsing(true);
+    setValidateProgress({ phase: "Preparing…", pct: 5 });
     setStep("validate");
+
+    const hasHles = !!hlesFile;
+    const hasTranslog = !!translogFile;
 
     try {
       let hResult = null;
       let tResult = null;
 
-      if (hlesFile) {
+      if (hasHles) {
+        setValidateProgress({ phase: "Reading and parsing HLES file…", pct: 15 });
         hResult = await parseHlesCsv(hlesFile);
         setHlesParsed(hResult);
+        setValidateProgress({ phase: hasTranslog ? "HLES done. Reading TRANSLOG…" : "Running reconciliation…", pct: hasTranslog ? 45 : 70 });
       }
-      if (translogFile) {
+      if (hasTranslog) {
+        if (!hasHles) setValidateProgress({ phase: "Reading and parsing TRANSLOG file…", pct: 25 });
         tResult = await parseTranslogCsv(translogFile);
         setTranslogParsed(tResult);
+        setValidateProgress({ phase: "Running reconciliation…", pct: 75 });
       }
 
       // Run reconciliation
@@ -784,17 +813,18 @@ export default function InteractiveUploads() {
         setHlesReconciliation(recon);
       }
       if (tResult?.eventsByLead?.size) {
-        // When HLES + TRANSLOG are uploaded together, include the newly parsed
-        // HLES leads so TRANSLOG events can match against them (they aren't in
-        // the DB yet at validate time).
+        setValidateProgress({ phase: "Matching TRANSLOG to leads…", pct: 88 });
         const leadsForTranslog = hResult?.leads?.length
           ? [...existingLeads, ...hResult.leads.map((l) => ({ ...l, confirmNum: l.confirmNum || l.reservationId }))]
           : existingLeads;
         const recon = reconcileTranslogUpload(tResult.eventsByLead, leadsForTranslog);
         setTranslogReconciliation(recon);
       }
+
+      setValidateProgress({ phase: "Validation complete", pct: 100 });
     } catch (err) {
       console.error("Parse error:", err);
+      setValidateProgress({ phase: "Validation failed", pct: 100 });
     }
 
     setParsing(false);
@@ -812,225 +842,61 @@ export default function InteractiveUploads() {
       ? buildCommitPlan(hlesReconciliation, conflictResolutions, orphanAction)
       : { inserts: [], updates: [], archives: [], skips: [] };
 
-    if (!useSupabase) {
-      // Databricks mode: send HLES file to backend (lands in Volume + ETL to Postgres)
-      if (hlesFile) {
-        try {
-          setCommitProgress({
-            phase: "Uploading HLES",
-            pct: 20,
-            detail: "Landing in Volume & running ETL…",
-          });
-          const result = await uploadHlesFile(hlesFile);
-          setCommitResult({
-            hles: {
-              inserted: result.newLeads ?? 0,
-              updated: result.updated ?? 0,
-              failed: result.failed ?? 0,
-              rowsParsed: result.rowsParsed ?? 0,
-              landedPath: result.landedPath ?? null,
-              archived: 0,
-              skipped: 0,
-            },
-            translog: null,
-            orgMapping: null,
-          });
-          refetchLeads?.();
-          refetchDataAsOfDate?.();
-        } catch (err) {
-          setCommitError(err?.message ?? "Upload failed");
-        } finally {
-          setCommitting(false);
-          setStep("summary");
-        }
-        return;
+    // Databricks: send HLES file to backend (lands in Volume + ETL to Postgres)
+    if (hlesFile) {
+      try {
+        setCommitProgress({
+          phase: "Uploading HLES",
+          pct: 20,
+          detail: "Landing in Volume & running ETL…",
+        });
+        const result = await uploadHlesFile(hlesFile);
+        setCommitResult({
+          hles: {
+            inserted: result.newLeads ?? 0,
+            updated: result.updated ?? 0,
+            failed: result.failed ?? 0,
+            rowsParsed: result.rowsParsed ?? 0,
+            landedPath: result.landedPath ?? null,
+            archived: 0,
+            skipped: 0,
+          },
+          translog: null,
+          orgMapping: null,
+        });
+        refetchLeads?.();
+        refetchDataAsOfDate?.();
+      } catch (err) {
+        setCommitError(err?.message ?? "Upload failed");
+      } finally {
+        setCommitting(false);
+        setStep("summary");
       }
-      // No HLES file: simulate (e.g. TRANSLOG-only in mock)
-      await new Promise((r) => setTimeout(r, 1500));
-      setCommitResult({
-        hles: {
-          inserted: plan.inserts.length,
-          updated: plan.updates.length,
-          archived: plan.archives.length,
-          skipped: plan.skips.length,
-        },
-        translog: translogReconciliation
-          ? {
-              matchedLeads: translogReconciliation.summary.matchedLeads,
-              matchedEvents: translogReconciliation.summary.matchedEvents,
-              orphanKeys: translogReconciliation.summary.orphanKeys,
-            }
-          : null,
-        orgMapping: hlesParsed?.orgRows?.length
-          ? { branchesFound: hlesParsed.orgRows.length }
-          : null,
-      });
-      setCommitting(false);
-      setStep("summary");
       return;
     }
-
-    // --- Supabase mode: persist for real ---
-    const totalPhases = [
-      hlesFile && "hles",
-      translogFile && translogReconciliation?.matched?.length && "translog",
-      hlesParsed?.orgRows?.length && "org",
-    ].filter(Boolean).length + 2; // +2 for "record" and "refresh"
-    let phaseIdx = 0;
-
-    const advancePhase = (phase, detail = "") => {
-      phaseIdx++;
-      const pct = Math.round((phaseIdx / totalPhases) * 100);
-      setCommitProgress({ phase, pct: Math.min(pct, 95), detail });
-    };
-
-    try {
-      let hlesUpload = null;
-      let translogUpload = null;
-      let hlesResult = null;
-      let translogResult = null;
-      let orgResult = null;
-
-      setCommitProgress({ phase: "Creating upload records", pct: 5, detail: "" });
-
-      if (hlesFile) {
-        hlesUpload = await createUploadRecord({
-          uploadType: "hles",
-          fileName: hlesFile.name,
-          uploadedByName: "Admin",
-        });
-      }
-      if (translogFile) {
-        translogUpload = await createUploadRecord({
-          uploadType: "translog",
-          fileName: translogFile.name,
-          uploadedByName: "Admin",
-        });
-      }
-
-      if (hlesUpload && hlesReconciliation) {
-        advancePhase("Committing HLES leads");
-        hlesResult = await commitHlesUpload(hlesUpload.id, plan, ({ label }) => {
-          setCommitProgress((prev) => ({ ...prev, detail: label }));
-        });
-        if (hlesResult.errors.length > 0) {
-          console.error("[Upload] HLES commit errors:", hlesResult.errors);
-        }
-      }
-
-      if (translogUpload && translogReconciliation?.matched?.length) {
-        advancePhase("Committing TRANSLOG events");
-
-        // When HLES + TRANSLOG are uploaded together, the matched leads from
-        // reconciliation have parsed HLES objects without database IDs.
-        // Re-reconcile against freshly committed leads to get real IDs.
-        let matchedForCommit = translogReconciliation.matched;
-        const hasLeadsWithoutIds = matchedForCommit.some((m) => !m.lead.id);
-        if (hasLeadsWithoutIds && translogParsed?.eventsByLead) {
-          setCommitProgress((prev) => ({ ...prev, detail: "Resolving lead IDs from database" }));
-          const freshLeads = await fetchLeads();
-          const freshRecon = reconcileTranslogUpload(translogParsed.eventsByLead, freshLeads);
-          matchedForCommit = freshRecon.matched;
-        }
-
-        translogResult = await commitTranslogUpload(
-          translogUpload.id,
-          matchedForCommit,
-          ({ label }) => {
-            setCommitProgress((prev) => ({ ...prev, detail: label }));
-          },
-        );
-        await updateUploadRecord(translogUpload.id, {
-          status: "completed",
-          rowCount: translogReconciliation.summary.totalEvents,
-          updatedCount: translogResult.updated,
-        });
-        if (translogResult.errors.length > 0) {
-          console.error("[Upload] TRANSLOG commit errors:", translogResult.errors);
-        }
-      }
-
-      if (hlesParsed?.orgRows?.length) {
-        advancePhase("Updating org mapping", `${hlesParsed.orgRows.length} branches`);
-        orgResult = await updateOrgMappingFromHles(
-          hlesParsed.orgRows,
-          hlesUpload?.id ?? null,
-        );
-        if (orgResult.errors.length > 0) {
-          console.error("[Upload] Org mapping errors:", orgResult.errors);
-        }
-
-        const cleanup = await cleanupStaleSeedBranches();
-        if (cleanup.removed > 0) {
-          console.log(`[Upload] Cleaned up ${cleanup.removed} stale seed branches with no leads`);
-        }
-      }
-
-      advancePhase("Applying display name mappings");
-      await applyCodeMappings();
-
-      advancePhase("Updating data timestamp");
-      const summaryPayload = {
-        hles: hlesResult
-          ? { inserted: hlesResult.inserted, updated: hlesResult.updated, archived: hlesResult.archived, errors: hlesResult.errors.length }
-          : {},
-        translog: translogResult
-          ? { updated: translogResult.updated, errors: translogResult.errors.length }
-          : {},
-        dataAsOfDate: new Date().toISOString().slice(0, 10),
-      };
-      try {
-        await insertUploadSummary(summaryPayload);
-      } catch (err) {
-        console.error("[Upload] insertUploadSummary failed:", err);
-      }
-
-      setCommitProgress({ phase: "Refreshing views", pct: 95, detail: "Syncing data across all views" });
-      await Promise.all([refetchLeads(), refetchOrgMapping(), refetchDataAsOfDate()]);
-
-      setCommitResult({
-        hles: hlesResult
-          ? {
-              inserted: hlesResult.inserted,
-              updated: hlesResult.updated,
-              archived: hlesResult.archived,
-              deleted: hlesResult.deleted,
-              skipped: plan.skips.length,
-              errors: hlesResult.errors,
-            }
-          : null,
-        translog: translogResult
-          ? {
-              matchedLeads: translogReconciliation.summary.matchedLeads,
-              matchedEvents: translogReconciliation.summary.matchedEvents,
-              orphanKeys: translogReconciliation.summary.orphanKeys,
-              orphanEvents: translogReconciliation.orphanEvents,
-              updated: translogResult.updated,
-              errors: translogResult.errors,
-            }
-          : translogReconciliation
-            ? {
-                matchedLeads: translogReconciliation.summary.matchedLeads,
-                matchedEvents: translogReconciliation.summary.matchedEvents,
-                orphanKeys: translogReconciliation.summary.orphanKeys,
-                orphanEvents: translogReconciliation.orphanEvents,
-              }
-            : null,
-        orgMapping: orgResult
-          ? { branchesFound: (orgResult.updated ?? 0) + (orgResult.inserted ?? 0) }
-          : hlesParsed?.orgRows?.length
-            ? { branchesFound: hlesParsed.orgRows.length }
-            : null,
-      });
-      setStep("summary");
-    } catch (err) {
-      console.error("[Upload] Commit failed:", err);
-      setCommitError(err?.message ?? "Upload commit failed. Check console for details.");
-      setStep("preview");
-    } finally {
-      setCommitting(false);
-    }
-  }, [hlesReconciliation, translogReconciliation, translogParsed, conflictResolutions, orphanAction, hlesParsed, hlesFile, translogFile, useSupabase, refetchLeads, refetchOrgMapping, refetchDataAsOfDate]);
+    // No HLES file: show summary from plan (e.g. TRANSLOG-only or preview-only)
+    await new Promise((r) => setTimeout(r, 500));
+    setCommitResult({
+      hles: {
+        inserted: plan.inserts.length,
+        updated: plan.updates.length,
+        archived: plan.archives.length,
+        skipped: plan.skips.length,
+      },
+      translog: translogReconciliation
+        ? {
+            matchedLeads: translogReconciliation.summary.matchedLeads,
+            matchedEvents: translogReconciliation.summary.matchedEvents,
+            orphanKeys: translogReconciliation.summary.orphanKeys,
+          }
+        : null,
+      orgMapping: hlesParsed?.orgRows?.length
+        ? { branchesFound: hlesParsed.orgRows.length }
+        : null,
+    });
+    setCommitting(false);
+    setStep("summary");
+  }, [hlesReconciliation, translogReconciliation, translogParsed, conflictResolutions, orphanAction, hlesParsed, hlesFile, translogFile, refetchLeads, refetchOrgMapping, refetchDataAsOfDate]);
 
   const handleResolveConflict = useCallback((idx, resolution) => {
     setConflictResolutions((prev) => ({ ...prev, [idx]: resolution }));
@@ -1044,6 +910,7 @@ export default function InteractiveUploads() {
 
   const handleReset = useCallback(() => {
     setStep("select");
+    setValidateProgress({ phase: "", pct: 0 });
     setHlesFile(null);
     setTranslogFile(null);
     setHlesParsed(null);
@@ -1109,57 +976,61 @@ export default function InteractiveUploads() {
         {/* ---- STEP: VALIDATE ---- */}
         {step === "validate" && (
           <motion.div key="validate" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <div className="grid grid-cols-2 gap-6">
-              {hlesFile && (
-                <ValidationCard
-                  title="HLES Conversion Data"
-                  isLoading={parsing}
-                  stats={
-                    hlesParsed
-                      ? [
-                          { label: "Rows parsed", value: hlesParsed.rawRowCount.toLocaleString() },
-                          { label: "Valid leads", value: hlesParsed.leads.length.toLocaleString() },
-                          { label: "Branches found", value: hlesParsed.orgRows.length.toLocaleString() },
-                          { label: "Validation errors", value: hlesParsed.errors.length.toString(), color: hlesParsed.errors.length ? "text-[#C62828] alert-pulse-red" : "" },
-                        ]
-                      : null
-                  }
-                  errors={hlesParsed?.errors}
-                />
-              )}
-              {translogFile && (
-                <ValidationCard
-                  title="TRANSLOG Activity Data"
-                  isLoading={parsing}
-                  stats={
-                    translogParsed
-                      ? [
-                          { label: "Rows parsed", value: translogParsed.rawRowCount.toLocaleString() },
-                          { label: "Valid events", value: translogParsed.events.length.toLocaleString() },
-                          { label: "Unique leads", value: translogParsed.eventsByLead.size.toLocaleString() },
-                          { label: "Validation errors", value: translogParsed.errors.length.toString(), color: translogParsed.errors.length ? "text-[#C62828] alert-pulse-red" : "" },
-                        ]
-                      : null
-                  }
-                  errors={translogParsed?.errors}
-                />
-              )}
-            </div>
-            {!parsing && (
-              <div className="flex justify-between mt-6">
-                <button
-                  onClick={() => setStep("select")}
-                  className="px-4 py-2 text-sm text-[var(--neutral-500)] hover:text-[var(--hertz-black)] cursor-pointer"
-                >
-                  Back
-                </button>
-                <button
-                  onClick={() => setStep("preview")}
-                  className="px-5 py-2.5 bg-[var(--hertz-primary)] text-[var(--hertz-black)] rounded-lg text-sm font-semibold hover:bg-[#E6BC00] transition-colors cursor-pointer"
-                >
-                  Continue to Preview
-                </button>
-              </div>
+            {parsing ? (
+              <ValidateStepLoader progress={validateProgress} />
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-6">
+                  {hlesFile && (
+                    <ValidationCard
+                      title="HLES Conversion Data"
+                      isLoading={false}
+                      stats={
+                        hlesParsed
+                          ? [
+                              { label: "Rows parsed", value: hlesParsed.rawRowCount.toLocaleString() },
+                              { label: "Valid leads", value: hlesParsed.leads.length.toLocaleString() },
+                              { label: "Branches found", value: hlesParsed.orgRows.length.toLocaleString() },
+                              { label: "Validation errors", value: hlesParsed.errors.length.toString(), color: hlesParsed.errors.length ? "text-[#C62828] alert-pulse-red" : "" },
+                            ]
+                          : null
+                      }
+                      errors={hlesParsed?.errors}
+                    />
+                  )}
+                  {translogFile && (
+                    <ValidationCard
+                      title="TRANSLOG Activity Data"
+                      isLoading={false}
+                      stats={
+                        translogParsed
+                          ? [
+                              { label: "Rows parsed", value: translogParsed.rawRowCount.toLocaleString() },
+                              { label: "Valid events", value: translogParsed.events.length.toLocaleString() },
+                              { label: "Unique leads", value: translogParsed.eventsByLead.size.toLocaleString() },
+                              { label: "Validation errors", value: translogParsed.errors.length.toString(), color: translogParsed.errors.length ? "text-[#C62828] alert-pulse-red" : "" },
+                            ]
+                          : null
+                      }
+                      errors={translogParsed?.errors}
+                    />
+                  )}
+                </div>
+                <div className="flex justify-between mt-6">
+                  <button
+                    onClick={() => setStep("select")}
+                    className="px-4 py-2 text-sm text-[var(--neutral-500)] hover:text-[var(--hertz-black)] cursor-pointer"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={() => setStep("preview")}
+                    className="px-5 py-2.5 bg-[var(--hertz-primary)] text-[var(--hertz-black)] rounded-lg text-sm font-semibold hover:bg-[#E6BC00] transition-colors cursor-pointer"
+                  >
+                    Continue to Preview
+                  </button>
+                </div>
+              </>
             )}
           </motion.div>
         )}
@@ -1307,9 +1178,7 @@ export default function InteractiveUploads() {
               </div>
               <h3 className="text-lg font-bold text-[var(--hertz-black)]">Upload Complete</h3>
               <p className="text-sm text-[var(--neutral-500)] mt-1">
-                {useSupabase
-                  ? "Data has been committed to Supabase and is now visible across all views."
-                  : "Data has been processed and committed successfully."}
+                Data has been processed and committed successfully. It is now visible across all views.
               </p>
             </div>
 

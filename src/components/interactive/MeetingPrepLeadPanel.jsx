@@ -14,11 +14,7 @@ import { getLeadById, getTasksForLead } from "../../selectors/demoSelectors";
 
 export default function MeetingPrepLeadPanel({ lead, isReadOnly, onClose }) {
   const { navigateTo, selectTask } = useApp();
-  const {
-    leads,
-    fetchTasksForLead,
-    useSupabase,
-  } = useData();
+  const { leads, fetchTasksForLead } = useData();
 
   // Use live lead from context so updates reflect; fallback to prop
   const liveLead = getLeadById(leads ?? [], lead?.id) ?? lead;
@@ -26,18 +22,14 @@ export default function MeetingPrepLeadPanel({ lead, isReadOnly, onClose }) {
 
   const loadTasks = useCallback(async () => {
     if (!liveLead?.id) return;
-    if (useSupabase) {
-      try {
-        const t = await fetchTasksForLead(liveLead.id);
-        setLeadTasks(t);
-      } catch (err) {
-        console.error("[MeetingPrepLeadPanel] Failed to fetch tasks:", err);
-        setLeadTasks([]);
-      }
-    } else {
-      setLeadTasks(getTasksForLead(liveLead.id));
+    try {
+      const t = await fetchTasksForLead(liveLead.id);
+      setLeadTasks(t);
+    } catch (err) {
+      console.error("[MeetingPrepLeadPanel] Failed to fetch tasks:", err);
+      setLeadTasks([]);
     }
-  }, [liveLead?.id, useSupabase, fetchTasksForLead]);
+  }, [liveLead?.id, fetchTasksForLead]);
 
   useEffect(() => {
     loadTasks();

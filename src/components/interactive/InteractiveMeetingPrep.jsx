@@ -105,7 +105,7 @@ function MetricCard({ label, value, subtext, children, className = "", variant =
 
 export default function InteractiveMeetingPrep() {
   const { userProfile } = useAuth();
-  const { leads, refetchLeads, winsLearnings, submitWinsLearning, orgMapping, fetchTasksForBranch, useSupabase } = useData();
+  const { leads, refetchLeads, winsLearnings, submitWinsLearning, orgMapping, fetchTasksForBranch } = useData();
   const branch = (userProfile?.branch?.trim() || getDefaultBranchForDemo());
 
   const [includeRented, setIncludeRented] = useState(false);
@@ -120,12 +120,10 @@ export default function InteractiveMeetingPrep() {
   const reduceMotion = useReducedMotion();
   const [branchTasks, setBranchTasks] = useState([]);
   useEffect(() => {
-    if (useSupabase && branch) {
+    if (branch) {
       fetchTasksForBranch(branch).then(setBranchTasks).catch(() => setBranchTasks([]));
-    } else {
-      setBranchTasks(getTasksForBranch(branch));
     }
-  }, [useSupabase, branch, fetchTasksForBranch]);
+  }, [branch, fetchTasksForBranch]);
   const { dateStr: meetingDateStr, daysLeft: meetingDaysLeft } = useMemo(() => getNextComplianceMeetingDate(), []);
 
   // Wins & Learnings — BM's own submissions for this branch

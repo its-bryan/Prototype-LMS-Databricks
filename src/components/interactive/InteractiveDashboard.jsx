@@ -142,21 +142,21 @@ function leadToHlesRow(lead, org) {
 
 function BMDashboard({ navigateTo, selectLead, selectTask }) {
   const { userProfile } = useAuth();
-  const { leads, fetchTasksForBranch, useSupabase, updateLeadEnrichment, updateTaskStatus, insertTask } = useData();
+  const { leads, fetchTasksForBranch, updateLeadEnrichment, updateTaskStatus, insertTask } = useData();
   const reduceMotion = useReducedMotion();
   const branch = (userProfile?.branch?.trim() || getDefaultBranchForDemo());
 
   const [branchTasks, setBranchTasks] = useState(() =>
-    useSupabase ? [] : getTasksForBranch(branch)
+    []
   );
 
   useEffect(() => {
-    if (useSupabase && branch) {
+    if (branch) {
       fetchTasksForBranch(branch).then(setBranchTasks).catch(() => setBranchTasks([]));
     } else {
       setBranchTasks(getTasksForBranch(branch));
     }
-  }, [useSupabase, branch, fetchTasksForBranch]);
+  }, [branch, fetchTasksForBranch]);
 
   const presets = getDateRangePresets();
   const [selectedPresetKey, setSelectedPresetKey] = useState("trailing_4_weeks");
@@ -447,11 +447,7 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
   const handleCreateTask = async (taskData) => {
     const created = await insertTask(taskData);
     if (created) {
-      if (useSupabase) {
-        fetchTasksForBranch(branch).then(setBranchTasks).catch(() => {});
-      } else {
-        setBranchTasks((prev) => [created, ...prev]);
-      }
+      fetchTasksForBranch(branch).then(setBranchTasks).catch(() => {});
     }
     setShowCreateTask(false);
   };
@@ -1920,7 +1916,7 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
                 const handleCheckboxClick = (e) => {
                   e.stopPropagation();
                   const newStatus = isDone ? "Open" : "Done";
-                  if (useSupabase && updateTaskStatus) {
+                  if (updateTaskStatus) {
                     updateTaskStatus(task.id, newStatus).then(() => {
                       fetchTasksForBranch(branch).then(setBranchTasks).catch(() => {});
                     });

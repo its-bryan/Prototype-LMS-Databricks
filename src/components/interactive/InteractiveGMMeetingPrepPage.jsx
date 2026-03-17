@@ -98,7 +98,7 @@ function formatDueDate(dueStr) {
 }
 
 export default function InteractiveGMMeetingPrepPage() {
-  const { leads, loading, orgMapping, createComplianceTasksForBranch, winsLearnings, useSupabase, updateLeadDirective, markLeadReviewed, gmTasks, fetchGMTasks } = useData();
+  const { leads, loading, orgMapping, createComplianceTasksForBranch, winsLearnings, updateLeadDirective, markLeadReviewed, gmTasks, fetchGMTasks } = useData();
   const { navigateTo, selectTask, selectLead } = useApp();
   const { userProfile } = useAuth();
   const reduceMotion = useReducedMotion();
@@ -133,10 +133,10 @@ export default function InteractiveGMMeetingPrepPage() {
   );
 
   useEffect(() => {
-    if (useSupabase && gmBranches.length > 0 && fetchGMTasks) {
+    if (gmBranches.length > 0 && fetchGMTasks) {
       fetchGMTasks(gmBranches);
     }
-  }, [useSupabase, gmBranches, fetchGMTasks]);
+  }, [gmBranches, fetchGMTasks]);
 
   const gmFilteredLeads = useMemo(() => {
     if (!gmName) return leads ?? [];
@@ -148,7 +148,7 @@ export default function InteractiveGMMeetingPrepPage() {
   const prevUnreachable = useMemo(() => (comparisonRange ? getUnreachableLeadsStats(leads, comparisonRange, gmName) : null), [leads, comparisonRange, gmName]);
   const unreachableStats = useMemo(() => getUnreachableLeadsStats(leads, dateRange, gmName), [leads, dateRange, gmName]);
   const meetingPrepData = useMemo(() => getGMMeetingPrepData(leads, dateRange, gmName), [leads, dateRange, gmName]);
-  const gmTasksLoading = useSupabase && gmTasks === null;
+  const gmTasksLoading = gmTasks === null;
   const effectiveGmTasks = gmTasksLoading ? [] : gmTasks;
   const openTasks = useMemo(() => getTasksForGMBranches(effectiveGmTasks, gmName), [effectiveGmTasks, gmName]);
   const tasksProgress = useMemo(() => getGMTasksProgress(effectiveGmTasks, gmName), [effectiveGmTasks, gmName]);
@@ -605,7 +605,6 @@ export default function InteractiveGMMeetingPrepPage() {
                         meetingDueDateStr={meetingDueDateStr}
                         gmName={resolveGMName(userProfile?.displayName, userProfile?.id)}
                         gmUserId={userProfile?.id ?? null}
-                        useSupabase={useSupabase}
                         createComplianceTasksForBranch={createComplianceTasksForBranch}
                         onRowClick={() => setSelectedBranchForDetail(row)}
                       />
@@ -984,7 +983,6 @@ function BranchChecklistRow({
   meetingDueDateStr,
   gmName,
   gmUserId,
-  useSupabase,
   createComplianceTasksForBranch,
   onRowClick,
 }) {
@@ -996,7 +994,7 @@ function BranchChecklistRow({
     [leads, dateRange, row.branch]
   );
 
-  const canCreate = useSupabase && !row.isComplete && outstandingLeads.length > 0;
+  const canCreate = !row.isComplete && outstandingLeads.length > 0;
   const isDisabled = !canCreate || creating;
 
   const handleCreateTasks = async (e) => {
@@ -1056,13 +1054,11 @@ function BranchChecklistRow({
           onClick={handleCreateTasks}
           disabled={isDisabled}
           title={
-            !useSupabase
-              ? "Create tasks (requires Supabase)"
-              : row.isComplete
-                ? "Branch is compliant — no tasks needed"
-                : outstandingLeads.length === 0
-                  ? "No outstanding items"
-                  : `Create ${outstandingLeads.length} task${outstandingLeads.length !== 1 ? "s" : ""} for ${row.bmName}`
+            row.isComplete
+              ? "Branch is compliant — no tasks needed"
+              : outstandingLeads.length === 0
+                ? "No outstanding items"
+                : `Create ${outstandingLeads.length} task${outstandingLeads.length !== 1 ? "s" : ""} for ${row.bmName}`
           }
           className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
             isDisabled

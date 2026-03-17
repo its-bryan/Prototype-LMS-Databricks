@@ -4,7 +4,7 @@ import { useApp } from "../../context/AppContext";
 import BackButton from "../BackButton";
 import { useAuth } from "../../context/AuthContext";
 import { useData } from "../../context/DataContext";
-import { getTaskById, getLeadById } from "../../selectors/demoSelectors";
+import { getLeadById } from "../../selectors/demoSelectors";
 import { formatDateTime, formatDateTimeShort } from "../../utils/dateTime";
 
 const STATUS_OPTIONS = ["Open", "In Progress", "Done"];
@@ -34,7 +34,7 @@ function formatRelativeTime(iso) {
 export default function InteractiveTaskDetail() {
   const { selectedTaskId, navigateTo, selectLead, selectTask, activeView, role } = useApp();
   const { userProfile } = useAuth();
-  const { leads, fetchTaskById, updateTaskStatus, appendTaskNote, useSupabase } = useData();
+  const { leads, fetchTaskById, updateTaskStatus, appendTaskNote } = useData();
   const [task, setTask] = useState(null);
   const [loading, setLoading] = useState(false);
   const [updating, setUpdating] = useState(false);
@@ -43,22 +43,17 @@ export default function InteractiveTaskDetail() {
 
   const loadTask = useCallback(async () => {
     if (!selectedTaskId) return;
-    if (useSupabase) {
-      setLoading(true);
-      try {
-        const t = await fetchTaskById(selectedTaskId);
-        setTask(t);
-      } catch (err) {
-        console.error("[InteractiveTaskDetail] Failed to fetch task:", err);
-        setTask(null);
-      } finally {
-        setLoading(false);
-      }
-    } else {
-      const t = getTaskById(selectedTaskId);
+    setLoading(true);
+    try {
+      const t = await fetchTaskById(selectedTaskId);
       setTask(t);
+    } catch (err) {
+      console.error("[InteractiveTaskDetail] Failed to fetch task:", err);
+      setTask(null);
+    } finally {
+      setLoading(false);
     }
-  }, [selectedTaskId, useSupabase, fetchTaskById]);
+  }, [selectedTaskId, fetchTaskById]);
 
   useEffect(() => {
     loadTask();
@@ -66,56 +61,32 @@ export default function InteractiveTaskDetail() {
 
   const handleStatusChange = async (newStatus) => {
     if (!task || task.status === newStatus) return;
-    if (useSupabase) {
-      setUpdating(true);
-      try {
-        const updated = await updateTaskStatus(task.id, newStatus);
-        setTask(updated);
-      } catch (err) {
-        console.error("[InteractiveTaskDetail] Failed to update status:", err);
-      } finally {
-        setUpdating(false);
-      }
-    } else {
-      setTask((t) =>
-        t
-          ? {
-              ...t,
-              status: newStatus,
-              completedAt: newStatus === "Done" ? new Date().toISOString() : null,
-            }
-          : null
-      );
+    setUpdating(true);
+    try {
+      const updated = await updateTaskStatus(task.id, newStatus);
+      setTask(updated);
+    } catch (err) {
+      console.error("[InteractiveTaskDetail] Failed to update status:", err);
+    } finally {
+      setUpdating(false);
     }
   };
 
   const handleAddNote = useCallback(async () => {
     const text = (newNoteText ?? "").trim();
     if (!task || !text) return;
-    if (useSupabase) {
-      setNotesSaving(true);
-      try {
-        const author = userProfile?.displayName ?? "—";
-        const updated = await appendTaskNote(task.id, text, author);
-        setTask(updated);
-        setNewNoteText("");
-      } catch (err) {
-        console.error("[InteractiveTaskDetail] Failed to add note:", err);
-      } finally {
-        setNotesSaving(false);
-      }
-    } else {
+    setNotesSaving(true);
+    try {
       const author = userProfile?.displayName ?? "—";
-      const entry = {
-        time: formatDateTimeShort(new Date()),
-        timestamp: Date.now(),
-        author,
-        note: text,
-      };
-      setTask((t) => (t ? { ...t, notesLog: [...(t.notesLog ?? []), entry] } : null));
+      const updated = await appendTaskNote(task.id, text, author);
+      setTask(updated);
       setNewNoteText("");
+    } catch (err) {
+      console.error("[InteractiveTaskDetail] Failed to add note:", err);
+    } finally {
+      setNotesSaving(false);
     }
-  }, [task, newNoteText, useSupabase, appendTaskNote, userProfile?.displayName]);
+  }, [task, newNoteText, appendTaskNote, userProfile?.displayName]);
 
   const isGMContext = activeView === "gm-task-detail" || role === "gm";
   const backView = isGMContext ? "gm-meeting-prep" : "bm-todo";
@@ -232,9 +203,6 @@ export default function InteractiveTaskDetail() {
           <h3 className="text-xs font-bold text-[var(--neutral-600)] uppercase tracking-wider mb-2">Task Notes</h3>
           <p className="text-xs text-[var(--neutral-600)] mb-3">
             Add work notes as you progress. Each note is saved with your name and timestamp.
-            {!useSupabase && (
-              <span className="block mt-1 text-amber-600">Notes require Supabase to persist across sessions.</span>
-            )}
           </p>
 
           {/* Notes timeline (newest first, like TRANSLOG) */}

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useApp } from "../../context/AppContext";
 import BackButton from "../BackButton";
 import { useData } from "../../context/DataContext";
-import { getLeadById, getTasksForLead } from "../../selectors/demoSelectors";
+import { getLeadById } from "../../selectors/demoSelectors";
 import LeadDetail from "../LeadDetail";
 import LeadContactCard from "../LeadContactCard";
 import InteractiveEnrichmentForm from "./InteractiveEnrichmentForm";
@@ -13,24 +13,20 @@ export default function InteractiveLeadDetail() {
   const isGMContext = activeView === "gm-lead-detail" || role === "gm";
   const backView = isGMContext ? "gm-lead-review" : "bm-leads";
   const backLabel = isGMContext ? "Back to Lead Review" : "Back to leads";
-  const { leads, fetchTasksForLead, useSupabase, updateTaskStatus } = useData();
+  const { leads, fetchTasksForLead, updateTaskStatus } = useData();
   const lead = getLeadById(leads, selectedLeadId);
   const [leadTasks, setLeadTasks] = useState([]);
 
   const loadTasks = useCallback(async () => {
     if (!lead?.id) return;
-    if (useSupabase) {
-      try {
-        const t = await fetchTasksForLead(lead.id);
-        setLeadTasks(t);
-      } catch (err) {
-        console.error("[InteractiveLeadDetail] Failed to fetch tasks:", err);
-        setLeadTasks([]);
-      }
-    } else {
-      setLeadTasks(getTasksForLead(lead.id));
+    try {
+      const t = await fetchTasksForLead(lead.id);
+      setLeadTasks(t);
+    } catch (err) {
+      console.error("[InteractiveLeadDetail] Failed to fetch tasks:", err);
+      setLeadTasks([]);
     }
-  }, [lead?.id, useSupabase, fetchTasksForLead]);
+  }, [lead?.id, fetchTasksForLead]);
 
   useEffect(() => {
     loadTasks();
@@ -68,7 +64,7 @@ export default function InteractiveLeadDetail() {
                   const handleCheckboxClick = (e) => {
                     e.stopPropagation();
                     const newStatus = isDone ? "Open" : "Done";
-                    if (useSupabase && updateTaskStatus) {
+                    if (updateTaskStatus) {
                       updateTaskStatus(task.id, newStatus).then(() => loadTasks());
                     } else {
                       setLeadTasks((prev) =>

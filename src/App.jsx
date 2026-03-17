@@ -1,12 +1,10 @@
 import { useApp } from "./context/AppContext";
 import { useAuth } from "./context/AuthContext";
 import { DataProvider } from "./context/DataContext";
-import { supabase } from "./lib/supabase";
 import AppLayout from "./components/layout/AppLayout";
 import JourneyMode from "./components/JourneyMode";
 import InteractiveShell from "./components/interactive/InteractiveShell";
 import Landing from "./components/Landing";
-import LoginScreen from "./components/LoginScreen";
 import LoadingScreen from "./components/LoadingScreen";
 
 function AppContent() {
@@ -24,8 +22,7 @@ function AppRoot() {
   const { role, setRole } = useApp();
 
   if (loading) return <LoadingScreen />;
-  if (!role && !supabase) return <Landing onSelect={setRole} />;
-  if (!role) return <LoginScreen />;
+  if (!role) return <Landing onSelect={setRole} />;
   return (
     <AppLayout>
       <AppContent />

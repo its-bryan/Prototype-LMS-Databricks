@@ -1,8 +1,6 @@
 /**
- * DataContext — provides leads from Databricks/Supabase or mockData.
- * When VITE_USE_DATABRICKS=true: fetches from FastAPI backend (Lakebase Postgres).
- * When VITE_USE_SUPABASE=true: fetches from Supabase directly.
- * When both false: uses mockData with localStorage persistence.
+ * DataContext — provides leads from Databricks (FastAPI + Lakebase Postgres) or mockData.
+ * Data module is databricksData.js; no Supabase.
  */
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import {
@@ -19,7 +17,6 @@ import {
 } from "../data/mockData";
 
 // Data service: Databricks (Lakebase Postgres via FastAPI)
-// To switch back to Supabase, change the import below to supabaseData.js
 const dataModule = await import("../data/databricksData.js");
 
 const {
@@ -54,8 +51,8 @@ import { setOrgMappingSource, setBranchManagersSource, setWeeklyTrendsSource, se
 
 const DataContext = createContext(null);
 
-// true = use live database (Databricks or Supabase); false = use mock data
-const USE_SUPABASE = true;
+// true = use live Databricks API; false = use mock data
+const USE_LIVE_API = true;
 const STORAGE_KEY = "hertz_lms_leads";
 
 function loadLeadsFromStorage() {
@@ -97,29 +94,29 @@ function ensureMismatchDemoLead(leads) {
 
 export function DataProvider({ children }) {
   const [leads, setLeads] = useState(() => {
-    if (USE_SUPABASE) return [];
+    if (USE_LIVE_API) return [];
     const stored = loadLeadsFromStorage();
     const initial = stored ?? [...mockLeads];
     return ensureMismatchDemoLead(initial);
   });
-  const [winsLearnings, setWinsLearnings] = useState(USE_SUPABASE ? [] : [...mockWinsLearnings]);
-  const [orgMapping, setOrgMapping] = useState(USE_SUPABASE ? [] : [...mockOrgMapping]);
-  const [gmTasks, setGmTasks] = useState(() => (USE_SUPABASE ? null : [...mockTasks]));
+  const [winsLearnings, setWinsLearnings] = useState(USE_LIVE_API ? [] : [...mockWinsLearnings]);
+  const [orgMapping, setOrgMapping] = useState(USE_LIVE_API ? [] : [...mockOrgMapping]);
+  const [gmTasks, setGmTasks] = useState(() => (USE_LIVE_API ? null : [...mockTasks]));
   const [cancellationReasonCategories, setCancellationReasonCategories] = useState(
-    USE_SUPABASE ? [] : [...mockCancellationReasonCategories],
+    USE_LIVE_API ? [] : [...mockCancellationReasonCategories],
   );
-  const [nextActions, setNextActions] = useState(USE_SUPABASE ? [] : [...mockNextActions]);
-  const [branchManagers, setBranchManagers] = useState(USE_SUPABASE ? [] : [...mockBranchManagers]);
-  const [weeklyTrends, setWeeklyTrends] = useState(USE_SUPABASE ? { bm: [], gm: [] } : mockWeeklyTrends);
+  const [nextActions, setNextActions] = useState(USE_LIVE_API ? [] : [...mockNextActions]);
+  const [branchManagers, setBranchManagers] = useState(USE_LIVE_API ? [] : [...mockBranchManagers]);
+  const [weeklyTrends, setWeeklyTrends] = useState(USE_LIVE_API ? { bm: [], gm: [] } : mockWeeklyTrends);
   const [leaderboardData, setLeaderboardData] = useState(
-    USE_SUPABASE ? { branches: [], gms: [], ams: [], zones: [] } : mockLeaderboardData,
+    USE_LIVE_API ? { branches: [], gms: [], ams: [], zones: [] } : mockLeaderboardData,
   );
-  const [loading, setLoading] = useState(USE_SUPABASE);
+  const [loading, setLoading] = useState(USE_LIVE_API);
   const [error, setError] = useState(null);
-  const [dataAsOfDate, setDataAsOfDate] = useState(USE_SUPABASE ? null : mockDataAsOfDate);
+  const [dataAsOfDate, setDataAsOfDate] = useState(USE_LIVE_API ? null : mockDataAsOfDate);
 
   const refetchDataAsOfDate = useCallback(async () => {
-    if (!USE_SUPABASE) return;
+    if (!USE_LIVE_API) return;
     try {
       const { dataAsOfDate: d } = await fetchUploadSummary();
       setDataAsOfDate(d ?? null);
@@ -128,20 +125,19 @@ export function DataProvider({ children }) {
     }
   }, []);
 
-  // Fetch upload summary (data-as-of date) when using Supabase
   useEffect(() => {
-    if (USE_SUPABASE) refetchDataAsOfDate();
+    if (USE_LIVE_API) refetchDataAsOfDate();
   }, [refetchDataAsOfDate]);
 
   // Persist leads to localStorage whenever they change (mock mode only)
   useEffect(() => {
-    if (!USE_SUPABASE && leads.length > 0) {
+    if (!USE_LIVE_API && leads.length > 0) {
       saveLeadsToStorage(leads);
     }
-  }, [USE_SUPABASE, leads]);
+  }, [USE_LIVE_API, leads]);
 
   const refetchLeads = useCallback(async () => {
-    if (!USE_SUPABASE) return;
+    if (!USE_LIVE_API) return;
     setLoading(true);
     setError(null);
     try {
@@ -156,19 +152,19 @@ export function DataProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    if (USE_SUPABASE) refetchLeads();
+    if (USE_LIVE_API) refetchLeads();
   }, [refetchLeads]);
 
   // Fetch all wins & learnings on mount (Supabase mode). Selector filters by gmName client-side.
   useEffect(() => {
-    if (!USE_SUPABASE) return;
+    if (!USE_LIVE_API) return;
     apiFetchWinsLearnings()
       .then((data) => setWinsLearnings(data ?? []))
       .catch((err) => console.error("[DataContext] fetchWinsLearnings failed:", err));
   }, []);
 
   const refetchOrgMapping = useCallback(async () => {
-    if (!USE_SUPABASE) return;
+    if (!USE_LIVE_API) return;
     try {
       const data = await apiFetchOrgMapping();
       const mapping = data ?? [];
@@ -181,12 +177,12 @@ export function DataProvider({ children }) {
 
   // Fetch org mapping on mount (Supabase mode). Also sync into demoSelectors module-level variable.
   useEffect(() => {
-    if (USE_SUPABASE) refetchOrgMapping();
+    if (USE_LIVE_API) refetchOrgMapping();
   }, [refetchOrgMapping]);
 
   // Fetch reference data on mount (Supabase mode)
   useEffect(() => {
-    if (!USE_SUPABASE) return;
+    if (!USE_LIVE_API) return;
     apiFetchCancellationReasonCategories()
       .then((data) => setCancellationReasonCategories(data ?? []))
       .catch((err) => console.error("[DataContext] fetchCancellationReasonCategories failed:", err));
@@ -213,7 +209,7 @@ export function DataProvider({ children }) {
   /** Fetch GM tasks for all branches under a GM. Call from GM views on mount. */
   const fetchGMTasks = useCallback(
     async (gmBranches) => {
-      if (!USE_SUPABASE) return;
+      if (!USE_LIVE_API) return;
       try {
         const tasks = await apiFetchTasksForGM(gmBranches);
         setGmTasks(tasks);
@@ -221,13 +217,13 @@ export function DataProvider({ children }) {
         console.error("[DataContext] fetchTasksForGM failed:", err);
       }
     },
-    [USE_SUPABASE]
+    [USE_LIVE_API]
   );
 
   /** Save a GM directive on a lead */
   const updateLeadDirective = useCallback(
     async (leadId, directiveText) => {
-      if (USE_SUPABASE) {
+      if (USE_LIVE_API) {
         const updated = await apiUpdateLeadDirective(leadId, directiveText);
         setLeads((prev) => prev.map((l) => (l.id === leadId ? updated : l)));
         return updated;
@@ -243,13 +239,13 @@ export function DataProvider({ children }) {
       );
       return updatedLead;
     },
-    [USE_SUPABASE]
+    [USE_LIVE_API]
   );
 
   /** Mark a lead as reviewed (status=Reviewed, archived=true) */
   const markLeadReviewed = useCallback(
     async (leadId) => {
-      if (USE_SUPABASE) {
+      if (USE_LIVE_API) {
         const updated = await apiMarkLeadReviewed(leadId);
         setLeads((prev) => prev.map((l) => (l.id === leadId ? updated : l)));
         return updated;
@@ -265,12 +261,12 @@ export function DataProvider({ children }) {
       );
       return updatedLead;
     },
-    [USE_SUPABASE]
+    [USE_LIVE_API]
   );
 
   const updateLeadEnrichment = useCallback(
     async (leadId, enrichment, enrichmentLogEntry, status = null) => {
-      if (USE_SUPABASE) {
+      if (USE_LIVE_API) {
         const updated = await apiUpdateLeadEnrichment(leadId, enrichment, enrichmentLogEntry, status);
         setLeads((prev) => prev.map((l) => (l.id === leadId ? updated : l)));
         return updated;
@@ -294,12 +290,12 @@ export function DataProvider({ children }) {
       );
       return updatedLead;
     },
-    [USE_SUPABASE]
+    [USE_LIVE_API]
   );
 
   const updateLeadContact = useCallback(
     async (leadId, { email, phone }, enrichmentLogEntry = null) => {
-      if (USE_SUPABASE) {
+      if (USE_LIVE_API) {
         const updated = await apiUpdateLeadContact(leadId, { email, phone }, enrichmentLogEntry);
         setLeads((prev) => prev.map((l) => (l.id === leadId ? updated : l)));
         return updated;
@@ -318,28 +314,28 @@ export function DataProvider({ children }) {
       );
       return null;
     },
-    [USE_SUPABASE]
+    [USE_LIVE_API]
   );
 
   const fetchLeadActivities = useCallback(
     async (leadId) => {
-      if (!USE_SUPABASE) return [];
+      if (!USE_LIVE_API) return [];
       return apiFetchLeadActivities(leadId);
     },
-    [USE_SUPABASE]
+    [USE_LIVE_API]
   );
 
   const fetchGmDirectives = useCallback(
     async (leadId) => {
-      if (!USE_SUPABASE) return [];
+      if (!USE_LIVE_API) return [];
       return apiFetchGmDirectives(leadId);
     },
-    [USE_SUPABASE]
+    [USE_LIVE_API]
   );
 
   const insertGmDirective = useCallback(
     async (params) => {
-      if (!USE_SUPABASE) {
+      if (!USE_LIVE_API) {
         const mock = {
           id: `gmd-mock-${Date.now()}`,
           leadId: params.leadId,
@@ -361,52 +357,52 @@ export function DataProvider({ children }) {
       );
       return result;
     },
-    [USE_SUPABASE]
+    [USE_LIVE_API]
   );
 
   const fetchTasksForBranch = useCallback(
     async (branch) => {
-      if (!USE_SUPABASE) return [];
+      if (!USE_LIVE_API) return [];
       return apiFetchTasksForBranch(branch);
     },
-    [USE_SUPABASE]
+    [USE_LIVE_API]
   );
 
   const fetchTasksForLead = useCallback(
     async (leadId) => {
-      if (!USE_SUPABASE) return [];
+      if (!USE_LIVE_API) return [];
       return apiFetchTasksForLead(leadId);
     },
-    [USE_SUPABASE]
+    [USE_LIVE_API]
   );
 
   const fetchTaskById = useCallback(
     async (taskId) => {
-      if (!USE_SUPABASE) return null;
+      if (!USE_LIVE_API) return null;
       return apiFetchTaskById(taskId);
     },
-    [USE_SUPABASE]
+    [USE_LIVE_API]
   );
 
   const updateTaskStatus = useCallback(
     async (taskId, status) => {
-      if (!USE_SUPABASE) return null;
+      if (!USE_LIVE_API) return null;
       return apiUpdateTaskStatus(taskId, status);
     },
-    [USE_SUPABASE]
+    [USE_LIVE_API]
   );
 
   const appendTaskNote = useCallback(
     async (taskId, noteText, author) => {
-      if (!USE_SUPABASE) return null;
+      if (!USE_LIVE_API) return null;
       return apiAppendTaskNote(taskId, noteText, author);
     },
-    [USE_SUPABASE]
+    [USE_LIVE_API]
   );
 
   const insertTask = useCallback(
     async (params) => {
-      if (!USE_SUPABASE) {
+      if (!USE_LIVE_API) {
         const mockTask = {
           id: `task-mock-${Date.now()}`,
           title: params.title,
@@ -429,21 +425,21 @@ export function DataProvider({ children }) {
       }
       return apiInsertTask(params);
     },
-    [USE_SUPABASE]
+    [USE_LIVE_API]
   );
 
   const createComplianceTasksForBranch = useCallback(
     async (params) => {
-      if (!USE_SUPABASE) return { created: 0, errors: [{ error: "Supabase required" }] };
+      if (!USE_LIVE_API) return { created: 0, errors: [{ error: "Live API required" }] };
       return apiCreateComplianceTasksForBranch(params);
     },
-    [USE_SUPABASE]
+    [USE_LIVE_API]
   );
 
   const submitWinsLearning = useCallback(
     async ({ bmName, branch, gmName, content, weekOf }) => {
       const entry = { bmName, branch, gmName, content, weekOf };
-      if (USE_SUPABASE) {
+      if (USE_LIVE_API) {
         const created = await apiSubmitWinsLearning(entry);
         setWinsLearnings((prev) => [created, ...prev]);
         return created;
@@ -457,7 +453,7 @@ export function DataProvider({ children }) {
       setWinsLearnings((prev) => [mockEntry, ...prev]);
       return mockEntry;
     },
-    [USE_SUPABASE]
+    [USE_LIVE_API]
   );
 
   const value = {
@@ -492,7 +488,6 @@ export function DataProvider({ children }) {
     branchManagers,
     weeklyTrends,
     leaderboardData,
-    useSupabase: USE_SUPABASE,
   };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
