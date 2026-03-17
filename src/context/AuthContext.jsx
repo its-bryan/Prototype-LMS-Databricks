@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { supabase } from "../lib/supabase";
 import { useApp } from "./AppContext";
+import { roleUsers } from "../config/navigation";
 
 const defaultAuthValue = {
   signIn: async () => {},
@@ -15,10 +16,30 @@ const defaultAuthValue = {
 const AuthContext = createContext(defaultAuthValue);
 
 export function AuthProvider({ children }) {
-  const { setRole } = useApp();
+  const { setRole, role } = useApp();
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState(null);
   const [profileError, setProfileError] = useState(null);
+
+  // When Supabase is not configured (Databricks mode), create a demo userProfile
+  // from roleUsers so that resolveGMName/resolveBMName get a displayName.
+  useEffect(() => {
+    if (supabase) return; // real auth handles it
+    if (!role) { setUserProfile(null); return; }
+    const demoUser = roleUsers[role];
+    if (!demoUser) { setUserProfile(null); return; }
+    setUserProfile({
+      id: `demo-${role}`,
+      role,
+      displayName: demoUser.name,
+      branch: null,
+      phone: null,
+      email: null,
+      onboardingCompletedAt: new Date().toISOString(),
+      avatarUrl: null,
+      title: null,
+    });
+  }, [role]);
 
   const syncAuth = useCallback(async () => {
     if (!supabase) { setLoading(false); return; }
