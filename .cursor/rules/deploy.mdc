@@ -7,12 +7,19 @@ alwaysApply: false
 
 Use this when the user says "deploy", "redeploy", or "push to production".
 
+## Learnings (for agents)
+
+- **Deployment machine is Databricks.** The app runs on Databricks Apps; there is no separate "Hertz laptop" deploy. Code flows: local → `git push origin main` → **Databricks workspace repo** (Git clone in workspace) → **apps deploy** (builds and runs from that folder).
+- **This repo** (`Prototype-LMS-Databricks`) is the canonical Git repo. Push to `origin main` (e.g. GitHub). The workspace path `/Workspace/Users/nh136948@hertz.net/Prototype-LMS-Databricks` is a **Databricks Repo** linked to the same GitHub repo; it does not auto-pull. You must run **repos update** to pull the latest commit into the workspace, then **apps deploy** so the app runs from the updated code.
+- **Profile:** Use `-p DanSiaoAuth` (or the user's configured profile) for all `databricks` CLI commands.
+- **Lakebase migrations and GRANTs** cannot be run from the CLI unless `psql` is installed locally. Use the **Lakebase SQL Editor** in the Databricks UI (Lakebase project `lms-leo`, branch `production`) to run `docs/lakebase-migrations/*.sql`. After adding tables or columns, re-run GRANTs for the app's client ID (see Step 5b below). If `psql` is on PATH: `databricks psql --project lms-leo --branch production -p DanSiaoAuth -- -f docs/lakebase-migrations/004_add_lead_columns_and_grants.sql`.
+
 ## Pipeline overview
 1. Pre-deploy validation (testing rule)
 2. Git commit & push
-3. Sync Databricks Git folder
-4. Deploy app
-5. Post-deploy verification
+3. Pull latest into Databricks workspace repo (repos update)
+4. Deploy app (apps deploy)
+5. Post-deploy: verify app; run migrations/GRANTs in Lakebase if needed
 
 ## Constants
 - **App name**: `hertz-leo-leadsmgmtsystem`
@@ -20,43 +27,54 @@ Use this when the user says "deploy", "redeploy", or "push to production".
 - **Source path**: `/Workspace/Users/nh136948@hertz.net/Prototype-LMS-Databricks`
 - **App URL**: `https://hertz-leo-leadsmgmtsystem-1957546315544672.aws.databricksapps.com/`
 - **Branch**: `main`
+- **CLI profile**: `DanSiaoAuth` (use `-p DanSiaoAuth`)
 
 ## Step 1 — Pre-deploy validation
 Follow the `pre-deploy-check` rule. Run ReadLints on all changed files. Stop if critical issues found.
 
 ## Step 2 — Git commit & push
 ```powershell
-git add -A
+git add -u
+git add .gitignore docs/lakebase-migrations/*.sql
 git status
 git commit -m "<type>: <description>"
 git push origin main
 ```
 
-## Step 3 — Sync Databricks Git folder
-Pull the latest commit into the Databricks workspace repo:
+## Step 3 — Pull latest into Databricks workspace repo
+Pull the latest commit from GitHub into the workspace repo (so the app deploy uses up-to-date code):
 ```powershell
-databricks repos update 2730039622390114 --branch main
+databricks repos update 2730039622390114 --branch main -p DanSiaoAuth
 ```
 Verify sync:
 ```powershell
-databricks repos get 2730039622390114
+databricks repos get 2730039622390114 -p DanSiaoAuth
 ```
 Confirm `head_commit_id` matches the commit you just pushed.
 
-## Step 4 — Deploy
+## Step 4 — Deploy app
 ```powershell
-databricks apps deploy hertz-leo-leadsmgmtsystem --source-code-path "/Workspace/Users/nh136948@hertz.net/Prototype-LMS-Databricks"
+databricks apps deploy hertz-leo-leadsmgmtsystem --source-code-path "/Workspace/Users/nh136948@hertz.net/Prototype-LMS-Databricks" -p DanSiaoAuth
 ```
 This triggers Databricks to: install npm deps, install pip deps, run `npm run build`, then start uvicorn.
-Wait for deployment to complete (default timeout 20m).
+Wait for deployment to complete (default timeout 20m). Source path must be the **full workspace path** (including `/Workspace/`).
 
 ## Step 5 — Post-deploy verification
 ```powershell
-databricks apps get hertz-leo-leadsmgmtsystem
+databricks apps get hertz-leo-leadsmgmtsystem -p DanSiaoAuth
 ```
 - Confirm `app_status.state` = `RUNNING`
 - Confirm `active_deployment.status.state` = `SUCCEEDED`
 - Report the app URL to the user
+
+### Step 5b — Lakebase migrations and GRANTs (when schema changed)
+If you added or changed tables/columns (e.g. new migration in `docs/lakebase-migrations/`):
+1. Open **Lakebase** in Databricks UI → project `lms-leo`, branch `production` → **SQL Editor**.
+2. Run the migration script (e.g. `004_add_lead_columns.sql` or `004_add_lead_columns_and_grants.sql`).
+3. Re-GRANT so the app can access objects:  
+   `GRANT USAGE ON SCHEMA public TO "<APP_CLIENT_ID>";`  
+   `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "<APP_CLIENT_ID>";`  
+   Get `<APP_CLIENT_ID>` from `databricks apps get hertz-leo-leadsmgmtsystem -p DanSiaoAuth` (e.g. `service_principal_client_id` or the Lakebase role name used by the app).
 
 ## On failure — check app logs
 If deploy fails or `active_deployment.status.state` is not `SUCCEEDED`, immediately pull the app logs:

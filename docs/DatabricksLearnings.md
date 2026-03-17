@@ -114,19 +114,20 @@ command: ['uvicorn', 'main:app', '--host', '0.0.0.0', '--port', '8000']
 
 ## Deployment workflow
 
-```bash
-# From HertzDataAnalysis repo root:
-git add docs/Prototype-LeadMgmtsys/prototype-lms/...
-git commit -m "message"
+**Canonical flow for this repo (Prototype-LMS-Databricks):** The deployment machine is Databricks. Follow the **deploy** Cursor rule (`.cursor/rules/deploy.mdc`) for the full pipeline. Summary:
 
-# Push ONLY prototype-lms (never the full repo):
-git subtree split --prefix=docs/Prototype-LeadMgmtsys/prototype-lms -b prototype-only
-git push prototype-lms prototype-only:main --force
-git push prototype-lms-databricks prototype-only:main --force
-git branch -D prototype-only
-```
+1. **Commit and push** to `origin main` (e.g. GitHub).
+2. **Pull into Databricks workspace repo** so the app’s source folder is up to date:
+   ```bash
+   databricks repos update 2730039622390114 --branch main -p DanSiaoAuth
+   ```
+3. **Deploy the app** from that workspace path:
+   ```bash
+   databricks apps deploy hertz-leo-leadsmgmtsystem --source-code-path "/Workspace/Users/nh136948@hertz.net/Prototype-LMS-Databricks" -p DanSiaoAuth
+   ```
+4. **Migrations and GRANTs:** Run any new `docs/lakebase-migrations/*.sql` in the **Lakebase SQL Editor** (project `lms-leo`, branch `production`). Re-run GRANTs after adding tables/columns. See deploy rule Step 5b.
 
-Then on the Hertz laptop: `git pull`, rebuild if frontend changed (`npm run build`), redeploy via Databricks Apps.
+(Obsolete: subtree split from a parent repo or “Hertz laptop” deploy — this repo is deployed directly via the workspace repo and Databricks Apps.)
 
 ---
 
@@ -136,7 +137,7 @@ Then on the Hertz laptop: `git pull`, rebuild if frontend changed (`npm run buil
 - **Database**: `databricks_postgres`
 - **Schema**: `public`
 - **Tables (13)**: org_mapping, leads, branch_managers, weekly_trends, upload_summary, leaderboard_data, cancellation_reason_categories, next_actions, user_profiles, tasks, lead_activities, gm_directives, wins_learnings
-- **Migration scripts**: `lakebase-migrations/001_full_schema.sql`, `002_seed_config.sql`, `003_phase2_tables.sql`
+- **Migration scripts**: `lakebase-migrations/001_full_schema.sql`, `002_seed_config.sql`, `003_phase2_tables.sql`, `004_add_lead_columns.sql` (and `004_add_lead_columns_and_grants.sql` to run migration + GRANTs in one go)
 
 ---
 
