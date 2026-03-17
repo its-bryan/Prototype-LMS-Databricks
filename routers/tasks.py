@@ -1,11 +1,13 @@
 from fastapi import APIRouter, HTTPException
 import json
+import logging
 import time
 import uuid
 from datetime import datetime
 from db import query, execute
 
 router = APIRouter()
+log = logging.getLogger(__name__)
 
 
 def _parse_uuid(s):
@@ -86,8 +88,13 @@ async def create_compliance_tasks(body: dict):
 
     created = 0
     errors = []
-    for lead_id in lead_ids:
+    for raw_id in lead_ids:
         try:
+            try:
+                lead_id = int(raw_id)
+            except (TypeError, ValueError):
+                errors.append({"lead_id": raw_id, "error": "invalid lead_id"})
+                continue
             execute(
                 """INSERT INTO tasks
                     (title, description, due_date, lead_id, assigned_to, assigned_to_name,
@@ -105,7 +112,10 @@ async def create_compliance_tasks(body: dict):
             )
             created += 1
         except Exception as e:
-            errors.append({"lead_id": lead_id, "error": str(e)})
+            err_msg = str(e)
+            log.warning("Compliance task INSERT failed for lead_id=%s: %s", raw_id, err_msg)
+            print(f"[COMPLIANCE_INSERT_ERROR] lead_id={raw_id} error={err_msg}", flush=True)
+            errors.append({"lead_id": raw_id, "error": err_msg})
 
     return {"created": created, "errors": errors}
 

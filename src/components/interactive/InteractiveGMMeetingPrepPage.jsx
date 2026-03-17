@@ -1079,7 +1079,9 @@ function BranchChecklistRow({
             createResult.created > 0 ? (
               <span className="text-[var(--color-success)]">✓ {createResult.created} created</span>
             ) : (
-              <span className="text-red-600">Failed</span>
+              <span className="text-red-600" title={createResult.errors?.[0]?.error ?? "Request failed"}>
+                {createResult.errors?.length ? "Failed: " + (createResult.errors[0].error || "see tooltip").slice(0, 60) : "Failed"}
+              </span>
             )
           ) : (
             <>
