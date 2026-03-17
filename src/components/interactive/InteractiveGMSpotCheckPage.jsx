@@ -57,7 +57,11 @@ export default function InteractiveGMSpotCheckPage() {
   const { userProfile } = useAuth();
   const reduceMotion = useReducedMotion();
   const presets = useMemo(() => getDateRangePresets(), [loading]);
-  const gmName = resolveGMName(userProfile?.displayName, userProfile?.id);
+  const gmName = useMemo(() => {
+    const name = userProfile?.displayName;
+    if (name && (orgMapping ?? []).some((r) => r.gm === name)) return name;
+    return resolveGMName(name, userProfile?.id);
+  }, [userProfile?.displayName, userProfile?.id, orgMapping]);
 
   const myBranches = useMemo(
     () => orgMapping.filter((r) => r.gm === gmName).map((r) => r.branch),

@@ -2605,7 +2605,7 @@ function getGMContextualInsight({ stats, prevStats }) {
 
 function GMDashboardPage({ navigateTo }) {
   const { userProfile } = useAuth();
-  const { leads, loading } = useData();
+  const { leads, loading, orgMapping } = useData();
   const reduceMotion = useReducedMotion();
   const displayName = userProfile?.displayName ?? roleUsers.gm?.name ?? "there";
   const [drilldownMetric, setDrilldownMetric] = useState(null);
@@ -2637,7 +2637,11 @@ function GMDashboardPage({ navigateTo }) {
     return preset ? { start: preset.start, end: preset.end } : null;
   }, [trendsTimePresetKey, trendsUseCustom, trendsCustomStart, trendsCustomEnd, presets]);
 
-  const gmName = resolveGMName(userProfile?.displayName, userProfile?.id);
+  const gmName = useMemo(() => {
+    const name = userProfile?.displayName;
+    if (name && (orgMapping ?? []).some((r) => r.gm === name)) return name;
+    return resolveGMName(name, userProfile?.id);
+  }, [userProfile?.displayName, userProfile?.id, orgMapping]);
   const stats = useMemo(() => getGMDashboardStats(leads, dateRange, gmName), [leads, dateRange, gmName]);
   const prevRange = useMemo(() => getComparisonDateRange(selectedPresetKey), [selectedPresetKey]);
   const prevStats = useMemo(() => (prevRange ? getGMDashboardStats(leads, prevRange, gmName) : null), [leads, prevRange, gmName]);

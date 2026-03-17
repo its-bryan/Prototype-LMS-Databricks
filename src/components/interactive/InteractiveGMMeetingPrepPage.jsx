@@ -122,7 +122,11 @@ export default function InteractiveGMMeetingPrepPage() {
   const dateRange = currentPreset ? { start: currentPreset.start, end: currentPreset.end } : null;
   const comparisonRange = useMemo(() => getComparisonDateRange(selectedPresetKey), [selectedPresetKey]);
 
-  const gmName = resolveGMName(userProfile?.displayName, userProfile?.id);
+  const gmName = useMemo(() => {
+    const name = userProfile?.displayName;
+    if (name && (orgMapping ?? []).some((r) => r.gm === name)) return name;
+    return resolveGMName(name, userProfile?.id);
+  }, [userProfile?.displayName, userProfile?.id, orgMapping]);
   const gmBranches = useMemo(
     () => (orgMapping ?? []).filter((r) => r.gm === gmName).map((r) => r.branch),
     [orgMapping, gmName]

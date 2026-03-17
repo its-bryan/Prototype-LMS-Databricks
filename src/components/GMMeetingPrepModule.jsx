@@ -12,8 +12,12 @@ const cardAnim = (i, reduced = false) => ({
 
 export default function GMMeetingPrepModule({ navigateTo, leads, dateRange, reduceMotion }) {
   const { userProfile } = useAuth();
-  const { gmTasks, loading } = useData();
-  const gmName = resolveGMName(userProfile?.displayName, userProfile?.id);
+  const { gmTasks, loading, orgMapping } = useData();
+  const gmName = useMemo(() => {
+    const name = userProfile?.displayName;
+    if (name && (orgMapping ?? []).some((r) => r.gm === name)) return name;
+    return resolveGMName(name, userProfile?.id);
+  }, [userProfile?.displayName, userProfile?.id, orgMapping]);
 
   const thisWeekRange = useMemo(() => {
     const presets = getDateRangePresets();

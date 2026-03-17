@@ -119,7 +119,7 @@ export default function Sidebar() {
   const isProfileActive = activeView === "profile";
   const reduceMotion = useReducedMotion();
   const { signOut, userProfile } = useAuth();
-  const { leads, gmTasks } = useData();
+  const { leads, gmTasks, orgMapping } = useData();
   const navItems = role ? roleNav[role] || [] : [];
 
   // Outstanding actions for Meeting Prep (this week only) — leads needing comments + data mismatches
@@ -133,7 +133,11 @@ export default function Sidebar() {
     return getMeetingPrepOutstandingCount(leads ?? [], dateRange, branch);
   }, [role, leads, userProfile?.branch]);
 
-  const gmName = resolveGMName(userProfile?.displayName, userProfile?.id);
+  const gmName = useMemo(() => {
+    const name = userProfile?.displayName;
+    if (name && (orgMapping ?? []).some((r) => r.gm === name)) return name;
+    return resolveGMName(name, userProfile?.id);
+  }, [userProfile?.displayName, userProfile?.id, orgMapping]);
 
   // GM Meeting Prep: outstanding branch items + open tasks to chase
   const gmMeetingPrepOutstanding = useMemo(() => {
