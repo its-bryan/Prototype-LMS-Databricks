@@ -26,4 +26,7 @@ async def spa_fallback(path: str):
         file_path = os.path.join("dist", path)
         if os.path.isfile(file_path):
             return FileResponse(file_path)
-    return FileResponse("dist/index.html")
+    return FileResponse(
+        "dist/index.html",
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+    )
