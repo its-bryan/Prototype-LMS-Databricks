@@ -1,10 +1,10 @@
 from fastapi import APIRouter, HTTPException, Query
 import json
+import re
 from db import query, execute
 
 router = APIRouter()
 
-# Columns needed for list views (excludes translog + enrichment_log which are large JSONB arrays)
 _LEAD_LIST_COLS = """
     id, customer, confirm_num, reservation_id, knum, email, phone,
     source_email, source_phone, source_status, status, archived,
@@ -17,21 +17,64 @@ _LEAD_LIST_COLS = """
 """.strip()
 
 
+def _normalize(s: str | None) -> str:
+    if not s:
+        return ""
+    return re.sub(r"\s+", " ", str(s).strip().lower())
+
+
+def _branches_for_gm(gm_name: str) -> list[str]:
+    """Resolve GM name → list of branches from org_mapping + leads."""
+    nm = _normalize(gm_name)
+    if not nm:
+        return []
+    org_rows = query("SELECT branch, gm FROM org_mapping")
+    from_org = {r["branch"] for r in org_rows if _normalize(r.get("gm")) == nm}
+    if from_org:
+        return list(from_org)
+    lead_branches = query(
+        "SELECT DISTINCT branch FROM leads WHERE archived = false AND lower(general_mgr) LIKE %s",
+        (f"%{nm}%",),
+    )
+    return [r["branch"] for r in lead_branches]
+
+
 @router.get("/leads")
-async def get_leads(branches: str = Query(None)):
+async def get_leads(
+    branches: str = Query(None),
+    branch: str = Query(None),
+    gm_name: str = Query(None),
+):
+    import time as _time
+    t0 = _time.monotonic()
+
+    branch_list = None
     if branches:
         branch_list = [b.strip() for b in branches.split(",") if b.strip()]
+    elif branch:
+        branch_list = [branch]
+    elif gm_name:
+        branch_list = _branches_for_gm(gm_name)
+
+    if branch_list:
         placeholders = ",".join(["%s"] * len(branch_list))
-        return query(
+        rows = query(
             f"SELECT {_LEAD_LIST_COLS} FROM leads"
             f" WHERE archived = false AND branch IN ({placeholders})"
             f" ORDER BY created_at DESC",
             tuple(branch_list),
         )
-    return query(
+        t1 = _time.monotonic()
+        print(f"[leads-api] filtered={len(branch_list)} branches, rows={len(rows)}, query={t1-t0:.2f}s", flush=True)
+        return rows
+
+    rows = query(
         f"SELECT {_LEAD_LIST_COLS} FROM leads"
         f" WHERE archived = false ORDER BY created_at DESC"
     )
+    t1 = _time.monotonic()
+    print(f"[leads-api] all leads, rows={len(rows)}, query={t1-t0:.2f}s", flush=True)
+    return rows
 
 @router.get("/leads/{lead_id}")
 async def get_lead(lead_id: int):

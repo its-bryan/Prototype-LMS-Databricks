@@ -236,18 +236,10 @@ export function DataProvider({ children }) {
     bumpPending(1);
     setError(null);
     try {
-      // For non-admin users, filter leads server-side by their branches
-      let branches = null;
-      const role = userProfile?.role;
-      const branch = userProfile?.branch;
-      const om = orgMappingRef.current;
-      if (role === "bm" && branch) {
-        branches = [branch];
-      } else if (role === "gm" && userProfile?.displayName && om?.length) {
-        const nm = userProfile.displayName.trim().toLowerCase();
-        branches = om.filter((r) => (r.gm || "").trim().toLowerCase() === nm).map((r) => r.branch);
-      }
-      const data = await fetchLeads(branches);
+      const userCtx = userProfile
+        ? { role: userProfile.role, branch: userProfile.branch, displayName: userProfile.displayName }
+        : null;
+      const data = await fetchLeads(userCtx);
       setLeads(data ?? []);
       writeCache("leads", data ?? []);
       if (data?.length) setNowFromLeads(data);

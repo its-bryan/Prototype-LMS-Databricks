@@ -201,11 +201,16 @@ export async function fetchDashboardSnapshot() {
   return data ?? null;
 }
 
-/** Fetch leads, optionally filtered by branches. */
-export async function fetchLeads(branches = null) {
-  const path = branches?.length
-    ? `/leads?branches=${branches.map(encodeURIComponent).join(",")}`
-    : "/leads";
+/** Fetch leads, optionally filtered by user context.
+ *  @param {{ role?: string, branch?: string, displayName?: string }} [userCtx]
+ */
+export async function fetchLeads(userCtx = null) {
+  let path = "/leads";
+  if (userCtx?.role === "bm" && userCtx.branch) {
+    path = `/leads?branch=${encodeURIComponent(userCtx.branch)}`;
+  } else if (userCtx?.role === "gm" && userCtx.displayName) {
+    path = `/leads?gm_name=${encodeURIComponent(userCtx.displayName)}`;
+  }
   const rows = await apiGet(path);
   return (rows ?? []).map(leadFromRow);
 }
