@@ -7,13 +7,14 @@ import LeadDetail from "../LeadDetail";
 import LeadContactCard from "../LeadContactCard";
 import InteractiveEnrichmentForm from "./InteractiveEnrichmentForm";
 import GMDirectiveSection from "../GMDirectiveSection";
+import { LeadDetailSkeleton } from "../DashboardSkeleton";
 
 export default function InteractiveLeadDetail() {
   const { selectedLeadId, navigateTo, selectTask, activeView, role } = useApp();
   const isGMContext = activeView === "gm-lead-detail" || role === "gm";
   const backView = isGMContext ? "gm-lead-review" : "bm-leads";
   const backLabel = isGMContext ? "Back to Lead Review" : "Back to leads";
-  const { leads, fetchTasksForLead, updateTaskStatus } = useData();
+  const { leads, fetchTasksForLead, updateTaskStatus, initialDataReady } = useData();
   const lead = getLeadById(leads, selectedLeadId);
   const [leadTasks, setLeadTasks] = useState([]);
 
@@ -31,6 +32,8 @@ export default function InteractiveLeadDetail() {
   useEffect(() => {
     loadTasks();
   }, [loadTasks]);
+
+  if (!initialDataReady) return <LeadDetailSkeleton />;
 
   if (!lead) {
     return (

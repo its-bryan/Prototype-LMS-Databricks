@@ -16,6 +16,7 @@ import {
   normalizeGmName,
 } from "../../selectors/demoSelectors";
 import GMMetricDrilldownModal from "../GMMetricDrilldownModal";
+import { ComplianceSkeleton } from "../DashboardSkeleton";
 
 const quartileColors = { 1: "#2E7D32", 2: "#F4C300", 3: "#808080", 4: "#C62828" };
 
@@ -31,7 +32,7 @@ function getQuartile(rate, maxRate) {
 export default function InteractiveComplianceDashboard() {
   const { navigateTo } = useApp();
   const { userProfile } = useAuth();
-  const { leads, loading, orgMapping } = useData();
+  const { leads, loading, orgMapping, initialDataReady } = useData();
   const reduceMotion = useReducedMotion();
   const presets = useMemo(() => getDateRangePresets(), [loading]);
 
@@ -134,6 +135,8 @@ export default function InteractiveComplianceDashboard() {
   const [drilldownMetric, setDrilldownMetric] = useState(null);
   const [showAllBranches, setShowAllBranches] = useState(false);
   const SCOREBOARD_LIMIT = 20;
+
+  if (!initialDataReady) return <ComplianceSkeleton />;
 
   return (
     <div>

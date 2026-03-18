@@ -14,6 +14,7 @@ import {
 } from "../../selectors/demoSelectors";
 import { DateRangeCalendar } from "../DateRangeCalendar";
 import { formatDateRange as formatDateRangePST } from "../../utils/dateTime";
+import { BMLeaderboardSkeleton } from "../DashboardSkeleton";
 
 const easeOut = [0.4, 0, 0.2, 1];
 
@@ -93,7 +94,7 @@ function BarRow({ row, metricKey, maxVal, isCurrentBranch, regionBenchmark, metr
 
 export default function InteractiveBMLeaderboard() {
   const { userProfile } = useAuth();
-  const { leads } = useData();
+  const { leads, initialDataReady } = useData();
   const branch = (userProfile?.branch?.trim() || getDefaultBranchForDemo());
   const reduceMotion = useReducedMotion();
 
@@ -133,6 +134,8 @@ export default function InteractiveBMLeaderboard() {
   }, [sorted, metricKey]);
 
   const noPeers = leaderboardData && leaderboardData.peers.length === 0 && !leaderboardData.myBranch?.total;
+
+  if (!initialDataReady) return <BMLeaderboardSkeleton />;
 
   return (
     <div>

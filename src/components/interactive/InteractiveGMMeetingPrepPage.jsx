@@ -29,6 +29,7 @@ import { formatDateShort } from "../../utils/dateTime";
 import ThreeColumnReview from "../ThreeColumnReview";
 import BranchComplianceDetailPane from "./BranchComplianceDetailPane";
 import GMPresentationMode from "./GMPresentationMode";
+import { GMMeetingPrepSkeleton } from "../DashboardSkeleton";
 
 const easeOut = [0.4, 0, 0.2, 1];
 
@@ -101,7 +102,7 @@ function formatDueDate(dueStr) {
 }
 
 export default function InteractiveGMMeetingPrepPage() {
-  const { leads, loading, orgMapping, createComplianceTasksForBranch, winsLearnings, updateLeadDirective, markLeadReviewed, gmTasks, fetchGMTasks } = useData();
+  const { leads, loading, orgMapping, createComplianceTasksForBranch, winsLearnings, updateLeadDirective, markLeadReviewed, gmTasks, fetchGMTasks, initialDataReady } = useData();
   const { navigateTo, selectTask, selectLead } = useApp();
   const { userProfile } = useAuth();
   const reduceMotion = useReducedMotion();
@@ -223,6 +224,8 @@ export default function InteractiveGMMeetingPrepPage() {
     selectLead(leadId);
     navigateTo("gm-lead-detail");
   };
+
+  if (!initialDataReady) return <GMMeetingPrepSkeleton />;
 
   return (
     <div className="max-w-6xl">

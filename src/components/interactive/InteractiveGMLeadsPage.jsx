@@ -12,11 +12,12 @@ import {
 } from "../../selectors/demoSelectors";
 import StatusBadge from "../StatusBadge";
 import ThreeColumnReview from "../ThreeColumnReview";
+import { GMLeadsPageSkeleton } from "../DashboardSkeleton";
 
 const STATUS_TABS = ["All", "Cancelled", "Unused"];
 
 export default function InteractiveGMLeadsPage() {
-  const { leads, loading, orgMapping, updateLeadDirective, markLeadReviewed } = useData();
+  const { leads, loading, orgMapping, updateLeadDirective, markLeadReviewed, initialDataReady } = useData();
   const { navigateTo } = useApp();
   const presets = useMemo(() => getDateRangePresets(), [loading]);
 
@@ -98,6 +99,8 @@ export default function InteractiveGMLeadsPage() {
       console.error("Failed to mark lead reviewed:", err);
     }
   };
+
+  if (!initialDataReady) return <GMLeadsPageSkeleton />;
 
   return (
     <div className="flex flex-col h-full gap-0">

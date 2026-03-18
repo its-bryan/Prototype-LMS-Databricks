@@ -5,6 +5,7 @@ import { useApp } from "../../context/AppContext";
 import BackButton from "../BackButton";
 import { getActivityReportData } from "../../selectors/demoSelectors";
 import { formatDateShort } from "../../utils/dateTime";
+import { ActivityReportSkeleton } from "../DashboardSkeleton";
 
 const TABS = [
   { id: "all", label: "All Activity" },
@@ -41,7 +42,7 @@ function formatTime(iso) {
 }
 
 export default function InteractiveGMActivityReportPage() {
-  const { leads } = useData();
+  const { leads, initialDataReady } = useData();
   const { navigateTo } = useApp();
   const [activeTab, setActiveTab] = useState("all");
 
@@ -56,6 +57,8 @@ export default function InteractiveGMActivityReportPage() {
         : data.contact;
 
   const hasData = entries.length > 0;
+
+  if (!initialDataReady) return <ActivityReportSkeleton />;
 
   return (
     <div className="space-y-6">

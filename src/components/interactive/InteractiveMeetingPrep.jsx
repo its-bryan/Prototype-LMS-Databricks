@@ -26,6 +26,7 @@ import {
 import MeetingPrepLeadQueue from "../MeetingPrepLeadQueue";
 import MeetingPrepLeadPanel from "./MeetingPrepLeadPanel";
 import MetricDrilldownModal from "../MetricDrilldownModal";
+import { MeetingPrepSkeleton } from "../DashboardSkeleton";
 
 const easeOut = [0.4, 0, 0.2, 1];
 
@@ -105,7 +106,7 @@ function MetricCard({ label, value, subtext, children, className = "", variant =
 
 export default function InteractiveMeetingPrep() {
   const { userProfile } = useAuth();
-  const { leads, refetchLeads, winsLearnings, submitWinsLearning, orgMapping, fetchTasksForBranch } = useData();
+  const { leads, refetchLeads, winsLearnings, submitWinsLearning, orgMapping, fetchTasksForBranch, initialDataReady } = useData();
   const branch = (userProfile?.branch?.trim() || getDefaultBranchForDemo());
 
   const [includeRented, setIncludeRented] = useState(false);
@@ -271,6 +272,8 @@ export default function InteractiveMeetingPrep() {
     setPanelLead(null);
     refetchLeads?.();
   };
+
+  if (!initialDataReady) return <MeetingPrepSkeleton />;
 
   return (
     <div>

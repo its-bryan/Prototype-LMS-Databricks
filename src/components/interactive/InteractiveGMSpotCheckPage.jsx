@@ -17,6 +17,7 @@ import {
   normalizeGmName,
 } from "../../selectors/demoSelectors";
 import MetricDrilldownModal from "../MetricDrilldownModal";
+import { SpotCheckSkeleton } from "../DashboardSkeleton";
 
 const easeOut = [0.4, 0, 0.2, 1];
 
@@ -146,6 +147,8 @@ export default function InteractiveGMSpotCheckPage() {
     selectLead(leadId);
     navigateTo("gm-lead-detail");
   };
+
+  if (!initialDataReady) return <SpotCheckSkeleton />;
 
   return (
     <div className="max-w-6xl">

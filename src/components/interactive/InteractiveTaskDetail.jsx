@@ -6,6 +6,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useData } from "../../context/DataContext";
 import { getLeadById } from "../../selectors/demoSelectors";
 import { formatDateTime, formatDateTimeShort } from "../../utils/dateTime";
+import { TaskDetailSkeleton } from "../DashboardSkeleton";
 
 const STATUS_OPTIONS = ["Open", "In Progress", "Done"];
 const PRIORITY_COLORS = {
@@ -34,7 +35,7 @@ function formatRelativeTime(iso) {
 export default function InteractiveTaskDetail() {
   const { selectedTaskId, navigateTo, selectLead, selectTask, activeView, role } = useApp();
   const { userProfile } = useAuth();
-  const { leads, fetchTaskById, updateTaskStatus, appendTaskNote } = useData();
+  const { leads, fetchTaskById, updateTaskStatus, appendTaskNote, initialDataReady } = useData();
   const [task, setTask] = useState(null);
   const [loading, setLoading] = useState(false);
   const [updating, setUpdating] = useState(false);
@@ -109,12 +110,8 @@ export default function InteractiveTaskDetail() {
     );
   }
 
-  if (loading) {
-    return (
-      <div className="h-full flex items-center justify-center text-[var(--neutral-600)]">
-        Loading task…
-      </div>
-    );
+  if (loading || !initialDataReady) {
+    return <TaskDetailSkeleton />;
   }
 
   if (!task) {
