@@ -237,14 +237,8 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
 
   const { stats, chartData: trendsChartData } = useMemo(() => {
     if (useSnapshotData && selectedPresetKey === "trailing_4_weeks" && !useCustom) {
-      // #region agent log
-      console.warn('[DEBUG-2ea99a] BM SNAPSHOT path', {leadsLen: leads.length, branch, trendsGroupBy, chartDataLen: snapshotBranch?.chartData?.length, chartData: snapshotBranch?.chartData});
-      // #endregion
       return { stats: snapshotBranch.stats, chartData: snapshotBranch.chartData ?? [] };
     }
-    // #region agent log
-    console.warn('[DEBUG-2ea99a] BM LIVE path', {leadsLen: leads.length, branch, trendsGroupBy, dateRange: dateRange ? {start: dateRange.start?.toISOString(), end: dateRange.end?.toISOString()} : null});
-    // #endregion
     if (!dateRange) return { stats: getBMStats(leads, dateRange, branch), chartData: [] };
     if (trendsGroupBy === "period") {
       const { stats: s } = getSummaryDataWithChart(leads, branchTasks, dateRange, branch, "trailing_4_weeks", trendsGroupBy);
@@ -2610,18 +2604,12 @@ function GMDashboardPage({ navigateTo }) {
 
   const { stats: chartStats, chartData: trendsChartData } = useMemo(() => {
     if (useSnapshotGM && trendsGroupBy === "period" && !trendsUseCustom && trendsTimePresetKey === "trailing_4_weeks") {
-      // #region agent log
-      console.warn('[DEBUG-2ea99a] GM SNAPSHOT path', {trendsGroupBy, chartDataLen: snapshotGM?.chartData?.length, chartData: snapshotGM?.chartData});
-      // #endregion
       const cd = snapshotGM.chartData ?? [];
       const total = cd.reduce((s, d) => s + (d.totalLeads ?? 0), 0);
       const rented = cd.reduce((s, d) => s + (d.rented ?? 0), 0);
       return { stats: { total, rented }, chartData: cd };
     }
     if (!chartDateRange) return { stats: null, chartData: [] };
-    // #region agent log
-    console.warn('[DEBUG-2ea99a] GM LIVE path', {gmLeadsCount: gmLeads.length, trendsGroupBy, chartDateRange: {start: chartDateRange.start?.toISOString(), end: chartDateRange.end?.toISOString()}, useSnapshotGM, trendsTimePresetKey});
-    // #endregion
     return getSummaryDataWithChart(
       gmLeads,
       [],

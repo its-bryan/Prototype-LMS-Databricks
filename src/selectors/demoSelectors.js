@@ -63,9 +63,6 @@ export function setNowFromLeads(leads) {
   const calSunday = new Date(calMonday.getTime() + 6 * 86400000);
   calSunday.setHours(9, 0, 0, 0);
   NOW = dataSunday.getTime() <= calSunday.getTime() ? dataSunday : calSunday;
-  // #region agent log
-  console.warn('[DEBUG-2ea99a] setNowFromLeads', {maxMondayStr, dataSunday: dataSunday.toISOString(), calSunday: calSunday.toISOString(), NOW: NOW.toISOString(), nowLocal: NOW.toString()});
-  // #endregion
 }
 
 const TREND_TIMEFRAME_WEEKS = { this_week: 1, trailing_4_weeks: 4, this_month: 5, this_year: 13 };
@@ -1637,9 +1634,6 @@ function buildChartDataStackedFromFiltered(filtered, dateRange, branch, groupBy,
 
   const gran = chartGranularity(presetKey, dateRange);
   const periods = getPeriodsForRange(dateRange, presetKey);
-  // #region agent log
-  console.warn('[DEBUG-2ea99a] buildChartDataStackedFromFiltered', {gran, presetKey, dateRangeStart: dateRange.start?.toISOString(), dateRangeEnd: dateRange.end?.toISOString(), periodCount: periods.length, periods: periods.map(p=>({key:p.key,label:p.label})), filteredCount: filtered.length, sampleLeadDates: filtered.slice(0,10).map(l=>({id:l.id, initDtFinal:l.initDtFinal??l.init_dt_final, weekOf:l.weekOf??l.week_of, leadDate:getLeadDateForPeriod(l)?.toISOString(), periodKey:leadToPeriodKey(getLeadDateForPeriod(l),gran)}))});
-  // #endregion
   const periodMap = new Map();
 
   for (const p of periods) {
@@ -1660,10 +1654,6 @@ function buildChartDataStackedFromFiltered(filtered, dateRange, branch, groupBy,
     if (lead.enrichmentComplete) row.enriched += 1;
   }
 
-  // #region agent log
-  const _distrib = {};for(const [k,v] of periodMap.entries()) _distrib[k]={label:v.label,total:v.total};
-  console.warn('[DEBUG-2ea99a] lead distribution across periods', _distrib);
-  // #endregion
   const allPeriods = [...periods, { key: "__unassigned__", label: "Unassigned" }];
   return allPeriods
     .map((p) => {
