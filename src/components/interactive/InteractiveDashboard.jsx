@@ -180,7 +180,7 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
   const [useCustom, setUseCustom] = useState(false);
   const [summaryTrendsMetric, setSummaryTrendsMetric] = useState("leadPipeline");
   const [summaryTrendsChartType, setSummaryTrendsChartType] = useState("bar");
-  const [trendsOverlayMetric, setTrendsOverlayMetric] = useState("conversionRate");
+  const trendsOverlayMetric = "";
   const [trendsTimePresetKey, setTrendsTimePresetKey] = useState("trailing_4_weeks");
   const [trendsUseCustom, setTrendsUseCustom] = useState(false);
   const [trendsGroupBy, setTrendsGroupBy] = useState("status");
@@ -506,6 +506,7 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
   const stackedSegmentKeys = useMemo(() => {
     if (!isStackedView) return [];
     const keys = new Set();
+    if (trendsGroupBy === "status") SEGMENT_ORDER.forEach((s) => keys.add(s));
     for (const row of trendsChartData) {
       for (const k of Object.keys(row.segments ?? {})) keys.add(k);
     }
@@ -518,7 +519,7 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
       return String(a).localeCompare(String(b));
     });
     return ordered;
-  }, [isStackedView, trendsChartData]);
+  }, [isStackedView, trendsChartData, trendsGroupBy]);
 
   const trendsChartTypeBtn = (type, icon, label) => (
     <button
@@ -752,6 +753,22 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
               {stackedHasOverlay && <div style={{ width: 36 }} />}
             </div>
           </div>
+          {/* Conversion rate row below x-axis labels */}
+          <div className="flex mt-0.5" style={{ gap: AXIS_GAP }}>
+            <div className="flex items-center justify-end" style={{ width: 36 }}>
+              <span className="text-[10px] font-semibold text-[var(--neutral-500)] uppercase tracking-wider whitespace-nowrap">Conv %</span>
+            </div>
+            <div className="flex flex-1 min-w-0">
+              <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${trendsLabels.length}, 1fr)`, gap: 4, paddingLeft: AXIS_GAP, paddingRight: stackedPadR + AXIS_GAP }}>
+                {trendsChartData.map((row, i) => (
+                  <span key={i} className="text-center text-xs font-semibold text-[var(--hertz-black)]">
+                    {row.conversionRate != null ? `${row.conversionRate}%` : "—"}
+                  </span>
+                ))}
+              </div>
+              {stackedHasOverlay && <div style={{ width: 36 }} />}
+            </div>
+          </div>
         </div>
       );
     }
@@ -893,6 +910,22 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
             <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${n}, 1fr)`, gap: 4, paddingLeft: nonStackedAxisGap, paddingRight: padR + nonStackedAxisGap }}>
               {trendsLabels.map((l, i) => (
                 <span key={i} className="text-center text-xs text-[var(--neutral-500)] truncate">{l}</span>
+              ))}
+            </div>
+            {hasOverlay && <div style={{ width: 36 }} />}
+          </div>
+        </div>
+        {/* Conversion rate row below x-axis labels */}
+        <div className="flex mt-0.5" style={{ gap: nonStackedAxisGap }}>
+          <div className="flex items-center justify-end" style={{ width: 36 }}>
+            <span className="text-[10px] font-semibold text-[var(--neutral-500)] uppercase tracking-wider whitespace-nowrap">Conv %</span>
+          </div>
+          <div className="flex flex-1 min-w-0">
+            <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${n}, 1fr)`, gap: 4, paddingLeft: nonStackedAxisGap, paddingRight: padR + nonStackedAxisGap }}>
+              {trendsChartData.map((row, i) => (
+                <span key={i} className="text-center text-xs font-semibold text-[var(--hertz-black)]">
+                  {row.conversionRate != null ? `${row.conversionRate}%` : "—"}
+                </span>
               ))}
             </div>
             {hasOverlay && <div style={{ width: 36 }} />}
@@ -1349,19 +1382,6 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
                   <option value="body_shop">Body Shop</option>
                   <option value="insurance_company">Insurance</option>
                   <option value="status">Lead Status</option>
-                </select>
-              </div>
-              <div className="shrink-0">
-                <p className="text-xs font-semibold text-[var(--neutral-600)] uppercase tracking-wider mb-1.5">Add secondary metric</p>
-                <select
-                  value={trendsOverlayMetric}
-                  onChange={(e) => setTrendsOverlayMetric(e.target.value)}
-                  className="w-[10rem] px-2.5 py-1.5 border border-[var(--neutral-200)] rounded-lg text-sm font-medium text-[var(--hertz-black)] bg-white focus:outline-none focus:border-[var(--hertz-primary)] focus:ring-1 focus:ring-[var(--hertz-primary)] cursor-pointer"
-                  title="Add a secondary data series as a line overlay"
-                >
-                  {overlayOptions.map((o) => (
-                    <option key={o.value || "none"} value={o.value}>{o.label}</option>
-                  ))}
                 </select>
               </div>
               <div className="shrink-0 ml-auto">
@@ -2264,6 +2284,21 @@ function GMChartBar({
             </div>
           </div>
         </div>
+        {/* Conversion rate row below x-axis labels */}
+        <div className="flex mt-0.5" style={{ gap: AXIS_GAP }}>
+          <div className="flex items-center justify-end" style={{ width: 36 }}>
+            <span className="text-[10px] font-semibold text-[var(--neutral-500)] uppercase tracking-wider whitespace-nowrap">Conv %</span>
+          </div>
+          <div className="flex flex-1 min-w-0">
+            <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${trendsLabels.length}, 1fr)`, gap: 4, paddingLeft: AXIS_GAP, paddingRight: stackedPadR + AXIS_GAP }}>
+              {trendsChartData.map((row, i) => (
+                <span key={i} className="text-center text-xs font-semibold text-[var(--hertz-black)]">
+                  {row.conversionRate != null ? `${row.conversionRate}%` : "—"}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -2369,6 +2404,21 @@ function GMChartBar({
           <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${n}, 1fr)`, gap: 4, paddingLeft: AXIS_GAP, paddingRight: padR + AXIS_GAP }}>
             {trendsLabels.map((l, i) => (
               <span key={i} className="block w-full text-center text-xs text-[var(--neutral-500)] truncate">{l}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+      {/* Conversion rate row below x-axis labels */}
+      <div className="flex mt-0.5" style={{ gap: AXIS_GAP }}>
+        <div className="flex items-center justify-end" style={{ width: 36 }}>
+          <span className="text-[10px] font-semibold text-[var(--neutral-500)] uppercase tracking-wider whitespace-nowrap">Conv %</span>
+        </div>
+        <div className="flex flex-1 min-w-0">
+          <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${n}, 1fr)`, gap: 4, paddingLeft: AXIS_GAP, paddingRight: padR + AXIS_GAP }}>
+            {trendsChartData.map((row, i) => (
+              <span key={i} className="text-center text-xs font-semibold text-[var(--hertz-black)]">
+                {row.conversionRate != null ? `${row.conversionRate}%` : "—"}
+              </span>
             ))}
           </div>
         </div>
@@ -2559,7 +2609,7 @@ function GMDashboardPage({ navigateTo }) {
 
   const [selectedPresetKey, setSelectedPresetKey] = useState("trailing_4_weeks");
   const [summaryTrendsMetric, setSummaryTrendsMetric] = useState("leadPipeline");
-  const [trendsOverlayMetric, setTrendsOverlayMetric] = useState("conversionRate");
+  const trendsOverlayMetric = "";
   const [trendsTimePresetKey, setTrendsTimePresetKey] = useState("trailing_4_weeks");
   const [trendsGroupBy, setTrendsGroupBy] = useState("status");
   const [summaryTrendsChartType, setSummaryTrendsChartType] = useState("bar");
@@ -2674,6 +2724,7 @@ function GMDashboardPage({ navigateTo }) {
   const stackedSegmentKeys = useMemo(() => {
     if (!isStackedView) return [];
     const keys = new Set();
+    if (trendsGroupBy === "status") SEGMENT_ORDER.forEach((s) => keys.add(s));
     for (const row of trendsChartData) {
       for (const k of Object.keys(row.segments ?? {})) keys.add(k);
     }
@@ -2685,7 +2736,7 @@ function GMDashboardPage({ navigateTo }) {
       if (bi >= 0) return 1;
       return String(a).localeCompare(String(b));
     });
-  }, [isStackedView, trendsChartData]);
+  }, [isStackedView, trendsChartData, trendsGroupBy]);
 
   const getSegmentColor = (key) => SEGMENT_COLORS[key] ?? GM_PALETTE[Math.abs(key.split("").reduce((a, c) => a + c.charCodeAt(0), 0)) % GM_PALETTE.length];
 
@@ -2921,19 +2972,6 @@ function GMDashboardPage({ navigateTo }) {
                     <option value="body_shop">Body Shop</option>
                     <option value="insurance_company">Insurance</option>
                     <option value="status">Lead Status</option>
-                  </select>
-                </div>
-                <div className="shrink-0">
-                  <p className="text-xs font-semibold text-[var(--neutral-600)] uppercase tracking-wider mb-1.5">Add secondary metric</p>
-                  <select
-                    value={trendsOverlayMetric}
-                    onChange={(e) => setTrendsOverlayMetric(e.target.value)}
-                    className="w-[10rem] px-2.5 py-1.5 border border-[var(--neutral-200)] rounded-lg text-sm font-medium text-[var(--hertz-black)] bg-white focus:outline-none focus:border-[var(--hertz-primary)] focus:ring-1 focus:ring-[var(--hertz-primary)] cursor-pointer"
-                    title="Add a secondary data series as a line overlay"
-                  >
-                    {overlayOptions.map((o) => (
-                      <option key={o.value || "none"} value={o.value}>{o.label}</option>
-                    ))}
                   </select>
                 </div>
                 <div className="shrink-0 ml-auto">

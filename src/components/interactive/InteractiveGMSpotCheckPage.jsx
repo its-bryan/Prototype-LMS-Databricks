@@ -73,7 +73,7 @@ export default function InteractiveGMSpotCheckPage() {
 
   const myBranches = useMemo(() => getBranchesForGM(gmName, leads ?? []), [gmName, leads]);
 
-  const [selectedPresetKey, setSelectedPresetKey] = useState("this_week");
+  const selectedPresetKey = "trailing_4_weeks";
   const [selectedBranch, setSelectedBranch] = useState(myBranches[0] ?? null);
   const [selectedLeadId, setSelectedLeadId] = useState(null);
   const [drilldownMetric, setDrilldownMetric] = useState(null);
@@ -181,7 +181,7 @@ export default function InteractiveGMSpotCheckPage() {
         </p>
       </motion.div>
 
-      {/* Controls: Branch + Period on same line */}
+      {/* Controls: Branch picker + period label */}
       <div className="mb-6">
         <div className="flex items-end gap-6">
           <div>
@@ -196,24 +196,9 @@ export default function InteractiveGMSpotCheckPage() {
               ))}
             </select>
           </div>
-          <div>
-            <label className="text-xs font-bold text-[var(--neutral-600)] uppercase tracking-wider block mb-1.5">Period</label>
-            <div className="flex items-center gap-1">
-              {presets.map((p) => (
-                <button
-                  key={p.key}
-                  onClick={() => setSelectedPresetKey(p.key)}
-                  className={`px-2.5 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
-                    selectedPresetKey === p.key
-                      ? "bg-[var(--hertz-black)] text-white"
-                      : "bg-[var(--neutral-100)] text-[var(--neutral-600)] hover:bg-[var(--neutral-200)]"
-                  }`}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-          </div>
+          <span className="px-2.5 py-1.5 rounded-md text-xs font-semibold bg-[var(--hertz-black)] text-white">
+            Trailing 4 weeks{currentPreset?.sublabel ? ` ${currentPreset.sublabel}` : ""}
+          </span>
         </div>
         <p className="text-xs text-[var(--neutral-600)] mt-1.5">
           BM: <span className="font-semibold text-[var(--hertz-black)]">{bmName}</span>
