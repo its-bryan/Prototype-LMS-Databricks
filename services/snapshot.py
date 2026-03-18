@@ -801,7 +801,6 @@ def compute_and_store_snapshot():
 
     try:
         payload = json.dumps(snapshot, default=str)
-        execute("DELETE FROM dashboard_snapshots")
         execute(
             "INSERT INTO dashboard_snapshots (snapshot) VALUES (%s::jsonb)",
             (payload,),
