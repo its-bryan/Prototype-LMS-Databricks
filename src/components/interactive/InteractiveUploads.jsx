@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { parseHlesCsv } from "../../utils/csvParsers";
 import { reconcileHlesUpload, buildCommitPlan } from "../../utils/reconciliation";
 import { leads as mockLeads } from "../../data/mockData";
+import { useApp } from "../../context/AppContext";
 import { useData } from "../../context/DataContext";
 import { useAuth } from "../../context/AuthContext";
 import { uploadHlesFile, fetchUploadHistory } from "../../data/databricksData";
@@ -554,6 +555,7 @@ function OrphanActionSelector({ orphanedLeads, orphanAction, onOrphanAction }) {
 // Main Upload Wizard
 // ---------------------------------------------------------------------------
 export default function InteractiveUploads() {
+  const { navigateTo } = useApp();
   const { leads: contextLeads, refetchLeads, refetchOrgMapping, refetchDataAsOfDate, refetchSnapshot } = useData();
   const { userProfile } = useAuth();
 
@@ -1084,12 +1086,18 @@ export default function InteractiveUploads() {
               </div>
             )}
 
-            <div className="flex justify-center">
+            <div className="flex justify-center gap-3">
               <button
                 onClick={handleReset}
                 className="px-5 py-2.5 bg-[var(--hertz-primary)] text-[var(--hertz-black)] rounded-lg text-sm font-semibold hover:bg-[#E6BC00] transition-colors cursor-pointer"
               >
                 Start New Upload
+              </button>
+              <button
+                onClick={() => navigateTo("admin-dashboard")}
+                className="px-5 py-2.5 border border-[var(--neutral-300)] text-[var(--hertz-black)] rounded-lg text-sm font-semibold hover:bg-[var(--neutral-50)] transition-colors cursor-pointer"
+              >
+                Back to Dashboard
               </button>
             </div>
           </motion.div>

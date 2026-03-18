@@ -557,16 +557,20 @@ def _build_leaderboard(
 
 def compute_and_store_snapshot():
     """Compute dashboard metrics for the trailing 4-week view and store as JSONB."""
+    print("[snapshot] compute_and_store_snapshot started", flush=True)
     try:
         leads = query("SELECT * FROM leads WHERE archived = false")
         org_rows = query("SELECT * FROM org_mapping")
         tasks = query("SELECT * FROM tasks")
     except Exception:
+        print("[snapshot] ERROR reading data from DB", flush=True)
         logger.exception("Failed to read data for snapshot computation")
         return
 
+    print(f"[snapshot] loaded {len(leads)} leads, {len(org_rows)} org rows, {len(tasks)} tasks", flush=True)
+
     if not leads:
-        logger.info("No leads found — skipping snapshot computation")
+        print("[snapshot] no leads found — skipping", flush=True)
         return
 
     now = _get_now(leads)
@@ -644,6 +648,7 @@ def compute_and_store_snapshot():
             "INSERT INTO dashboard_snapshots (snapshot) VALUES (%s::jsonb)",
             (json.dumps(snapshot, default=str),),
         )
-        logger.info("Dashboard snapshot stored (now=%s, %d branches, %d GMs)", now, len(branches_snapshot), len(gms_snapshot))
-    except Exception:
+        print(f"[snapshot] STORED OK — now={now}, {len(branches_snapshot)} branches, {len(gms_snapshot)} GMs, json={len(json.dumps(snapshot, default=str))} chars", flush=True)
+    except Exception as exc:
+        print(f"[snapshot] ERROR storing snapshot: {exc}", flush=True)
         logger.exception("Failed to store dashboard snapshot")

@@ -131,9 +131,9 @@ def get_upload_history():
 
 @router.post("/upload/hles")
 async def upload_hles(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     uploaded_by: str | None = Form(None),
-    background_tasks: BackgroundTasks = BackgroundTasks(),
 ):
     """Upload HLES Excel file -> land in Volume (if configured) -> ETL -> batch insert/update leads."""
     contents = await file.read()
@@ -228,6 +228,7 @@ async def upload_hles(
         (json.dumps(stats), "{}", str(pd.Timestamp.now().date())),
     )
     background_tasks.add_task(compute_and_store_snapshot)
+    print(f"[upload] HLES ETL done — snapshot background task queued", flush=True)
     return stats
 
 @router.post("/upload/translog")

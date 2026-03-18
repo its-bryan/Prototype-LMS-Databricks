@@ -1634,6 +1634,9 @@ function buildChartDataStackedFromFiltered(filtered, dateRange, branch, groupBy,
 
   const gran = chartGranularity(presetKey, dateRange);
   const periods = getPeriodsForRange(dateRange, presetKey);
+  // #region agent log
+  fetch('http://127.0.0.1:7507/ingest/4cdc8682-4d34-4a46-8b0d-92860e51cbd8',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2ea99a'},body:JSON.stringify({sessionId:'2ea99a',location:'demoSelectors.js:buildChartDataStackedFromFiltered',message:'periods and dateRange',data:{gran,presetKey,dateRangeStart:dateRange.start?.toISOString(),dateRangeEnd:dateRange.end?.toISOString(),periodCount:periods.length,periods:periods.map(p=>({key:p.key,label:p.label})),filteredCount:filtered.length,sampleLeadDates:filtered.slice(0,10).map(l=>({id:l.id,initDtFinal:l.initDtFinal??l.init_dt_final,weekOf:l.weekOf??l.week_of,leadDate:getLeadDateForPeriod(l)?.toISOString()}))},timestamp:Date.now(),hypothesisId:'A-B-C-D'})}).catch(()=>{});
+  // #endregion
   const periodMap = new Map();
 
   for (const p of periods) {
@@ -1654,6 +1657,10 @@ function buildChartDataStackedFromFiltered(filtered, dateRange, branch, groupBy,
     if (lead.enrichmentComplete) row.enriched += 1;
   }
 
+  // #region agent log
+  const _distrib = {};for(const [k,v] of periodMap.entries()) _distrib[k]={label:v.label,total:v.total};
+  fetch('http://127.0.0.1:7507/ingest/4cdc8682-4d34-4a46-8b0d-92860e51cbd8',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2ea99a'},body:JSON.stringify({sessionId:'2ea99a',location:'demoSelectors.js:buildChartDataStackedFromFiltered:afterLoop',message:'lead distribution across periods',data:{distribution:_distrib},timestamp:Date.now(),hypothesisId:'A-B-D'})}).catch(()=>{});
+  // #endregion
   const allPeriods = [...periods, { key: "__unassigned__", label: "Unassigned" }];
   return allPeriods
     .map((p) => {

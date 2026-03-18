@@ -2596,12 +2596,18 @@ function GMDashboardPage({ navigateTo }) {
 
   const { stats: chartStats, chartData: trendsChartData } = useMemo(() => {
     if (useSnapshotGM && trendsGroupBy === "period" && !trendsUseCustom && trendsTimePresetKey === "trailing_4_weeks") {
+      // #region agent log
+      fetch('http://127.0.0.1:7507/ingest/4cdc8682-4d34-4a46-8b0d-92860e51cbd8',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2ea99a'},body:JSON.stringify({sessionId:'2ea99a',location:'InteractiveDashboard.jsx:GMChart',message:'SNAPSHOT path used',data:{trendsGroupBy,chartDataLength:snapshotGM?.chartData?.length},timestamp:Date.now(),hypothesisId:'E'})}).catch(()=>{});
+      // #endregion
       const cd = snapshotGM.chartData ?? [];
       const total = cd.reduce((s, d) => s + (d.totalLeads ?? 0), 0);
       const rented = cd.reduce((s, d) => s + (d.rented ?? 0), 0);
       return { stats: { total, rented }, chartData: cd };
     }
     if (!chartDateRange) return { stats: null, chartData: [] };
+    // #region agent log
+    fetch('http://127.0.0.1:7507/ingest/4cdc8682-4d34-4a46-8b0d-92860e51cbd8',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2ea99a'},body:JSON.stringify({sessionId:'2ea99a',location:'InteractiveDashboard.jsx:GMChart',message:'LIVE computation path',data:{gmLeadsCount:gmLeads.length,trendsGroupBy,chartDateRangeStart:chartDateRange.start?.toISOString(),chartDateRangeEnd:chartDateRange.end?.toISOString(),useSnapshotGM,trendsTimePresetKey},timestamp:Date.now(),hypothesisId:'D-E'})}).catch(()=>{});
+    // #endregion
     return getSummaryDataWithChart(
       gmLeads,
       [],
