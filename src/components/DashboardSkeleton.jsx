@@ -1,6 +1,13 @@
 /**
  * Animated skeleton placeholders shown while DataContext fetches data.
  */
+import { useState, useEffect } from "react";
+
+export function usePageTransition() {
+  const [ready, setReady] = useState(false);
+  useEffect(() => { setReady(true); }, []);
+  return ready;
+}
 
 export const Bone = ({ className = "" }) => (
   <div className={`animate-pulse rounded bg-[var(--neutral-200)] ${className}`} />

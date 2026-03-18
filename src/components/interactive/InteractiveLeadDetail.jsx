@@ -7,7 +7,7 @@ import LeadDetail from "../LeadDetail";
 import LeadContactCard from "../LeadContactCard";
 import InteractiveEnrichmentForm from "./InteractiveEnrichmentForm";
 import GMDirectiveSection from "../GMDirectiveSection";
-import { LeadDetailSkeleton } from "../DashboardSkeleton";
+import { LeadDetailSkeleton, usePageTransition } from "../DashboardSkeleton";
 
 export default function InteractiveLeadDetail() {
   const { selectedLeadId, navigateTo, selectTask, activeView, role } = useApp();
@@ -33,7 +33,8 @@ export default function InteractiveLeadDetail() {
     loadTasks();
   }, [loadTasks]);
 
-  if (!initialDataReady) return <LeadDetailSkeleton />;
+  const pageReady = usePageTransition();
+  if (!initialDataReady || !pageReady) return <LeadDetailSkeleton />;
 
   if (!lead) {
     return (

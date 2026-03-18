@@ -18,7 +18,7 @@ import {
   leadBranchMatches,
 } from "../../selectors/demoSelectors";
 import MetricDrilldownModal from "../MetricDrilldownModal";
-import { SpotCheckSkeleton } from "../DashboardSkeleton";
+import { SpotCheckSkeleton, usePageTransition } from "../DashboardSkeleton";
 
 const easeOut = [0.4, 0, 0.2, 1];
 
@@ -149,10 +149,11 @@ export default function InteractiveGMSpotCheckPage() {
     navigateTo("gm-lead-detail");
   };
 
+  const pageReady = usePageTransition();
   // #region agent log
-  console.log('[DEBUG-2ecb09] SpotCheck render', { initialDataReady, loading, leadsCount: (leads??[]).length, ts: Date.now() });
+  console.log('[DEBUG-2ecb09] SpotCheck render', { initialDataReady, pageReady, loading, leadsCount: (leads??[]).length, ts: Date.now() });
   // #endregion
-  if (!initialDataReady) return <SpotCheckSkeleton />;
+  if (!initialDataReady || !pageReady) return <SpotCheckSkeleton />;
 
   return (
     <div className="max-w-6xl">

@@ -15,8 +15,9 @@ Use this when the user says "deploy", "redeploy", or "push to production".
 - **Lakebase migrations and GRANTs** cannot be run from the CLI unless `psql` is installed locally. Use the **Lakebase SQL Editor** in the Databricks UI (Lakebase project `lms-leo`, branch `production`) to run `docs/lakebase-migrations/*.sql`. After adding tables or columns, re-run GRANTs for the app's client ID (see Step 5b below). If `psql` is on PATH: `databricks psql --project lms-leo --branch production -p DanSiaoAuth -- -f docs/lakebase-migrations/004_add_lead_columns_and_grants.sql`.
 
 ## Pipeline overview
+0. **Deploy guard** — abort if another deploy is already in progress
 1. Pre-deploy validation (testing rule)
-2. Git commit & push
+2. Merge feature branch into `main`, push
 3. Pull latest into Databricks workspace repo (repos update)
 4. Deploy app (apps deploy)
 5. Post-deploy: verify app; run migrations/GRANTs in Lakebase if needed
@@ -29,16 +30,39 @@ Use this when the user says "deploy", "redeploy", or "push to production".
 - **Branch**: `main`
 - **CLI profile**: `DanSiaoAuth` (use `-p DanSiaoAuth`)
 
+## Step 0 — Deploy guard (MANDATORY)
+
+Before doing anything else, check whether a deploy is already in progress:
+```powershell
+databricks apps get hertz-leo-leadsmgmtsystem -p DanSiaoAuth --output json
+```
+Parse the JSON output and check `active_deployment.status.state`.
+
+| State | Action |
+|-------|--------|
+| `IN_PROGRESS` or `PENDING` | **STOP.** Tell the user: "A deployment is already in progress. Your changes have been committed and pushed to your feature branch but deployment is deferred until the current one finishes." Do NOT proceed. |
+| `SUCCEEDED` or `FAILED` | Safe to proceed with the deploy pipeline. |
+
+**If you cannot determine the state** (e.g. CLI error, auth failure), **do NOT deploy**. Report the error and stop.
+
 ## Step 1 — Pre-deploy validation
 Follow the `pre-deploy-check` rule. Run ReadLints on all changed files. Stop if critical issues found.
 
-## Step 2 — Git commit & push
+## Step 2 — Merge feature branch into `main` and push
+
+Agents work on **feature branches** (see `git-workflow` rule). At deploy time, merge into `main`:
 ```powershell
-git add -u
-git add .gitignore docs/lakebase-migrations/*.sql
-git status
-git commit -m "<type>: <description>"
+git checkout main
+git pull origin main
+git merge <your-feature-branch> --no-edit
 git push origin main
+```
+If the merge has conflicts, **do NOT force-push**. Report the conflicts to the user and stop.
+
+After pushing, delete the merged feature branch:
+```powershell
+git branch -d <your-feature-branch>
+git push origin --delete <your-feature-branch>
 ```
 
 ## Step 3 — Pull latest into Databricks workspace repo

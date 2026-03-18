@@ -14,7 +14,7 @@ import {
 } from "../../selectors/demoSelectors";
 import { DateRangeCalendar } from "../DateRangeCalendar";
 import { formatDateRange as formatDateRangePST } from "../../utils/dateTime";
-import { BMLeaderboardSkeleton } from "../DashboardSkeleton";
+import { BMLeaderboardSkeleton, usePageTransition } from "../DashboardSkeleton";
 
 const easeOut = [0.4, 0, 0.2, 1];
 
@@ -135,7 +135,8 @@ export default function InteractiveBMLeaderboard() {
 
   const noPeers = leaderboardData && leaderboardData.peers.length === 0 && !leaderboardData.myBranch?.total;
 
-  if (!initialDataReady) return <BMLeaderboardSkeleton />;
+  const pageReady = usePageTransition();
+  if (!initialDataReady || !pageReady) return <BMLeaderboardSkeleton />;
 
   return (
     <div>

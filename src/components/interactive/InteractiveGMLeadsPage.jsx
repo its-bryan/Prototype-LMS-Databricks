@@ -12,7 +12,7 @@ import {
 } from "../../selectors/demoSelectors";
 import StatusBadge from "../StatusBadge";
 import ThreeColumnReview from "../ThreeColumnReview";
-import { GMLeadsPageSkeleton } from "../DashboardSkeleton";
+import { GMLeadsPageSkeleton, usePageTransition } from "../DashboardSkeleton";
 
 const STATUS_TABS = ["All", "Cancelled", "Unused"];
 
@@ -100,7 +100,8 @@ export default function InteractiveGMLeadsPage() {
     }
   };
 
-  if (!initialDataReady) return <GMLeadsPageSkeleton />;
+  const pageReady = usePageTransition();
+  if (!initialDataReady || !pageReady) return <GMLeadsPageSkeleton />;
 
   return (
     <div className="flex flex-col h-full gap-0">

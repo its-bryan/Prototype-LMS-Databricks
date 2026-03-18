@@ -29,7 +29,7 @@ import { formatDateShort } from "../../utils/dateTime";
 import ThreeColumnReview from "../ThreeColumnReview";
 import BranchComplianceDetailPane from "./BranchComplianceDetailPane";
 import GMPresentationMode from "./GMPresentationMode";
-import { GMMeetingPrepSkeleton } from "../DashboardSkeleton";
+import { GMMeetingPrepSkeleton, usePageTransition } from "../DashboardSkeleton";
 
 const easeOut = [0.4, 0, 0.2, 1];
 
@@ -225,7 +225,8 @@ export default function InteractiveGMMeetingPrepPage() {
     navigateTo("gm-lead-detail");
   };
 
-  if (!initialDataReady) return <GMMeetingPrepSkeleton />;
+  const pageReady = usePageTransition();
+  if (!initialDataReady || !pageReady) return <GMMeetingPrepSkeleton />;
 
   return (
     <div className="max-w-6xl">

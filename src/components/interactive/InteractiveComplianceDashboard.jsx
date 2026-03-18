@@ -17,7 +17,7 @@ import {
   leadBranchMatches,
 } from "../../selectors/demoSelectors";
 import GMMetricDrilldownModal from "../GMMetricDrilldownModal";
-import { ComplianceSkeleton } from "../DashboardSkeleton";
+import { ComplianceSkeleton, usePageTransition } from "../DashboardSkeleton";
 
 const quartileColors = { 1: "#2E7D32", 2: "#F4C300", 3: "#808080", 4: "#C62828" };
 
@@ -137,7 +137,8 @@ export default function InteractiveComplianceDashboard() {
   const [showAllBranches, setShowAllBranches] = useState(false);
   const SCOREBOARD_LIMIT = 20;
 
-  if (!initialDataReady) return <ComplianceSkeleton />;
+  const pageReady = usePageTransition();
+  if (!initialDataReady || !pageReady) return <ComplianceSkeleton />;
 
   return (
     <div>

@@ -8,7 +8,7 @@ import {
   getDateRangePresets,
 } from "../../selectors/demoSelectors";
 import BranchDetailPane from "./BranchDetailPane";
-import { GMLeaderboardSkeleton } from "../DashboardSkeleton";
+import { GMLeaderboardSkeleton, usePageTransition } from "../DashboardSkeleton";
 
 function getMetricColor(val, meta) {
   if (meta?.value === "total" || val == null) return "var(--hertz-black)";
@@ -59,7 +59,8 @@ export default function InteractiveGMLeaderboardPage() {
 
   const activeSortMeta = SORT_METRICS.find((m) => m.value === sortMetric);
 
-  if (!initialDataReady) return <GMLeaderboardSkeleton />;
+  const pageReady = usePageTransition();
+  if (!initialDataReady || !pageReady) return <GMLeaderboardSkeleton />;
 
   return (
     <div className="space-y-6">

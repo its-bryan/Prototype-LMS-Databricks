@@ -27,7 +27,7 @@ import {
 import MeetingPrepLeadQueue from "../MeetingPrepLeadQueue";
 import MeetingPrepLeadPanel from "./MeetingPrepLeadPanel";
 import MetricDrilldownModal from "../MetricDrilldownModal";
-import { MeetingPrepSkeleton } from "../DashboardSkeleton";
+import { MeetingPrepSkeleton, usePageTransition } from "../DashboardSkeleton";
 
 const easeOut = [0.4, 0, 0.2, 1];
 
@@ -274,10 +274,11 @@ export default function InteractiveMeetingPrep() {
     refetchLeads?.();
   };
 
+  const pageReady = usePageTransition();
   // #region agent log
-  console.log('[DEBUG-2ecb09] MeetingPrep render', { initialDataReady, leadsCount: (leads??[]).length, ts: Date.now() });
+  console.log('[DEBUG-2ecb09] MeetingPrep render', { initialDataReady, pageReady, leadsCount: (leads??[]).length, ts: Date.now() });
   // #endregion
-  if (!initialDataReady) return <MeetingPrepSkeleton />;
+  if (!initialDataReady || !pageReady) return <MeetingPrepSkeleton />;
 
   return (
     <div>

@@ -10,26 +10,58 @@ Use this workflow after completing code changes. This does NOT deploy — use th
 ## Prerequisites
 Ensure PATH is set (see shell-setup rule).
 
+## Key rule: Feature branches
+
+**Never commit directly to `main`.** Each agent/task must work on its own feature branch. This prevents conflicts when multiple agents work in parallel.
+
+### Branch naming convention
+Use the pattern `<type>/<short-description>`:
+- `feat/auth-users` — new feature
+- `fix/dashboard-crash` — bug fix
+- `refactor/lead-router` — refactoring
+- `docs/migration-notes` — documentation
+
 ## Steps
 
-### 1. Stage changes
+### 1. Create or switch to a feature branch
+```powershell
+git checkout main
+git pull origin main
+git checkout -b <type>/<short-description>
+```
+If you already have a feature branch for this task, just switch to it:
+```powershell
+git checkout <your-feature-branch>
+git pull origin main --rebase
+```
+
+### 2. Stage changes
 ```powershell
 git status
 git diff --stat
 ```
 Review what changed. Never commit `.env`, credentials, or secrets.
 
-### 2. Commit
+### 3. Commit
 - Follow existing commit style: `type: description` (e.g. `feat:`, `fix:`, `docs:`, `refactor:`)
 - Use a HEREDOC for multi-line messages
 - Reference the component or area changed
 
-### 3. Push
+### 4. Push to your feature branch
 ```powershell
-git push origin main
+git push origin <your-feature-branch>
 ```
-Verify push succeeded. If rejected, pull first: `git pull --rebase origin main && git push origin main`.
+If this is the first push for this branch, use:
+```powershell
+git push -u origin <your-feature-branch>
+```
+
+**Do NOT push directly to `main`.** Merging to `main` only happens during the deploy pipeline (see `deploy` rule).
+
+### 5. If the user says "deploy"
+Follow the `deploy` rule, which handles merging your feature branch into `main`, the deploy guard, and the full Databricks deploy pipeline.
 
 ## Repo details
 - **Remote**: `origin` → `https://github.com/popcornAlesto33/Prototype-LMS-Databricks.git`
-- **Branch**: `main`
+- **Protected branch**: `main` (merge only via deploy pipeline)
+- **Working branches**: `<type>/<short-description>`

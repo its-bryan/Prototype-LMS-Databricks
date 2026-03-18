@@ -6,7 +6,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useData } from "../../context/DataContext";
 import { getLeadById } from "../../selectors/demoSelectors";
 import { formatDateTime, formatDateTimeShort } from "../../utils/dateTime";
-import { TaskDetailSkeleton } from "../DashboardSkeleton";
+import { TaskDetailSkeleton, usePageTransition } from "../DashboardSkeleton";
 
 const STATUS_OPTIONS = ["Open", "In Progress", "Done"];
 const PRIORITY_COLORS = {
@@ -110,7 +110,8 @@ export default function InteractiveTaskDetail() {
     );
   }
 
-  if (loading || !initialDataReady) {
+  const pageReady = usePageTransition();
+  if (loading || !initialDataReady || !pageReady) {
     return <TaskDetailSkeleton />;
   }
 
