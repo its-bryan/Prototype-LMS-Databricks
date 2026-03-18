@@ -1,12 +1,37 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 import json
 from db import query, execute
 
 router = APIRouter()
 
+# Columns needed for list views (excludes translog + enrichment_log which are large JSONB arrays)
+_LEAD_LIST_COLS = """
+    id, customer, confirm_num, reservation_id, knum, email, phone,
+    source_email, source_phone, source_status, status, archived,
+    enrichment_complete, branch, bm_name, days_open, mismatch,
+    mismatch_reason, gm_directive, insurance_company, body_shop,
+    time_to_first_contact, first_contact_by, time_to_cancel,
+    hles_reason, last_activity, enrichment, init_dt_final, week_of,
+    contact_range, last_upload_id, cdp_name, htz_region, set_state,
+    zone, area_mgr, general_mgr, rent_loc, created_at
+""".strip()
+
+
 @router.get("/leads")
-async def get_leads():
-    return query("SELECT * FROM leads WHERE archived = false ORDER BY created_at DESC")
+async def get_leads(branches: str = Query(None)):
+    if branches:
+        branch_list = [b.strip() for b in branches.split(",") if b.strip()]
+        placeholders = ",".join(["%s"] * len(branch_list))
+        return query(
+            f"SELECT {_LEAD_LIST_COLS} FROM leads"
+            f" WHERE archived = false AND branch IN ({placeholders})"
+            f" ORDER BY created_at DESC",
+            tuple(branch_list),
+        )
+    return query(
+        f"SELECT {_LEAD_LIST_COLS} FROM leads"
+        f" WHERE archived = false ORDER BY created_at DESC"
+    )
 
 @router.get("/leads/{lead_id}")
 async def get_lead(lead_id: int):
