@@ -1,8 +1,13 @@
 /**
  * DataContext — provides leads from Databricks (FastAPI + Lakebase Postgres) or mockData.
  * Data module is databricksData.js; no Supabase.
+ *
+ * Stale-while-revalidate: on mount, cached data from sessionStorage is shown
+ * immediately while fresh data is fetched in the background. The `isRefreshing`
+ * flag lets the UI show a subtle "Fetching and updating dashboard" indicator
+ * instead of a full skeleton.
  */
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import {
   leads as mockLeads,
   winsLearnings as mockWinsLearnings,
@@ -55,6 +60,50 @@ const DataContext = createContext(null);
 const USE_LIVE_API = true;
 const STORAGE_KEY = "hertz_lms_leads";
 
+// ---------------------------------------------------------------------------
+// Session cache (stale-while-revalidate)
+// ---------------------------------------------------------------------------
+const CACHE_PREFIX = "hertz_lms_c_";
+
+function readCache(key) {
+  try {
+    const raw = sessionStorage.getItem(CACHE_PREFIX + key);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function writeCache(key, data) {
+  try { sessionStorage.setItem(CACHE_PREFIX + key, JSON.stringify(data)); } catch { /* quota */ }
+}
+
+// Read all caches once at module load (synchronous).
+const _c = USE_LIVE_API
+  ? {
+      leads: readCache("leads"),
+      orgMapping: readCache("orgMapping"),
+      dataAsOfDate: readCache("dataAsOfDate"),
+      branchManagers: readCache("branchManagers"),
+      weeklyTrends: readCache("weeklyTrends"),
+      leaderboardData: readCache("leaderboardData"),
+      winsLearnings: readCache("winsLearnings"),
+      cancellationReasons: readCache("cancellationReasons"),
+      nextActions: readCache("nextActions"),
+    }
+  : {};
+
+const _hasCachedLeads = !!(_c.leads?.length);
+const _hasCachedOrgMapping = !!(_c.orgMapping?.length);
+
+// Hydrate selector module-level variables from cache so stats compute
+// correctly even before the background refresh finishes.
+if (_c.leads?.length) setNowFromLeads(_c.leads);
+if (_c.orgMapping?.length) setOrgMappingSource(_c.orgMapping);
+if (_c.branchManagers?.length) setBranchManagersSource(_c.branchManagers);
+if (_c.weeklyTrends) setWeeklyTrendsSource(_c.weeklyTrends);
+
+// ---------------------------------------------------------------------------
+// localStorage helpers (mock mode only)
+// ---------------------------------------------------------------------------
 function loadLeadsFromStorage() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -93,41 +142,74 @@ function ensureMismatchDemoLead(leads) {
 }
 
 export function DataProvider({ children }) {
+  // --- State initialised from cache (instant render) or empty (skeleton) ---
   const [leads, setLeads] = useState(() => {
-    if (USE_LIVE_API) return [];
+    if (USE_LIVE_API) return _c.leads ?? [];
     const stored = loadLeadsFromStorage();
     const initial = stored ?? [...mockLeads];
     return ensureMismatchDemoLead(initial);
   });
-  const [winsLearnings, setWinsLearnings] = useState(USE_LIVE_API ? [] : [...mockWinsLearnings]);
-  const [orgMapping, setOrgMapping] = useState(USE_LIVE_API ? [] : [...mockOrgMapping]);
+  const [winsLearnings, setWinsLearnings] = useState(
+    USE_LIVE_API ? (_c.winsLearnings ?? []) : [...mockWinsLearnings],
+  );
+  const [orgMapping, setOrgMapping] = useState(
+    USE_LIVE_API ? (_c.orgMapping ?? []) : [...mockOrgMapping],
+  );
   const [gmTasks, setGmTasks] = useState(() => (USE_LIVE_API ? null : [...mockTasks]));
   const [cancellationReasonCategories, setCancellationReasonCategories] = useState(
-    USE_LIVE_API ? [] : [...mockCancellationReasonCategories],
+    USE_LIVE_API ? (_c.cancellationReasons ?? []) : [...mockCancellationReasonCategories],
   );
-  const [nextActions, setNextActions] = useState(USE_LIVE_API ? [] : [...mockNextActions]);
-  const [branchManagers, setBranchManagers] = useState(USE_LIVE_API ? [] : [...mockBranchManagers]);
-  const [weeklyTrends, setWeeklyTrends] = useState(USE_LIVE_API ? { bm: [], gm: [] } : mockWeeklyTrends);
+  const [nextActions, setNextActions] = useState(
+    USE_LIVE_API ? (_c.nextActions ?? []) : [...mockNextActions],
+  );
+  const [branchManagers, setBranchManagers] = useState(
+    USE_LIVE_API ? (_c.branchManagers ?? []) : [...mockBranchManagers],
+  );
+  const [weeklyTrends, setWeeklyTrends] = useState(
+    USE_LIVE_API ? (_c.weeklyTrends ?? { bm: [], gm: [] }) : mockWeeklyTrends,
+  );
   const [leaderboardData, setLeaderboardData] = useState(
-    USE_LIVE_API ? { branches: [], gms: [], ams: [], zones: [] } : mockLeaderboardData,
+    USE_LIVE_API
+      ? (_c.leaderboardData ?? { branches: [], gms: [], ams: [], zones: [] })
+      : mockLeaderboardData,
   );
-  const [loading, setLoading] = useState(USE_LIVE_API);
+
+  // `loading` controls the skeleton — only true when no cached data exists.
+  const [loading, setLoading] = useState(USE_LIVE_API && !_hasCachedLeads);
+  const [orgMappingReady, setOrgMappingReady] = useState(!USE_LIVE_API || _hasCachedOrgMapping);
+
+  // `isRefreshing` — true while a background data refresh is in-flight.
+  // The DataBanner shows "Fetching and updating dashboard" when this is true.
+  const [isRefreshing, setIsRefreshing] = useState(USE_LIVE_API);
+  const pendingRef = useRef(0);
+  const bumpPending = (delta) => {
+    pendingRef.current = Math.max(0, pendingRef.current + delta);
+    if (delta > 0) setIsRefreshing(true);
+    else if (pendingRef.current === 0) setIsRefreshing(false);
+  };
+
   const [error, setError] = useState(null);
-  const [dataAsOfDate, setDataAsOfDate] = useState(USE_LIVE_API ? null : mockDataAsOfDate);
+  const [dataAsOfDate, setDataAsOfDate] = useState(
+    USE_LIVE_API ? (_c.dataAsOfDate ?? null) : mockDataAsOfDate,
+  );
+
+  const initialDataReady = !loading && orgMappingReady;
+
+  // --- Refetch helpers (used on mount AND after HLES upload) ---
 
   const refetchDataAsOfDate = useCallback(async () => {
     if (!USE_LIVE_API) return;
+    bumpPending(1);
     try {
       const { dataAsOfDate: d } = await fetchUploadSummary();
       setDataAsOfDate(d ?? null);
+      writeCache("dataAsOfDate", d ?? null);
     } catch {
       setDataAsOfDate(null);
+    } finally {
+      bumpPending(-1);
     }
   }, []);
-
-  useEffect(() => {
-    if (USE_LIVE_API) refetchDataAsOfDate();
-  }, [refetchDataAsOfDate]);
 
   // Persist leads to localStorage whenever they change (mock mode only)
   useEffect(() => {
@@ -138,72 +220,66 @@ export function DataProvider({ children }) {
 
   const refetchLeads = useCallback(async () => {
     if (!USE_LIVE_API) return;
-    setLoading(true);
+    bumpPending(1);
     setError(null);
     try {
       const data = await fetchLeads();
       setLeads(data ?? []);
+      writeCache("leads", data ?? []);
       if (data?.length) setNowFromLeads(data);
     } catch (err) {
       setError(err?.message ?? "Failed to fetch leads");
     } finally {
       setLoading(false);
+      bumpPending(-1);
     }
-  }, []);
-
-  useEffect(() => {
-    if (USE_LIVE_API) refetchLeads();
-  }, [refetchLeads]);
-
-  // Fetch all wins & learnings on mount (Supabase mode). Selector filters by gmName client-side.
-  useEffect(() => {
-    if (!USE_LIVE_API) return;
-    apiFetchWinsLearnings()
-      .then((data) => setWinsLearnings(data ?? []))
-      .catch((err) => console.error("[DataContext] fetchWinsLearnings failed:", err));
   }, []);
 
   const refetchOrgMapping = useCallback(async () => {
     if (!USE_LIVE_API) return;
+    bumpPending(1);
     try {
       const data = await apiFetchOrgMapping();
       const mapping = data ?? [];
       setOrgMapping(mapping);
       setOrgMappingSource(mapping);
+      writeCache("orgMapping", mapping);
     } catch (err) {
       console.error("[DataContext] fetchOrgMapping failed:", err);
+    } finally {
+      setOrgMappingReady(true);
+      bumpPending(-1);
     }
   }, []);
 
-  // Fetch org mapping on mount (Supabase mode). Also sync into demoSelectors module-level variable.
-  useEffect(() => {
-    if (USE_LIVE_API) refetchOrgMapping();
-  }, [refetchOrgMapping]);
-
-  // Fetch reference data on mount (Supabase mode)
+  // --- Initial data load (all fetches fire in parallel) ---
   useEffect(() => {
     if (!USE_LIVE_API) return;
-    apiFetchCancellationReasonCategories()
-      .then((data) => setCancellationReasonCategories(data ?? []))
-      .catch((err) => console.error("[DataContext] fetchCancellationReasonCategories failed:", err));
-    apiFetchNextActions()
-      .then((data) => setNextActions(data ?? []))
-      .catch((err) => console.error("[DataContext] fetchNextActions failed:", err));
-    apiFetchBranchManagers()
-      .then((data) => {
-        setBranchManagers(data ?? []);
-        setBranchManagersSource(data ?? []);
-      })
-      .catch((err) => console.error("[DataContext] fetchBranchManagers failed:", err));
-    apiFetchWeeklyTrends()
-      .then((data) => {
-        setWeeklyTrends(data ?? { bm: [], gm: [] });
-        setWeeklyTrendsSource(data ?? { bm: [], gm: [] });
-      })
-      .catch((err) => console.error("[DataContext] fetchWeeklyTrends failed:", err));
-    apiFetchLeaderboardData()
-      .then((data) => setLeaderboardData(data ?? { branches: [], gms: [], ams: [], zones: [] }))
-      .catch((err) => console.error("[DataContext] fetchLeaderboardData failed:", err));
+
+    refetchLeads();
+    refetchOrgMapping();
+    refetchDataAsOfDate();
+
+    const wrap = (promise, key, setter, extra) => {
+      bumpPending(1);
+      promise
+        .then((data) => {
+          const val = data ?? (key === "weeklyTrends" ? { bm: [], gm: [] } : key === "leaderboardData" ? { branches: [], gms: [], ams: [], zones: [] } : []);
+          setter(val);
+          writeCache(key, val);
+          extra?.(val);
+        })
+        .catch((err) => console.error(`[DataContext] fetch ${key} failed:`, err))
+        .finally(() => bumpPending(-1));
+    };
+
+    wrap(apiFetchWinsLearnings(), "winsLearnings", setWinsLearnings);
+    wrap(apiFetchCancellationReasonCategories(), "cancellationReasons", setCancellationReasonCategories);
+    wrap(apiFetchNextActions(), "nextActions", setNextActions);
+    wrap(apiFetchBranchManagers(), "branchManagers", setBranchManagers, (v) => setBranchManagersSource(v));
+    wrap(apiFetchWeeklyTrends(), "weeklyTrends", setWeeklyTrends, (v) => setWeeklyTrendsSource(v));
+    wrap(apiFetchLeaderboardData(), "leaderboardData", setLeaderboardData);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /** Fetch GM tasks for all branches under a GM. Call from GM views on mount. */
@@ -459,6 +535,8 @@ export function DataProvider({ children }) {
   const value = {
     leads,
     loading,
+    initialDataReady,
+    isRefreshing,
     error,
     dataAsOfDate,
     orgMapping,

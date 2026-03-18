@@ -42,6 +42,7 @@ import SummaryExportModal from "../SummaryExportModal";
 import { exportLeadsToCSV, exportTasksToCSV } from "../../utils/exportUtils";
 import { formatDateRange as formatDateRangePST, formatDateOnly } from "../../utils/dateTime";
 import CreateTaskModal from "../CreateTaskModal";
+import { BMDashboardSkeleton, GMDashboardSkeleton } from "../DashboardSkeleton";
 
 const easeOut = [0.4, 0, 0.2, 1];
 const cardAnim = (i, reduced = false) => ({
@@ -142,7 +143,7 @@ function leadToHlesRow(lead, org) {
 
 function BMDashboard({ navigateTo, selectLead, selectTask }) {
   const { userProfile } = useAuth();
-  const { leads, fetchTasksForBranch, updateLeadEnrichment, updateTaskStatus, insertTask } = useData();
+  const { leads, initialDataReady, fetchTasksForBranch, updateLeadEnrichment, updateTaskStatus, insertTask } = useData();
   const reduceMotion = useReducedMotion();
   const branch = (userProfile?.branch?.trim() || getDefaultBranchForDemo());
 
@@ -1143,6 +1144,8 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
       </div>
     );
   };
+
+  if (!initialDataReady) return <BMDashboardSkeleton />;
 
   return (
     <div className="max-w-[var(--container-max)]">
@@ -2601,7 +2604,7 @@ function getGMContextualInsight({ stats, prevStats }) {
 
 function GMDashboardPage({ navigateTo }) {
   const { userProfile } = useAuth();
-  const { leads, loading, orgMapping } = useData();
+  const { leads, loading, initialDataReady, orgMapping } = useData();
   const reduceMotion = useReducedMotion();
   const displayName = userProfile?.displayName ?? roleUsers.gm?.name ?? "there";
   const [drilldownMetric, setDrilldownMetric] = useState(null);
@@ -2746,6 +2749,8 @@ function GMDashboardPage({ navigateTo }) {
     if (effectiveTrendsMetric === "commentRate") return row.commentRate != null ? `${row.commentRate}%` : "—";
     return row.total;
   };
+
+  if (!initialDataReady) return <GMDashboardSkeleton />;
 
   return (
     <div className="max-w-[var(--container-max)]">
