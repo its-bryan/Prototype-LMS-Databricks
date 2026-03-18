@@ -107,8 +107,9 @@ function MetricCard({ label, value, subtext, children, className = "", variant =
 
 export default function InteractiveMeetingPrep() {
   const { userProfile } = useAuth();
-  const { leads, refetchLeads, winsLearnings, submitWinsLearning, orgMapping, fetchTasksForBranch, initialDataReady } = useData();
+  const { leads, refetchLeads, demandLeads, leadsReady, winsLearnings, submitWinsLearning, orgMapping, fetchTasksForBranch, initialDataReady } = useData();
   const branch = (userProfile?.branch?.trim() || getDefaultBranchForDemo());
+  useEffect(() => { demandLeads(); }, [demandLeads]);
 
   const [includeRented, setIncludeRented] = useState(false);
   const [panelLead, setPanelLead] = useState(null);

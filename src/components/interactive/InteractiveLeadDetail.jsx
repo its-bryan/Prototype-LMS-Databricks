@@ -14,7 +14,8 @@ export default function InteractiveLeadDetail() {
   const isGMContext = activeView === "gm-lead-detail" || role === "gm";
   const backView = isGMContext ? "gm-lead-review" : "bm-leads";
   const backLabel = isGMContext ? "Back to Lead Review" : "Back to leads";
-  const { leads, fetchTasksForLead, updateTaskStatus, initialDataReady } = useData();
+  const { leads, fetchTasksForLead, updateTaskStatus, demandLeads, initialDataReady } = useData();
+  useEffect(() => { demandLeads(); }, [demandLeads]);
   const lead = getLeadById(leads, selectedLeadId);
   const [leadTasks, setLeadTasks] = useState([]);
 

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useData } from "../../context/DataContext";
 import { useApp } from "../../context/AppContext";
@@ -42,8 +42,9 @@ function formatTime(iso) {
 }
 
 export default function InteractiveGMActivityReportPage() {
-  const { leads, initialDataReady } = useData();
+  const { leads, demandLeads, initialDataReady } = useData();
   const { navigateTo } = useApp();
+  useEffect(() => { demandLeads(); }, [demandLeads]);
   const [activeTab, setActiveTab] = useState("all");
 
   const data = useMemo(() => getActivityReportData(leads ?? [], 100), [leads]);

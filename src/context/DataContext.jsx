@@ -53,7 +53,7 @@ const {
   submitWinsLearning: apiSubmitWinsLearning,
 } = dataModule;
 
-import { setOrgMappingSource, setBranchManagersSource, setWeeklyTrendsSource, setNowFromLeads } from "../selectors/demoSelectors";
+import { setOrgMappingSource, setBranchManagersSource, setWeeklyTrendsSource, setNowFromLeads, setNowFromDate } from "../selectors/demoSelectors";
 
 const DataContext = createContext(null);
 
@@ -95,10 +95,12 @@ const _c = USE_LIVE_API
 
 const _hasCachedLeads = !!(_c.leads?.length);
 const _hasCachedOrgMapping = !!(_c.orgMapping?.length);
+const _hasCachedSnapshot = !!_c.snapshot;
 
 // Hydrate selector module-level variables from cache so stats compute
 // correctly even before the background refresh finishes.
-if (_c.leads?.length) setNowFromLeads(_c.leads);
+if (_c.snapshot?.now) setNowFromDate(_c.snapshot.now);
+else if (_c.leads?.length) setNowFromLeads(_c.leads);
 if (_c.orgMapping?.length) setOrgMappingSource(_c.orgMapping);
 if (_c.branchManagers?.length) setBranchManagersSource(_c.branchManagers);
 if (_c.weeklyTrends) setWeeklyTrendsSource(_c.weeklyTrends);
@@ -177,9 +179,12 @@ export function DataProvider({ children }) {
       : mockLeaderboardData,
   );
 
-  // `loading` controls the skeleton — only true when no cached data exists.
-  const [loading, setLoading] = useState(USE_LIVE_API && !_hasCachedLeads);
+  // `loading` controls skeletons — resolves once snapshot (or cached leads) is available.
+  // Leads are loaded on-demand for drill-down views, not on mount.
+  const [loading, setLoading] = useState(USE_LIVE_API && !_hasCachedSnapshot && !_hasCachedLeads);
   const [orgMappingReady, setOrgMappingReady] = useState(!USE_LIVE_API || _hasCachedOrgMapping);
+  const [leadsReady, setLeadsReady] = useState(_hasCachedLeads);
+  const leadsRequestedRef = useRef(_hasCachedLeads);
 
   // `isRefreshing` — true while a background data refresh is in-flight.
   // The DataBanner shows "Fetching and updating dashboard" when this is true.
@@ -197,9 +202,6 @@ export function DataProvider({ children }) {
   );
 
   const initialDataReady = !loading && orgMappingReady;
-  // #region agent log
-  console.log('[DEBUG-2ecb09] DataContext render', { loading, orgMappingReady, initialDataReady, ts: Date.now() });
-  // #endregion
 
   // --- Refetch helpers (used on mount AND after HLES upload) ---
 
@@ -226,20 +228,14 @@ export function DataProvider({ children }) {
 
   const refetchLeads = useCallback(async () => {
     if (!USE_LIVE_API) return;
-    // #region agent log
-    const _lt0 = Date.now();
-    console.log("[DEBUG-9aea69] leads fetch START", { ts: _lt0 });
-    // #endregion
     bumpPending(1);
     setError(null);
     try {
       const data = await fetchLeads();
-      // #region agent log
-      console.log("[DEBUG-9aea69] leads fetch SUCCESS", { elapsed: Date.now() - _lt0, count: (data ?? []).length, ts: Date.now() });
-      // #endregion
       setLeads(data ?? []);
       writeCache("leads", data ?? []);
       if (data?.length) setNowFromLeads(data);
+      setLeadsReady(true);
     } catch (err) {
       setError(err?.message ?? "Failed to fetch leads");
     } finally {
@@ -247,6 +243,14 @@ export function DataProvider({ children }) {
       bumpPending(-1);
     }
   }, []);
+
+  /** Load leads on-demand. Call from views that need individual lead data
+   *  (Meeting Prep, Lead Detail, Spot Check, etc.). No-op if already loaded. */
+  const demandLeads = useCallback(() => {
+    if (leadsRequestedRef.current) return;
+    leadsRequestedRef.current = true;
+    refetchLeads();
+  }, [refetchLeads]);
 
   const refetchOrgMapping = useCallback(async () => {
     if (!USE_LIVE_API) return;
@@ -268,39 +272,34 @@ export function DataProvider({ children }) {
   const refetchSnapshot = useCallback(async ({ poll = false } = {}) => {
     if (!USE_LIVE_API) return;
     const maxAttempts = poll ? 8 : 1;
-    // #region agent log
-    const _t0 = Date.now();
-    console.log("[DEBUG-9aea69] snapshot fetch START", { poll, maxAttempts, ts: _t0 });
-    // #endregion
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       if (attempt > 0) await new Promise(r => setTimeout(r, 5000));
       bumpPending(1);
       try {
         const data = await apiFetchDashboardSnapshot();
-        // #region agent log
-        console.log("[DEBUG-9aea69] snapshot fetch RESPONSE", { attempt, elapsed: Date.now() - _t0, dataIsNull: data === null, dataType: typeof data, branchKeys: data ? Object.keys(data.branches || {}).slice(0, 5) : null, hasLeaderboard: !!(data?.leaderboard?.length), version: data?.version, ts: Date.now() });
-        // #endregion
         if (data) {
           setSnapshot(data);
           writeCache("snapshot", data);
+          if (data.now) setNowFromDate(data.now);
+          setLoading(false);
           return;
         }
       } catch (err) {
-        // #region agent log
-        console.error("[DEBUG-9aea69] snapshot fetch ERROR", err);
-        // #endregion
+        console.error("[DataContext] snapshot fetch error:", err);
       } finally {
         bumpPending(-1);
       }
     }
   }, []);
 
-  // --- Initial data load (all fetches fire in parallel) ---
+  // --- Initial data load ---
+  // Snapshot + config load on mount. Leads are deferred (loaded on-demand by
+  // drill-down views) because the snapshot already has pre-computed metrics for
+  // all dashboard/summary pages. This cuts GM initial load from ~32s to ~1s.
   useEffect(() => {
     if (!USE_LIVE_API) return;
 
     refetchSnapshot();
-    refetchLeads();
     refetchOrgMapping();
     refetchDataAsOfDate();
 
@@ -579,6 +578,8 @@ export function DataProvider({ children }) {
   const value = {
     leads,
     loading,
+    leadsReady,
+    demandLeads,
     initialDataReady,
     isRefreshing,
     error,

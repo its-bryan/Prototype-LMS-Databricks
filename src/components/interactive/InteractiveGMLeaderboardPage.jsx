@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useData } from "../../context/DataContext";
 import { useApp } from "../../context/AppContext";
@@ -39,8 +39,9 @@ const SCOPE_TABS = [
 ];
 
 export default function InteractiveGMLeaderboardPage() {
-  const { leads, loading, initialDataReady } = useData();
+  const { leads, loading, demandLeads, initialDataReady } = useData();
   const { navigateTo } = useApp();
+  useEffect(() => { demandLeads(); }, [demandLeads]);
   const presets = useMemo(() => getDateRangePresets(), [loading]);
 
   const [selectedPresetKey, setSelectedPresetKey] = useState("this_week");

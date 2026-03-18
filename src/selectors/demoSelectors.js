@@ -65,6 +65,19 @@ export function setNowFromLeads(leads) {
   NOW = dataSunday.getTime() <= calSunday.getTime() ? dataSunday : calSunday;
 }
 
+/**
+ * Set NOW directly from a date string (e.g. snapshot.now = "2026-03-08").
+ * Used when the dashboard snapshot provides the computed "now" so we don't
+ * need to scan all leads just to derive date range presets.
+ */
+export function setNowFromDate(isoDateStr) {
+  if (!isoDateStr) return;
+  const d = new Date(isoDateStr + (isoDateStr.length <= 10 ? "T09:00:00" : ""));
+  if (isNaN(d.getTime())) return;
+  d.setHours(9, 0, 0, 0);
+  NOW = d;
+}
+
 const TREND_TIMEFRAME_WEEKS = { this_week: 1, trailing_4_weeks: 4, this_month: 5, this_year: 13 };
 
 function getMonday(date) {

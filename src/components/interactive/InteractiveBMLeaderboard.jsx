@@ -3,7 +3,7 @@
  * Metrics: Conversion rate, Contacted within 30 min, Comment rate, Branch vs HRD.
  * Time filtering: same presets as Summary view.
  */
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../../context/AuthContext";
 import { useData } from "../../context/DataContext";
@@ -94,9 +94,10 @@ function BarRow({ row, metricKey, maxVal, isCurrentBranch, regionBenchmark, metr
 
 export default function InteractiveBMLeaderboard() {
   const { userProfile } = useAuth();
-  const { leads, initialDataReady } = useData();
+  const { leads, demandLeads, initialDataReady } = useData();
   const branch = (userProfile?.branch?.trim() || getDefaultBranchForDemo());
   const reduceMotion = useReducedMotion();
+  useEffect(() => { demandLeads(); }, [demandLeads]);
 
   const presets = getDateRangePresets();
   const [selectedPresetKey, setSelectedPresetKey] = useState("this_week");

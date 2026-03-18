@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useApp } from "../../context/AppContext";
 import { useData } from "../../context/DataContext";
 import { getCancelledLeads, getUnusedLeads } from "../../selectors/demoSelectors";
@@ -5,7 +6,8 @@ import LeadQueue from "../LeadQueue";
 
 export default function InteractiveToDo() {
   const { navigateTo, selectLead } = useApp();
-  const { leads } = useData();
+  const { leads, demandLeads } = useData();
+  useEffect(() => { demandLeads(); }, [demandLeads]);
 
   const unenrichedCancelled = getCancelledLeads(leads).filter((l) => !l.enrichmentComplete);
   const unenrichedUnused = getUnusedLeads(leads).filter((l) => !l.enrichmentComplete);

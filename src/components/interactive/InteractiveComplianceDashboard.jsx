@@ -33,8 +33,9 @@ function getQuartile(rate, maxRate) {
 export default function InteractiveComplianceDashboard() {
   const { navigateTo } = useApp();
   const { userProfile } = useAuth();
-  const { leads, loading, orgMapping, initialDataReady } = useData();
+  const { leads, loading, orgMapping, demandLeads, initialDataReady } = useData();
   const reduceMotion = useReducedMotion();
+  useEffect(() => { demandLeads(); }, [demandLeads]);
   const presets = useMemo(() => getDateRangePresets(), [loading]);
 
   const gmName = useMemo(() => {

@@ -102,7 +102,8 @@ function formatDueDate(dueStr) {
 }
 
 export default function InteractiveGMMeetingPrepPage() {
-  const { leads, loading, orgMapping, createComplianceTasksForBranch, winsLearnings, updateLeadDirective, markLeadReviewed, gmTasks, fetchGMTasks, initialDataReady } = useData();
+  const { leads, loading, orgMapping, createComplianceTasksForBranch, winsLearnings, updateLeadDirective, markLeadReviewed, gmTasks, fetchGMTasks, demandLeads, initialDataReady } = useData();
+  useEffect(() => { demandLeads(); }, [demandLeads]);
   const { navigateTo, selectTask, selectLead } = useApp();
   const { userProfile } = useAuth();
   const reduceMotion = useReducedMotion();

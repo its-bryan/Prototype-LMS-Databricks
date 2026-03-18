@@ -148,34 +148,18 @@ function leadToHlesRow(lead, org) {
 
 function BMDashboard({ navigateTo, selectLead, selectTask }) {
   const { userProfile } = useAuth();
-  const { leads, loading, initialDataReady, snapshot, fetchTasksForBranch, updateLeadEnrichment, updateTaskStatus, insertTask } = useData();
+  const { leads, loading, initialDataReady, snapshot, demandLeads, leadsReady, fetchTasksForBranch, updateLeadEnrichment, updateTaskStatus, insertTask } = useData();
   const reduceMotion = useReducedMotion();
   const branch = (userProfile?.branch?.trim() || getDefaultBranchForDemo());
   const snapshotBranch = useMemo(() => {
-    if (!snapshot?.branches || !branch) {
-      // #region agent log
-      console.log("[DEBUG-9aea69] snapshotBranch: null", { hasSnapshot: !!snapshot, hasBranches: !!snapshot?.branches, branch, loading, leadsLen: leads.length, ts: Date.now() });
-      // #endregion
-      return null;
-    }
+    if (!snapshot?.branches || !branch) return null;
     const direct = snapshot.branches[branch];
-    if (direct) {
-      // #region agent log
-      console.log("[DEBUG-9aea69] snapshotBranch: FOUND direct", { branch, loading, ts: Date.now() });
-      // #endregion
-      return direct;
-    }
+    if (direct) return direct;
     const norm = normalizeBranchKey(branch);
     const key = Object.keys(snapshot.branches).find((k) => normalizeBranchKey(k) === norm);
-    // #region agent log
-    console.log("[DEBUG-9aea69] snapshotBranch: normalized lookup", { branch, norm, foundKey: key ?? null, availableKeys: Object.keys(snapshot.branches).slice(0, 5), ts: Date.now() });
-    // #endregion
     return key ? snapshot.branches[key] : null;
   }, [snapshot, branch]);
-  const useSnapshotData = loading && !!snapshotBranch;
-  // #region agent log
-  console.log("[DEBUG-9aea69] BM useSnapshotData", { useSnapshotData, loading, hasSnapshotBranch: !!snapshotBranch, leadsLen: leads.length, ts: Date.now() });
-  // #endregion
+  const useSnapshotData = !!snapshotBranch;
 
   const [branchTasks, setBranchTasks] = useState(() =>
     []
@@ -250,6 +234,13 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
   }, [selectedPresetKey, useCustom, customStart, customEnd, presets]);
 
   const branchLeads = getLeadsForBranch(leads, branch);
+
+  // Demand-load leads when user picks a custom date range (snapshot only covers trailing 4 weeks)
+  useEffect(() => {
+    if (useCustom || (selectedPresetKey !== "trailing_4_weeks" && !useSnapshotData)) {
+      demandLeads();
+    }
+  }, [useCustom, selectedPresetKey, useSnapshotData, demandLeads]);
 
   const { stats, chartData: trendsChartData } = useMemo(() => {
     if (useSnapshotData && selectedPresetKey === "trailing_4_weeks" && !useCustom) {
@@ -2560,7 +2551,7 @@ function getGMContextualInsight({ stats, prevStats }) {
 
 function GMDashboardPage({ navigateTo }) {
   const { userProfile } = useAuth();
-  const { leads, loading, initialDataReady, orgMapping, snapshot } = useData();
+  const { leads, loading, initialDataReady, orgMapping, snapshot, demandLeads, leadsReady } = useData();
   const reduceMotion = useReducedMotion();
   const displayName = userProfile?.displayName ?? roleUsers.gm?.name ?? "there";
   const [drilldownMetric, setDrilldownMetric] = useState(null);
@@ -2599,10 +2590,14 @@ function GMDashboardPage({ navigateTo }) {
   }, [userProfile?.displayName, userProfile?.id, orgMapping]);
 
   const snapshotGM = gmName ? (snapshot?.gms?.[gmName] ?? null) : null;
-  const useSnapshotGM = loading && !!snapshotGM;
-  // #region agent log
-  console.log("[DEBUG-9aea69] GM snapshot", { gmName, useSnapshotGM, loading, hasSnapshotGM: !!snapshotGM, leadsLen: leads.length, ts: Date.now() });
-  // #endregion
+  const useSnapshotGM = !!snapshotGM;
+
+  // Demand-load leads only when user picks a non-default time range
+  useEffect(() => {
+    if (selectedPresetKey !== "trailing_4_weeks" && !useSnapshotGM) {
+      demandLeads();
+    }
+  }, [selectedPresetKey, useSnapshotGM, demandLeads]);
 
   const stats = useMemo(() => {
     if (useSnapshotGM && selectedPresetKey === "trailing_4_weeks") return snapshotGM.stats;

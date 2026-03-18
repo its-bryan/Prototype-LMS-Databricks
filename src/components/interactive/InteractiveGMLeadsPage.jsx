@@ -17,8 +17,9 @@ import { GMLeadsPageSkeleton, usePageTransition } from "../DashboardSkeleton";
 const STATUS_TABS = ["All", "Cancelled", "Unused"];
 
 export default function InteractiveGMLeadsPage() {
-  const { leads, loading, orgMapping, updateLeadDirective, markLeadReviewed, initialDataReady } = useData();
+  const { leads, loading, orgMapping, updateLeadDirective, markLeadReviewed, demandLeads, initialDataReady } = useData();
   const { navigateTo } = useApp();
+  useEffect(() => { demandLeads(); }, [demandLeads]);
   const presets = useMemo(() => getDateRangePresets(), [loading]);
 
   const [selectedPresetKey, setSelectedPresetKey] = useState("this_week");
