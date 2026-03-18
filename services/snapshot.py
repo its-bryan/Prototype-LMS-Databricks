@@ -761,10 +761,8 @@ def compute_and_store_snapshot():
     gm_names = list({r.get("gm") for r in org_rows if r.get("gm")})
     gms_snapshot: dict = {}
 
-    gm_branches_set: dict[str, set[str]] = {}
     for gm_name in gm_names:
         gm_branches = _branches_for_gm(gm_name, org_rows, leads)
-        gm_branches_set[gm_name] = set(gm_branches)
 
         gm_branch_leads = []
         for b in gm_branches:
@@ -779,35 +777,31 @@ def compute_and_store_snapshot():
             if l.get("status") != "Reviewed" and _lead_in_range(l, p_start, p_end)
         ]
 
-        gm_lb = [
-            {**row, "isMyBranch": row["branch"] in gm_branches_set[gm_name]}
-            for row in leaderboard_base
-        ]
-
         gms_snapshot[gm_name] = {
             "zone": org_by_branch.get(gm_branches[0], {}).get("zone", "—") if gm_branches else "—",
             "branches": gm_branches,
             "stats": _gm_stats(gm_filtered),
             "comparison": _gm_stats(gm_prev),
             "chartData": _weekly_chart_data(gm_filtered, tasks, c_start, c_end),
-            "leaderboard": gm_lb,
         }
 
     t_gms = _time.monotonic()
     print(f"[snapshot] computed {len(gms_snapshot)} GM snapshots in {t_gms - t_lb:.1f}s", flush=True)
 
     snapshot = {
-        "version": 1,
+        "version": 2,
         "computed_at": datetime.now(timezone.utc).isoformat(),
         "now": now.isoformat(),
         "period": {"start": c_start.isoformat(), "end": c_end.isoformat()},
         "comparison": {"start": p_start.isoformat(), "end": p_end.isoformat()},
         "branches": branches_snapshot,
         "gms": gms_snapshot,
+        "leaderboard": leaderboard_base,
     }
 
     try:
         payload = json.dumps(snapshot, default=str)
+        execute("DELETE FROM dashboard_snapshots")
         execute(
             "INSERT INTO dashboard_snapshots (snapshot) VALUES (%s::jsonb)",
             (payload,),
