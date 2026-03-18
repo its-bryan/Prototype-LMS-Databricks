@@ -275,7 +275,7 @@ export default function InteractiveMeetingPrep() {
   };
 
   // #region agent log
-  fetch('http://127.0.0.1:7507/ingest/4cdc8682-4d34-4a46-8b0d-92860e51cbd8',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2ecb09'},body:JSON.stringify({sessionId:'2ecb09',location:'InteractiveMeetingPrep.jsx:277',message:'MeetingPrep render - initialDataReady check',data:{initialDataReady,loading:!initialDataReady,leadsCount:(leads??[]).length},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+  console.log('[DEBUG-2ecb09] MeetingPrep render', { initialDataReady, leadsCount: (leads??[]).length, ts: Date.now() });
   // #endregion
   if (!initialDataReady) return <MeetingPrepSkeleton />;
 
