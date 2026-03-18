@@ -10,7 +10,7 @@ Use this when the user says "deploy", "redeploy", or "push to production".
 ## Learnings (for agents)
 
 - **Deployment machine is Databricks.** The app runs on Databricks Apps; there is no separate "Hertz laptop" deploy. Code flows: local → `git push origin main` → **Databricks workspace repo** (Git clone in workspace) → **apps deploy** (builds and runs from that folder).
-- **This repo** (`Prototype-LMS-Databricks`) is the canonical Git repo. Push to `origin main` (e.g. GitHub). The workspace path `/Workspace/Users/nh136948@hertz.net/Prototype-LMS-Databricks` is a **Databricks Repo** linked to the same GitHub repo; it does not auto-pull. You must run **repos update** to pull the latest commit into the workspace, then **apps deploy** so the app runs from the updated code.
+- **This repo** (`Prototype-LMS-Databricks`) is the canonical Git repo. Push to `origin main` (e.g. GitHub). The workspace path `/Workspace/Repos/nh136948@hertz.net/Prototype-LMS-Databricks` is a **Databricks Repo** linked to the same GitHub repo; it does not auto-pull. You must run **repos update** to pull the latest commit into the workspace, then **apps deploy** so the app runs from the updated code.
 - **`dist/` is committed to git.** The Vite build output (`dist/`) is tracked in version control. The `app.yaml` command also runs `npm run build` before starting uvicorn as a safety net, but the committed `dist/` ensures the git-synced copy always has valid frontend assets. When making frontend changes, always run `npm run build` and commit the updated `dist/` alongside your source changes.
 - **Profile:** Use `-p DanSiaoAuth` (or the user's configured profile) for all `databricks` CLI commands.
 - **Lakebase migrations and GRANTs** cannot be run from the CLI unless `psql` is installed locally. Use the **Lakebase SQL Editor** in the Databricks UI (Lakebase project `lms-leo`, branch `production`) to run `docs/lakebase-migrations/*.sql`. After adding tables or columns, re-run GRANTs for the app's client ID (see Step 5b below). If `psql` is on PATH: `databricks psql --project lms-leo --branch production -p DanSiaoAuth -- -f docs/lakebase-migrations/004_add_lead_columns_and_grants.sql`.
@@ -26,7 +26,7 @@ Use this when the user says "deploy", "redeploy", or "push to production".
 ## Constants
 - **App name**: `hertz-leo-leadsmgmtsystem`
 - **Databricks Repo ID**: `3889324859208374`
-- **Source path**: `/Workspace/Users/nh136948@hertz.net/Prototype-LMS-Databricks`
+- **Source path**: `/Workspace/Repos/nh136948@hertz.net/Prototype-LMS-Databricks`
 - **App URL**: `https://hertz-leo-leadsmgmtsystem-1957546315544672.aws.databricksapps.com/`
 - **Branch**: `main`
 - **CLI profile**: `DanSiaoAuth` (use `-p DanSiaoAuth`)
@@ -79,7 +79,7 @@ Confirm `head_commit_id` matches the commit you just pushed.
 
 ## Step 4 — Deploy app
 ```powershell
-databricks apps deploy hertz-leo-leadsmgmtsystem --source-code-path "/Workspace/Users/nh136948@hertz.net/Prototype-LMS-Databricks" -p DanSiaoAuth
+databricks apps deploy hertz-leo-leadsmgmtsystem --source-code-path "/Workspace/Repos/nh136948@hertz.net/Prototype-LMS-Databricks" -p DanSiaoAuth
 ```
 This triggers Databricks to: install npm deps, install pip deps, then run the `app.yaml` command (`npm run build && uvicorn`). The build step in `app.yaml` ensures `dist/` is always fresh even if the committed copy is stale.
 Wait for deployment to complete (default timeout 20m). Source path must be the **full workspace path** (including `/Workspace/`).

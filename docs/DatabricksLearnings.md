@@ -123,7 +123,7 @@ command: ['uvicorn', 'main:app', '--host', '0.0.0.0', '--port', '8000']
    ```
 3. **Deploy the app** from that workspace path:
    ```bash
-   databricks apps deploy hertz-leo-leadsmgmtsystem --source-code-path "/Workspace/Users/nh136948@hertz.net/Prototype-LMS-Databricks" -p DanSiaoAuth
+   databricks apps deploy hertz-leo-leadsmgmtsystem --source-code-path "/Workspace/Repos/nh136948@hertz.net/Prototype-LMS-Databricks" -p DanSiaoAuth
    ```
 4. **Migrations and GRANTs:** Run any new `docs/lakebase-migrations/*.sql` in the **Lakebase SQL Editor** (project `lms-leo`, branch `production`). Re-run GRANTs after adding tables/columns. See deploy rule Step 5b.
 
