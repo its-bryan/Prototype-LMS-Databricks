@@ -48,14 +48,14 @@ export default function LoginScreen() {
         {/* Mobile: Compact Hertz header */}
         <div className="md:hidden absolute top-0 left-0 right-0 h-14 bg-[#272425] flex items-center justify-center px-4 z-10">
           <img
-            src="/Hertz-Line_White_2020.png"
+            src="/hertz-logo.svg"
             alt="Hertz"
             className="h-7"
           />
         </div>
         <div className="w-full max-w-md mx-auto md:ml-0 md:mr-auto">
           <div className="hidden md:block mb-8">
-            <img src="/Hertz-Line_White_2020.png" alt="Hertz" className="h-11 invert" />
+            <img src="/hertz-logo.svg" alt="Hertz" className="h-11" />
             <h1 className="text-xl md:text-2xl font-extrabold text-[#272425] tracking-tight mt-4 whitespace-nowrap">
               LEO: Your Lead Management System
             </h1>

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, Form
+from fastapi import APIRouter, UploadFile, File, Form, BackgroundTasks
 import pandas as pd
 import json
 import io
@@ -7,6 +7,7 @@ import re
 from datetime import datetime
 from db import execute, query, with_connection
 from etl.clean import clean_hles_data, clean_translog_data
+from services.snapshot import compute_and_store_snapshot
 
 router = APIRouter()
 
@@ -132,6 +133,7 @@ def get_upload_history():
 async def upload_hles(
     file: UploadFile = File(...),
     uploaded_by: str | None = Form(None),
+    background_tasks: BackgroundTasks = BackgroundTasks(),
 ):
     """Upload HLES Excel file -> land in Volume (if configured) -> ETL -> batch insert/update leads."""
     contents = await file.read()
@@ -225,6 +227,7 @@ async def upload_hles(
         "INSERT INTO upload_summary (hles, translog, data_as_of_date) VALUES (%s::jsonb, %s::jsonb, %s)",
         (json.dumps(stats), "{}", str(pd.Timestamp.now().date())),
     )
+    background_tasks.add_task(compute_and_store_snapshot)
     return stats
 
 @router.post("/upload/translog")

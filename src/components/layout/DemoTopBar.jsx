@@ -49,7 +49,7 @@ export default function DemoTopBar({ onHelpClick }) {
           title="Back to dashboard"
           aria-label="Back to dashboard"
         >
-          <img src="/Hertz-Line_White_2020.png" alt="Hertz" className="h-7" />
+          <img src="/hertz-logo.svg" alt="Hertz" className="h-7" />
         </button>
         <span className="text-white/40 text-xs">|</span>
         <span className="text-white/70 text-sm">LEO: Your Lead Management System</span>
