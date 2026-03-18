@@ -258,17 +258,24 @@ export function DataProvider({ children }) {
     }
   }, []);
 
-  const refetchSnapshot = useCallback(async () => {
+  const refetchSnapshot = useCallback(async ({ poll = false } = {}) => {
     if (!USE_LIVE_API) return;
-    bumpPending(1);
-    try {
-      const data = await apiFetchDashboardSnapshot();
-      setSnapshot(data);
-      writeCache("snapshot", data);
-    } catch (err) {
-      console.error("[DataContext] fetchDashboardSnapshot failed:", err);
-    } finally {
-      bumpPending(-1);
+    const maxAttempts = poll ? 8 : 1;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      if (attempt > 0) await new Promise(r => setTimeout(r, 5000));
+      bumpPending(1);
+      try {
+        const data = await apiFetchDashboardSnapshot();
+        if (data) {
+          setSnapshot(data);
+          writeCache("snapshot", data);
+          return;
+        }
+      } catch (err) {
+        console.error("[DataContext] fetchDashboardSnapshot failed:", err);
+      } finally {
+        bumpPending(-1);
+      }
     }
   }, []);
 

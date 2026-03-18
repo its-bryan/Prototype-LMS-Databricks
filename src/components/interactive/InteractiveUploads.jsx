@@ -677,7 +677,7 @@ export default function InteractiveUploads() {
         refetchLeads?.();
         refetchOrgMapping?.();
         refetchDataAsOfDate?.();
-        setTimeout(() => refetchSnapshot?.(), 2000);
+        refetchSnapshot?.({ poll: true });
         setStep("summary");
       } catch (err) {
         setCommitError(err?.message ?? "Upload failed");
