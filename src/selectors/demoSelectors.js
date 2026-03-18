@@ -62,7 +62,7 @@ export function setNowFromLeads(leads) {
   const calMonday = getMonday(new Date());
   const calSunday = new Date(calMonday.getTime() + 6 * 86400000);
   calSunday.setHours(9, 0, 0, 0);
-  NOW = dataSunday.getTime() >= calSunday.getTime() ? dataSunday : calSunday;
+  NOW = dataSunday.getTime() <= calSunday.getTime() ? dataSunday : calSunday;
   // #region agent log
   console.warn('[DEBUG-2ea99a] setNowFromLeads', {maxMondayStr, dataSunday: dataSunday.toISOString(), calSunday: calSunday.toISOString(), NOW: NOW.toISOString(), nowLocal: NOW.toString()});
   // #endregion

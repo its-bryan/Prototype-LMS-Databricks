@@ -23,8 +23,8 @@ Use this when the user says "deploy", "redeploy", or "push to production".
 
 ## Constants
 - **App name**: `hertz-leo-leadsmgmtsystem`
-- **Databricks Repo ID**: `2730039622390114`
-- **Source path**: `/Workspace/Users/nh136948@hertz.net/Prototype-LMS-Databricks`
+- **Databricks Repo ID**: `3889324859208374`
+- **Source path**: `/Workspace/Repos/nh136948@hertz.net/Prototype-LMS-Databricks`
 - **App URL**: `https://hertz-leo-leadsmgmtsystem-1957546315544672.aws.databricksapps.com/`
 - **Branch**: `main`
 - **CLI profile**: `DanSiaoAuth` (use `-p DanSiaoAuth`)

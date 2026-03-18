@@ -57,7 +57,7 @@ def _get_now(leads: list[dict]) -> date:
     data_sunday = max_monday + timedelta(days=6)
     cal_monday = _get_monday(date.today())
     cal_sunday = cal_monday + timedelta(days=6)
-    return data_sunday if data_sunday >= cal_sunday else cal_sunday
+    return data_sunday if data_sunday <= cal_sunday else cal_sunday
 
 
 def _trailing_4_weeks(now: date):
