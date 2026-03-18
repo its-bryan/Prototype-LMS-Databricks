@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 import json
 import re
 from db import query, execute
@@ -39,15 +39,30 @@ def _branches_for_gm(gm_name: str) -> list[str]:
     return [r["branch"] for r in lead_branches]
 
 
+def _user_from_jwt(request: Request) -> dict | None:
+    """Extract user info from JWT Authorization header (best-effort, no 401)."""
+    auth = request.headers.get("authorization", "")
+    if not auth.startswith("Bearer "):
+        return None
+    import jwt as _jwt
+    import os
+    secret = os.getenv("LEO_JWT_SECRET", "leo-mvp-secret-change-in-prod")
+    try:
+        payload = _jwt.decode(auth[7:], secret, algorithms=["HS256"])
+        return payload
+    except Exception:
+        return None
+
+
 @router.get("/leads")
 async def get_leads(
+    request: Request,
     branches: str = Query(None),
     branch: str = Query(None),
     gm_name: str = Query(None),
 ):
     import time as _time
     t0 = _time.monotonic()
-    print(f"[leads-api] params: branches={branches!r}, branch={branch!r}, gm_name={gm_name!r}", flush=True)
 
     branch_list = None
     if branches:
@@ -56,7 +71,29 @@ async def get_leads(
         branch_list = [branch]
     elif gm_name:
         branch_list = _branches_for_gm(gm_name)
-        print(f"[leads-api] resolved gm '{gm_name}' -> {len(branch_list)} branches", flush=True)
+        print(f"[leads-api] resolved gm_name '{gm_name}' -> {len(branch_list)} branches", flush=True)
+
+    # Auto-filter by JWT user context if no explicit filter
+    if not branch_list:
+        jwt_user = _user_from_jwt(request)
+        if jwt_user:
+            role = jwt_user.get("role")
+            if role == "bm":
+                user_rows = query(
+                    "SELECT branch FROM auth_users WHERE id = %s::uuid",
+                    (jwt_user.get("sub"),),
+                )
+                if user_rows and user_rows[0].get("branch"):
+                    branch_list = [user_rows[0]["branch"]]
+                    print(f"[leads-api] JWT bm -> branch={branch_list[0]}", flush=True)
+            elif role == "gm":
+                user_rows = query(
+                    "SELECT display_name FROM auth_users WHERE id = %s::uuid",
+                    (jwt_user.get("sub"),),
+                )
+                if user_rows and user_rows[0].get("display_name"):
+                    branch_list = _branches_for_gm(user_rows[0]["display_name"])
+                    print(f"[leads-api] JWT gm '{user_rows[0]['display_name']}' -> {len(branch_list)} branches", flush=True)
 
     if branch_list:
         placeholders = ",".join(["%s"] * len(branch_list))

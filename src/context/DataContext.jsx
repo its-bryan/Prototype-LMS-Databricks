@@ -55,7 +55,6 @@ const {
 } = dataModule;
 
 import { setOrgMappingSource, setBranchManagersSource, setWeeklyTrendsSource, setNowFromLeads, setNowFromDate } from "../selectors/demoSelectors";
-import { useAuth } from "./AuthContext";
 
 const DataContext = createContext(null);
 
@@ -148,9 +147,6 @@ function ensureMismatchDemoLead(leads) {
 }
 
 export function DataProvider({ children }) {
-  const { userProfile } = useAuth();
-  const userProfileRef = useRef(userProfile);
-  userProfileRef.current = userProfile;
   const orgMappingRef = useRef(_c.orgMapping ?? []);
 
   // --- State initialised from cache (instant render) or empty (skeleton) ---
@@ -238,11 +234,7 @@ export function DataProvider({ children }) {
     bumpPending(1);
     setError(null);
     try {
-      const up = userProfileRef.current;
-      const userCtx = up
-        ? { role: up.role, branch: up.branch, displayName: up.displayName }
-        : null;
-      const data = await fetchLeads(userCtx);
+      const data = await fetchLeads();
       setLeads(data ?? []);
       writeCache("leads", data ?? []);
       if (data?.length) setNowFromLeads(data);

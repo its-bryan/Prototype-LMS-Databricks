@@ -17,12 +17,16 @@ const API_BASE = "/api";
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
+function _getToken() {
+  try { return sessionStorage.getItem("leo_token"); } catch { return null; }
+}
+
 async function apiFetch(path, options = {}) {
   const url = `${API_BASE}${path}`;
-  const res = await fetch(url, {
-    headers: { "Content-Type": "application/json", ...options.headers },
-    ...options,
-  });
+  const token = _getToken();
+  const headers = { "Content-Type": "application/json", ...options.headers };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const res = await fetch(url, { headers, ...options });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(`API ${options.method ?? "GET"} ${url} → ${res.status}: ${text}`);
@@ -201,17 +205,9 @@ export async function fetchDashboardSnapshot() {
   return data ?? null;
 }
 
-/** Fetch leads, optionally filtered by user context.
- *  @param {{ role?: string, branch?: string, displayName?: string }} [userCtx]
- */
-export async function fetchLeads(userCtx = null) {
-  let path = "/leads";
-  if (userCtx?.role === "bm" && userCtx.branch) {
-    path = `/leads?branch=${encodeURIComponent(userCtx.branch)}`;
-  } else if (userCtx?.role === "gm" && userCtx.displayName) {
-    path = `/leads?gm_name=${encodeURIComponent(userCtx.displayName)}`;
-  }
-  const rows = await apiGet(path);
+/** Fetch leads. The backend reads the JWT to filter by user role/branches. */
+export async function fetchLeads() {
+  const rows = await apiGet("/leads");
   return (rows ?? []).map(leadFromRow);
 }
 
