@@ -16,5 +16,8 @@ def get_dashboard_snapshot():
         print("[snapshot-api] no snapshot rows found — returning null", flush=True)
         return JSONResponse(content=None, status_code=200)
     snap = rows[0]["snapshot"]
+    if snap.get("version", 0) < 2:
+        print(f"[snapshot-api] skipping stale v{snap.get('version')} snapshot — waiting for v2", flush=True)
+        return JSONResponse(content=None, status_code=200)
     print(f"[snapshot-api] serving snapshot v{snap.get('version')}, computed_at={snap.get('computed_at')}, branches={len(snap.get('branches', {}))}, gms={len(snap.get('gms', {}))}", flush=True)
     return snap
