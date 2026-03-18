@@ -55,7 +55,7 @@ function MetricComparison({ label, branchVal, zoneVal, suffix = "%", lowerIsBett
 }
 
 export default function InteractiveGMSpotCheckPage() {
-  const { leads, loading, orgMapping, updateLeadDirective, markLeadReviewed } = useData();
+  const { leads, loading, orgMapping, updateLeadDirective, markLeadReviewed, initialDataReady } = useData();
   const { navigateTo, selectLead } = useApp();
   const { userProfile } = useAuth();
   const reduceMotion = useReducedMotion();
