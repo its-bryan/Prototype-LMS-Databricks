@@ -149,6 +149,8 @@ function ensureMismatchDemoLead(leads) {
 
 export function DataProvider({ children }) {
   const { userProfile } = useAuth();
+  const userProfileRef = useRef(userProfile);
+  userProfileRef.current = userProfile;
   const orgMappingRef = useRef(_c.orgMapping ?? []);
 
   // --- State initialised from cache (instant render) or empty (skeleton) ---
@@ -236,8 +238,9 @@ export function DataProvider({ children }) {
     bumpPending(1);
     setError(null);
     try {
-      const userCtx = userProfile
-        ? { role: userProfile.role, branch: userProfile.branch, displayName: userProfile.displayName }
+      const up = userProfileRef.current;
+      const userCtx = up
+        ? { role: up.role, branch: up.branch, displayName: up.displayName }
         : null;
       const data = await fetchLeads(userCtx);
       setLeads(data ?? []);
@@ -250,7 +253,7 @@ export function DataProvider({ children }) {
       setLoading(false);
       bumpPending(-1);
     }
-  }, [userProfile]);
+  }, []);
 
   /** Load leads on-demand. Call from views that need individual lead data
    *  (Meeting Prep, Lead Detail, Spot Check, etc.). No-op if already loaded. */

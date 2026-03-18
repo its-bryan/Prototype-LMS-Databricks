@@ -47,6 +47,7 @@ async def get_leads(
 ):
     import time as _time
     t0 = _time.monotonic()
+    print(f"[leads-api] params: branches={branches!r}, branch={branch!r}, gm_name={gm_name!r}", flush=True)
 
     branch_list = None
     if branches:
@@ -55,6 +56,7 @@ async def get_leads(
         branch_list = [branch]
     elif gm_name:
         branch_list = _branches_for_gm(gm_name)
+        print(f"[leads-api] resolved gm '{gm_name}' -> {len(branch_list)} branches", flush=True)
 
     if branch_list:
         placeholders = ",".join(["%s"] * len(branch_list))
