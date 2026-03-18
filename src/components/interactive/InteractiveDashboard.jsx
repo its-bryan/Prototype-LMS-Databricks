@@ -1080,7 +1080,7 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
 
   const trendsGroupByLabel = trendsGroupBy === "period" ? "Period" : trendsGroupBy === "body_shop" ? "Body Shop" : trendsGroupBy === "insurance_company" ? "Insurance" : "Lead Status";
 
-  const trendsTimePeriodLabel = "Trailing 4 weeks";
+  const trendsTimePeriodLabel = activePreset?.sublabel ? `Trailing 4 weeks ${activePreset.sublabel}` : "Trailing 4 weeks";
   const trendsMetricLabel = trendsConfig.suffix === "%" ? `${trendsConfig.label} %` : trendsConfig.label;
   const overallConvRate = stats.total ? Math.round((stats.rented / stats.total) * 100) : 0;
   const overallSuffix =
@@ -1223,7 +1223,9 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
         </motion.button>
       } />
       <div className="flex items-center gap-2 mb-4">
-        <span className="px-2.5 py-1 rounded-md text-xs font-medium bg-[var(--hertz-primary)] text-[var(--hertz-black)] shadow-[var(--shadow-md)]">Trailing 4 weeks</span>
+        <span className="px-2.5 py-1 rounded-md text-xs font-medium bg-[var(--hertz-primary)] text-[var(--hertz-black)] shadow-[var(--shadow-md)]">
+          Trailing 4 weeks{activePreset?.sublabel ? ` ${activePreset.sublabel}` : ""}
+        </span>
         {rangeLabel && <span className="text-xs text-[var(--neutral-600)] font-medium">{rangeLabel}</span>}
       </div>
 
@@ -2586,6 +2588,12 @@ function GMDashboardPage({ navigateTo }) {
   const greeting = getTimeOfDayGreeting();
   const insight = getGMContextualInsight({ stats, prevStats });
 
+  const gmLeads = useMemo(() => {
+    if (!gmName) return leads;
+    const myBranches = getBranchesForGM(gmName, leads);
+    return (leads ?? []).filter((l) => leadInGmBranchList(l.branch, myBranches));
+  }, [leads, gmName]);
+
   const { stats: chartStats, chartData: trendsChartData } = useMemo(() => {
     if (useSnapshotGM && trendsGroupBy === "period" && !trendsUseCustom && trendsTimePresetKey === "trailing_4_weeks") {
       const cd = snapshotGM.chartData ?? [];
@@ -2595,14 +2603,14 @@ function GMDashboardPage({ navigateTo }) {
     }
     if (!chartDateRange) return { stats: null, chartData: [] };
     return getSummaryDataWithChart(
-      leads,
+      gmLeads,
       [],
       chartDateRange,
       null,
       trendsUseCustom ? "custom" : trendsTimePresetKey,
       trendsGroupBy
     );
-  }, [leads, chartDateRange, trendsTimePresetKey, trendsUseCustom, trendsGroupBy, useSnapshotGM, snapshotGM]);
+  }, [gmLeads, chartDateRange, trendsTimePresetKey, trendsUseCustom, trendsGroupBy, useSnapshotGM, snapshotGM]);
 
   const isStackedView = trendsGroupBy !== "period";
   const effectiveTrendsMetric = isStackedView && !GM_STACKED_SUPPORTED_METRICS.includes(summaryTrendsMetric)
@@ -2673,7 +2681,7 @@ function GMDashboardPage({ navigateTo }) {
   ];
 
   const trendsGroupByLabel = trendsGroupBy === "period" ? "Period" : trendsGroupBy === "branch" ? "Branch" : trendsGroupBy === "body_shop" ? "Body Shop" : trendsGroupBy === "insurance_company" ? "Insurance" : "Lead Status";
-  const trendsTimePeriodLabel = "Trailing 4 weeks";
+  const trendsTimePeriodLabel = currentPreset?.sublabel ? `Trailing 4 weeks ${currentPreset.sublabel}` : "Trailing 4 weeks";
   const trendsMetricLabel = trendsConfig.suffix === "%" ? `${trendsConfig.label} %` : trendsConfig.label;
   const overallConvRate = chartStats?.total ? Math.round((chartStats.rented / chartStats.total) * 100) : 0;
   const overallSuffix =
@@ -2783,7 +2791,9 @@ function GMDashboardPage({ navigateTo }) {
 
         {/* Time filter */}
         <div className="flex items-center gap-2 mb-4">
-          <span className="px-2.5 py-1 rounded-md text-xs font-medium bg-[var(--hertz-primary)] text-[var(--hertz-black)] shadow-[var(--shadow-md)]">Trailing 4 weeks</span>
+          <span className="px-2.5 py-1 rounded-md text-xs font-medium bg-[var(--hertz-primary)] text-[var(--hertz-black)] shadow-[var(--shadow-md)]">
+            Trailing 4 weeks{currentPreset?.sublabel ? ` ${currentPreset.sublabel}` : ""}
+          </span>
         </div>
 
         {/* Metric tiles — 2 rows of 3, BM black-tile format */}
