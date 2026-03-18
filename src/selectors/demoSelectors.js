@@ -201,18 +201,58 @@ export function getLeadsForBranchInRange(leads, dateRange, branch) {
   return filtered;
 }
 
-/** Leads with any outstanding compliance item (cancelled unreviewed, unused overdue, missing comments, mismatch). Used for GM auto-create tasks. */
+/** Parse enrichment_log entry time to ms since epoch. */
+function enrichmentLogEntryTs(entry) {
+  if (entry == null) return 0;
+  const t = entry.timestamp;
+  if (typeof t === "number") return t > 1e14 ? t : t > 1e11 ? t : t * 1000;
+  if (entry.time) {
+    const d = new Date(entry.time);
+    return Number.isNaN(d.getTime()) ? 0 : d.getTime();
+  }
+  return 0;
+}
+
+/**
+ * BM touched the lead in [start, end] (enrichment_log activity, or lastActivity when enrichment text exists).
+ */
+export function hasBmActivityInDateRange(lead, start, end) {
+  if (!start || !end) return !!(lead.enrichment?.reason || lead.enrichment?.notes);
+  const sDay = new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime();
+  const eDay = new Date(end.getFullYear(), end.getMonth(), end.getDate(), 23, 59, 59, 999).getTime();
+  for (const entry of lead.enrichmentLog ?? []) {
+    const ts = enrichmentLogEntryTs(entry);
+    if (ts >= sDay && ts <= eDay) return true;
+  }
+  const hasText = !!(lead.enrichment?.reason || lead.enrichment?.notes);
+  if (hasText && lead.lastActivity) {
+    const ts = new Date(lead.lastActivity).getTime();
+    if (!Number.isNaN(ts) && ts >= sDay && ts <= eDay) return true;
+  }
+  return false;
+}
+
+export function leadCancelledWithoutBmComment(lead) {
+  return lead.status === "Cancelled" && !lead.archived && !(lead.enrichment?.reason || lead.enrichment?.notes);
+}
+
+export function leadUnusedWithoutBmTouchInPeriod(lead, start, end) {
+  if (lead.status !== "Unused" || lead.archived) return false;
+  if (!start || !end) return !(lead.enrichment?.reason || lead.enrichment?.notes);
+  return !hasBmActivityInDateRange(lead, start, end);
+}
+
+/** Leads with any outstanding compliance item for GM meeting prep / task creation. */
 export function getLeadsWithOutstandingItemsForBranch(leads, dateRange, branch) {
-  const branchLeads = getLeadsForBranchInRange(leads ?? [], dateRange, branch);
-  const hasOutstanding = (l) => {
-    if (l.status === "Cancelled" && !l.archived && !l.gmDirective) return true;
-    if (l.status === "Unused" && (l.daysOpen ?? 0) > 5) return true;
-    const actionable = l.status === "Cancelled" || l.status === "Unused";
-    if (actionable && !(l.enrichment?.reason || l.enrichment?.notes)) return true;
+  const branchLeads = (leads ?? []).filter((l) => l.branch === branch);
+  const start = dateRange?.start ?? null;
+  const end = dateRange?.end ?? null;
+  return branchLeads.filter((l) => {
+    if (leadCancelledWithoutBmComment(l)) return true;
+    if (leadUnusedWithoutBmTouchInPeriod(l, start, end)) return true;
     if (l.mismatch) return true;
     return false;
-  };
-  return branchLeads.filter(hasOutstanding);
+  });
 }
 
 export function getUnresolvedLeads(leads) {
@@ -381,7 +421,7 @@ export function getGMStats(leads) {
 }
 
 // Trend selectors — always returns last 4 weeks for "4-Week Trend" charts
-export function getBMTrends(dateRange = null) {
+export function getBMTrends() {
   const allWeeks = weeklyTrends.bm;
   // Always show last 4 weeks for the trend visualizations
   const weeks = allWeeks.slice(-4);
@@ -1135,8 +1175,6 @@ export function getTasksForGMBranches(tasksList, gmName = "D. Williams", leads =
   const myBranches = getBranchesForGM(gmName, leads);
   const open = list.filter((t) => t.status !== "Done" && myBranches.includes(t.assignedBranch));
   const now = new Date(NOW);
-  const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
-  const tomorrowEnd = new Date(todayEnd.getTime() + 86400000);
 
   return [...open].sort((a, b) => {
     const aDue = a.dueDate ? new Date(a.dueDate + "T23:59:59").getTime() : Infinity;
@@ -1940,31 +1978,35 @@ export function getGMLeads(leads, dateRange = null, filters = {}, gmName = null)
 /** GM meeting prep data: per-branch compliance checklist + zone-level outstanding items. */
 export function getGMMeetingPrepData(leads, dateRange = null, gmName = "D. Williams") {
   const myBranches = getBranchesForGM(gmName, leads);
+  const periodStart = dateRange?.start ?? null;
+  const periodEnd = dateRange?.end ?? null;
 
   const branchChecklist = myBranches.map((branch) => {
-    const branchLeads = getLeadsForBranchInRange(leads ?? [], dateRange, branch);
-    const total = branchLeads.length;
+    const branchLeadsAll = (leads ?? []).filter((l) => l.branch === branch);
+    const branchLeadsInRange = getLeadsForBranchInRange(leads ?? [], dateRange, branch);
+    const total = branchLeadsInRange.length;
 
-    const cancelledUnreviewed = branchLeads.filter((l) => l.status === "Cancelled" && !l.archived && !l.gmDirective).length;
-    const unusedOverdue = branchLeads.filter((l) => l.status === "Unused" && (l.daysOpen ?? 0) > 5).length;
+    const cancelledNoBmComment = branchLeadsAll.filter(leadCancelledWithoutBmComment).length;
+    const unusedNoBmThisPeriod = branchLeadsAll.filter((l) =>
+      leadUnusedWithoutBmTouchInPeriod(l, periodStart, periodEnd)
+    ).length;
 
-    const actionable = branchLeads.filter((l) => l.status === "Cancelled" || l.status === "Unused");
-    const withComments = actionable.filter((l) => l.enrichment?.reason || l.enrichment?.notes);
-    const missingComments = actionable.length - withComments.length;
+    const mismatchLeads = branchLeadsAll.filter((l) => l.mismatch);
+    const mismatchCount = mismatchLeads.length;
 
-    const mismatchLeads = branchLeads.filter((l) => l.mismatch);
-
-    const outstanding = cancelledUnreviewed + unusedOverdue + missingComments + mismatchLeads.length;
+    const outstanding = cancelledNoBmComment + unusedNoBmThisPeriod + mismatchCount;
     const row = orgMapping.find((r) => r.branch === branch);
 
     return {
       branch,
-      bmName: resolveBMName(row, branchLeads),
+      bmName: resolveBMName(row, branchLeadsAll),
       total,
-      cancelledUnreviewed,
-      unusedOverdue,
-      missingComments,
-      mismatchCount: mismatchLeads.length,
+      cancelledNoBmComment,
+      unusedNoBmThisPeriod,
+      cancelledUnreviewed: branchLeadsAll.filter((l) => l.status === "Cancelled" && !l.archived && !l.gmDirective).length,
+      unusedOverdue: branchLeadsAll.filter((l) => l.status === "Unused" && (l.daysOpen ?? 0) > 5).length,
+      missingComments: cancelledNoBmComment + unusedNoBmThisPeriod,
+      mismatchCount,
       outstanding,
       isComplete: outstanding === 0,
     };

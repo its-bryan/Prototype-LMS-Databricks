@@ -3,10 +3,13 @@
  * for each metric in the Branch Compliance table (Meeting Prep).
  */
 import { useState, useMemo, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import { useApp } from "../../context/AppContext";
 import StatusBadge from "../StatusBadge";
-import { getLeadsForBranchInRange } from "../../selectors/demoSelectors";
+import {
+  leadCancelledWithoutBmComment,
+  leadUnusedWithoutBmTouchInPeriod,
+} from "../../selectors/demoSelectors";
 import { useData } from "../../context/DataContext";
 import { formatDateRange } from "../../utils/dateTime";
 
@@ -14,34 +17,31 @@ function formatDateRangeDisplay(dateRange) {
   return formatDateRange(dateRange?.start, dateRange?.end) || "";
 }
 
-const METRIC_SECTIONS = [
-  {
-    key: "cancelledUnreviewed",
-    label: "Cancelled Unreviewed",
-    description: "Cancelled leads not yet archived or with GM directive",
-    filter: (l) => l.status === "Cancelled" && !l.archived && !l.gmDirective,
-  },
-  {
-    key: "unusedOverdue",
-    label: "Unused Overdue",
-    description: "Unused leads open more than 5 days",
-    filter: (l) => l.status === "Unused" && (l.daysOpen ?? 0) > 5,
-  },
-  {
-    key: "missingComments",
-    label: "Missing Comments",
-    description: "Cancelled or Unused leads without reason or notes",
-    filter: (l) =>
-      (l.status === "Cancelled" || l.status === "Unused") &&
-      !(l.enrichment?.reason || l.enrichment?.notes),
-  },
-  {
-    key: "mismatch",
-    label: "Data Mismatches",
-    description: "Leads with HLES vs LMS data discrepancies",
-    filter: (l) => !!l.mismatch,
-  },
-];
+function buildMetricSections(dateRange) {
+  const start = dateRange?.start ?? null;
+  const end = dateRange?.end ?? null;
+  return [
+    {
+      key: "cancelledNoBmComment",
+      label: "Cancelled — no BM comment",
+      description: "Cancelled leads with no branch manager reason or notes (any week)",
+      filter: leadCancelledWithoutBmComment,
+    },
+    {
+      key: "unusedNoBmThisPeriod",
+      label: "Unused — no BM activity in period",
+      description:
+        "Unused leads with no enrichment activity in the selected date range (e.g. this week). Change the date preset above to match your compliance window.",
+      filter: (l) => leadUnusedWithoutBmTouchInPeriod(l, start, end),
+    },
+    {
+      key: "mismatch",
+      label: "Data Mismatches",
+      description: "Leads with HLES vs LMS data discrepancies",
+      filter: (l) => !!l.mismatch,
+    },
+  ];
+}
 
 function LeadTable({ leads, onLeadClick }) {
   return (
@@ -104,25 +104,26 @@ function LeadTable({ leads, onLeadClick }) {
 export default function BranchComplianceDetailPane({ branchRow, dateRange, leads, onClose }) {
   const { navigateTo, selectLead } = useApp();
   const { orgMapping } = useData();
-  const [activeTab, setActiveTab] = useState("cancelledUnreviewed");
+  const [activeTab, setActiveTab] = useState("cancelledNoBmComment");
 
-  const branchLeads = useMemo(
-    () => getLeadsForBranchInRange(leads ?? [], dateRange, branchRow?.branch),
-    [leads, dateRange, branchRow?.branch]
+  const branchLeadsAll = useMemo(
+    () => (leads ?? []).filter((l) => l.branch === branchRow?.branch),
+    [leads, branchRow?.branch]
   );
 
   const sectionData = useMemo(() => {
-    return METRIC_SECTIONS.map((s) => ({
+    const sections = buildMetricSections(dateRange);
+    return sections.map((s) => ({
       ...s,
-      leads: branchLeads.filter(s.filter),
-      count: branchLeads.filter(s.filter).length,
+      leads: branchLeadsAll.filter(s.filter),
+      count: branchLeadsAll.filter(s.filter).length,
     }));
-  }, [branchLeads]);
+  }, [branchLeadsAll, dateRange]);
 
   const zone = useMemo(() => {
     const row = orgMapping.find((r) => r.branch === branchRow?.branch);
     return row?.zone ?? "—";
-  }, [branchRow?.branch]);
+  }, [branchRow?.branch, orgMapping]);
 
   useEffect(() => {
     const handleEscape = (e) => {

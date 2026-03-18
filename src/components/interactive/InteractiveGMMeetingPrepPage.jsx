@@ -541,8 +541,8 @@ export default function InteractiveGMMeetingPrepPage() {
                 </p>
                 <p className="text-xs text-[var(--neutral-600)] mt-0.5">
                   {meetingPrepData.totalOutstanding > 0
-                    ? `${meetingPrepData.totalOutstanding} outstanding item${meetingPrepData.totalOutstanding !== 1 ? "s" : ""} across ${meetingPrepData.totalBranches - meetingPrepData.branchesComplete} branch${meetingPrepData.totalBranches - meetingPrepData.branchesComplete !== 1 ? "es" : ""} — chase these before the meeting`
-                    : "All branches are up to date — no outstanding items."}
+                    ? `${meetingPrepData.totalOutstanding} lead${meetingPrepData.totalOutstanding !== 1 ? "s" : ""} need action (cancelled without BM comment, unused without BM activity in ${currentPreset?.label ?? "the selected period"}, or data mismatch)`
+                    : "All branches are up to date for those rules."}
                 </p>
               </div>
               <div className="flex items-center gap-3 shrink-0">
@@ -585,7 +585,7 @@ export default function InteractiveGMMeetingPrepPage() {
             >
               <div className="mt-3 border border-[var(--neutral-200)] rounded-lg overflow-hidden bg-white">
                 <p className="px-4 py-2 text-xs text-[var(--neutral-500)] bg-[var(--neutral-50)] border-b border-[var(--neutral-200)]">
-                  Click a row to view line-level lead data for each metric
+                  Compliance counts all open cancelled (no BM notes) and unused (no BM activity in {currentPreset?.label ?? "selected range"}), not just leads received in that range.
                 </p>
                 <table className="w-full text-sm">
                   <thead>
