@@ -8,12 +8,12 @@ const cardAnim = (i, reduced = false) => ({
   transition: { delay: reduced ? 0 : i * 0.06, duration: reduced ? 0.01 : 0.4, ease: [0.4, 0, 0.2, 1] },
 });
 
-export default function GMLeaderboardModule({ navigateTo, leads, dateRange, reduceMotion, snapshotLeaderboard, gmName }) {
+export default function GMLeaderboardModule({ navigateTo, leads, dateRange, reduceMotion, snapshotLeaderboard, gmName, loading }) {
   const leaderboardData = useMemo(() => {
     if (!dateRange && !snapshotLeaderboard) return null;
-    if ((leads ?? []).length === 0 && snapshotLeaderboard?.length > 0 && gmName) {
+    if (loading && snapshotLeaderboard?.length > 0 && gmName) {
       // #region agent log
-      fetch('http://127.0.0.1:7507/ingest/4cdc8682-4d34-4a46-8b0d-92860e51cbd8',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'9aea69'},body:JSON.stringify({sessionId:'9aea69',location:'GMLeaderboardModule.jsx',message:'GM leaderboard FROM SNAPSHOT',data:{gmName,rows:snapshotLeaderboard.length},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
+      console.log("[DEBUG-9aea69] GM leaderboard FROM SNAPSHOT", { gmName, rows: snapshotLeaderboard.length, ts: Date.now() });
       // #endregion
       const rows = snapshotLeaderboard.map((r) => ({
         ...r,

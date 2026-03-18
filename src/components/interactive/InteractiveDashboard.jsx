@@ -148,20 +148,20 @@ function leadToHlesRow(lead, org) {
 
 function BMDashboard({ navigateTo, selectLead, selectTask }) {
   const { userProfile } = useAuth();
-  const { leads, initialDataReady, snapshot, fetchTasksForBranch, updateLeadEnrichment, updateTaskStatus, insertTask } = useData();
+  const { leads, loading, initialDataReady, snapshot, fetchTasksForBranch, updateLeadEnrichment, updateTaskStatus, insertTask } = useData();
   const reduceMotion = useReducedMotion();
   const branch = (userProfile?.branch?.trim() || getDefaultBranchForDemo());
   const snapshotBranch = useMemo(() => {
     if (!snapshot?.branches || !branch) {
       // #region agent log
-      console.log("[DEBUG-9aea69] snapshotBranch: null", { hasSnapshot: !!snapshot, hasBranches: !!snapshot?.branches, branch, leadsLen: leads.length, ts: Date.now() });
+      console.log("[DEBUG-9aea69] snapshotBranch: null", { hasSnapshot: !!snapshot, hasBranches: !!snapshot?.branches, branch, loading, leadsLen: leads.length, ts: Date.now() });
       // #endregion
       return null;
     }
     const direct = snapshot.branches[branch];
     if (direct) {
       // #region agent log
-      console.log("[DEBUG-9aea69] snapshotBranch: FOUND direct", { branch, ts: Date.now() });
+      console.log("[DEBUG-9aea69] snapshotBranch: FOUND direct", { branch, loading, ts: Date.now() });
       // #endregion
       return direct;
     }
@@ -172,7 +172,10 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
     // #endregion
     return key ? snapshot.branches[key] : null;
   }, [snapshot, branch]);
-  const useSnapshotData = leads.length === 0 && !!snapshotBranch;
+  const useSnapshotData = loading && !!snapshotBranch;
+  // #region agent log
+  console.log("[DEBUG-9aea69] BM useSnapshotData", { useSnapshotData, loading, hasSnapshotBranch: !!snapshotBranch, leadsLen: leads.length, ts: Date.now() });
+  // #endregion
 
   const [branchTasks, setBranchTasks] = useState(() =>
     []
@@ -1224,6 +1227,7 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
             dateRange={dateRange}
             reduceMotion={reduceMotion}
             snapshotLeaderboard={snapshot?.leaderboard}
+            loading={loading}
           />
         </div>
       </div>
@@ -2595,11 +2599,10 @@ function GMDashboardPage({ navigateTo }) {
   }, [userProfile?.displayName, userProfile?.id, orgMapping]);
 
   const snapshotGM = gmName ? (snapshot?.gms?.[gmName] ?? null) : null;
+  const useSnapshotGM = loading && !!snapshotGM;
   // #region agent log
-  if (!snapshotGM) console.log("[DEBUG-9aea69] snapshotGM: null", { gmName, hasSnapshot: !!snapshot, gmKeys: snapshot?.gms ? Object.keys(snapshot.gms).slice(0, 5) : null, leadsLen: leads.length, ts: Date.now() });
-  else console.log("[DEBUG-9aea69] snapshotGM: FOUND", { gmName, ts: Date.now() });
+  console.log("[DEBUG-9aea69] GM snapshot", { gmName, useSnapshotGM, loading, hasSnapshotGM: !!snapshotGM, leadsLen: leads.length, ts: Date.now() });
   // #endregion
-  const useSnapshotGM = leads.length === 0 && !!snapshotGM;
 
   const stats = useMemo(() => {
     if (useSnapshotGM && selectedPresetKey === "trailing_4_weeks") return snapshotGM.stats;
@@ -3067,6 +3070,7 @@ function GMDashboardPage({ navigateTo }) {
             reduceMotion={reduceMotion}
             snapshotLeaderboard={snapshot?.leaderboard}
             gmName={gmName}
+            loading={loading}
           />
           <ActivityReportModule
             navigateTo={navigateTo}

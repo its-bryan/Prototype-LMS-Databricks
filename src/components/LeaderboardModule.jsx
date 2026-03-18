@@ -15,12 +15,12 @@ const cardAnim = (i, reduced = false) => ({
   transition: { delay: reduced ? 0 : i * 0.06, duration: reduced ? 0.01 : 0.4, ease: [0.4, 0, 0.2, 1] },
 });
 
-export default function LeaderboardModule({ navigateTo, leads, branch, dateRange, reduceMotion, snapshotLeaderboard }) {
+export default function LeaderboardModule({ navigateTo, leads, branch, dateRange, reduceMotion, snapshotLeaderboard, loading }) {
   const leaderboardData = useMemo(() => {
     if (!dateRange && !snapshotLeaderboard) return null;
-    if ((leads ?? []).length === 0 && snapshotLeaderboard?.length > 0 && branch) {
+    if (loading && snapshotLeaderboard?.length > 0 && branch) {
       // #region agent log
-      fetch('http://127.0.0.1:7507/ingest/4cdc8682-4d34-4a46-8b0d-92860e51cbd8',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'9aea69'},body:JSON.stringify({sessionId:'9aea69',location:'LeaderboardModule.jsx',message:'BM leaderboard FROM SNAPSHOT',data:{branch,rows:snapshotLeaderboard.length},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
+      console.log("[DEBUG-9aea69] BM leaderboard FROM SNAPSHOT", { branch, rows: snapshotLeaderboard.length, ts: Date.now() });
       // #endregion
       const myRow = snapshotLeaderboard.find((r) => r.branch === branch);
       const gmName = myRow?.gm ?? null;
