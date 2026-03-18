@@ -13,7 +13,15 @@ npm run build
 ```
 Must exit 0. This is the most important gate — if the build fails, the deploy will fail on Databricks too.
 
-## 2. Python syntax check (catches syntax errors in backend)
+## 2. Verify `dist/` is committed and up-to-date
+After the build succeeds, check that the committed `dist/` matches the fresh build output:
+```powershell
+git diff --name-only dist/
+git ls-files --others --exclude-standard dist/
+```
+If either command produces output, the committed `dist/` is stale. Stage and commit the updated `dist/` before deploying.
+
+## 3. Python syntax check (catches syntax errors in backend)
 ```powershell
 python -m py_compile main.py
 python -m py_compile db.py
@@ -21,12 +29,12 @@ Get-ChildItem routers\*.py | ForEach-Object { python -m py_compile $_.FullName }
 ```
 Must produce no errors.
 
-## 3. Linter checks
+## 4. Linter checks
 - Run `ReadLints` on every file modified in this session
 - All errors introduced by this session must be resolved
 - Pre-existing warnings are acceptable (there are ~210 pre-existing ESLint issues)
 
-## 4. Critical file integrity
+## 5. Critical file integrity
 Verify these files exist and are non-empty:
 - `app.yaml` — must contain the uvicorn command
 - `main.py` — FastAPI entry point
@@ -35,12 +43,12 @@ Verify these files exist and are non-empty:
 - `requirements.txt` — Python deps
 - `package.json` — Node deps with `build` script
 
-## 5. API contract check
+## 6. API contract check
 If any router (`routers/*.py`) endpoint signature changed:
 - Verify the matching frontend call in `src/data/databricksData.js` is updated
 - Check field names match between backend response and frontend expectations
 
-## 6. Post-deploy verification (after deploy succeeds)
+## 7. Post-deploy verification (after deploy succeeds)
 ```powershell
 databricks apps get hertz-leo-leadsmgmtsystem --output json
 ```
@@ -48,8 +56,8 @@ databricks apps get hertz-leo-leadsmgmtsystem --output json
 - Confirm `active_deployment.status.state` is `SUCCEEDED`
 - Hit the app URL to verify: `https://hertz-leo-leadsmgmtsystem-1957546315544672.aws.databricksapps.com/`
 
-## 7. On deploy failure — check app logs
-If Step 6 shows a failed or unhealthy state, pull app logs immediately:
+## 8. On deploy failure — check app logs
+If Step 7 shows a failed or unhealthy state, pull app logs immediately:
 ```powershell
 databricks apps logs hertz-leo-leadsmgmtsystem --profile DanSiaoAuth --tail-lines 200
 ```

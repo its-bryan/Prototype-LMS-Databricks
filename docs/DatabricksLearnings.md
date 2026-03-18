@@ -119,7 +119,7 @@ command: ['uvicorn', 'main:app', '--host', '0.0.0.0', '--port', '8000']
 1. **Commit and push** to `origin main` (e.g. GitHub).
 2. **Pull into Databricks workspace repo** so the app’s source folder is up to date:
    ```bash
-   databricks repos update 2730039622390114 --branch main -p DanSiaoAuth
+   databricks repos update 3889324859208374 --branch main -p DanSiaoAuth
    ```
 3. **Deploy the app** from that workspace path:
    ```bash
