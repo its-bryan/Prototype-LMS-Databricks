@@ -43,14 +43,17 @@ def _user_from_jwt(request: Request) -> dict | None:
     """Extract user info from JWT Authorization header (best-effort, no 401)."""
     auth = request.headers.get("authorization", "")
     if not auth.startswith("Bearer "):
+        print(f"[leads-api] no Bearer token (auth header: {auth[:30]!r}...)", flush=True)
         return None
     import jwt as _jwt
     import os
     secret = os.getenv("LEO_JWT_SECRET", "leo-mvp-secret-change-in-prod")
     try:
         payload = _jwt.decode(auth[7:], secret, algorithms=["HS256"])
+        print(f"[leads-api] JWT decoded: role={payload.get('role')}, sub={payload.get('sub')}", flush=True)
         return payload
-    except Exception:
+    except Exception as e:
+        print(f"[leads-api] JWT decode failed: {e}", flush=True)
         return None
 
 
