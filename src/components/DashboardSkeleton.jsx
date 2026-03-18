@@ -123,11 +123,9 @@ export function BMDashboardSkeleton() {
       {/* Summary section */}
       <div className="mb-4">
         <SectionHeaderSkeleton />
-        {/* Date presets */}
+        {/* Date preset */}
         <div className="flex items-center gap-2 mb-4">
-          {["This Week", "Last Week", "Trailing 4 Weeks", "MTD"].map((_, i) => (
-            <Bone key={i} className="h-7 w-20 rounded-md" />
-          ))}
+          <Bone className="h-7 w-28 rounded-md" />
         </div>
         {/* Primary tiles 3-col */}
         <div className="grid grid-cols-3 gap-2 mb-4">
@@ -170,11 +168,9 @@ export function GMDashboardSkeleton() {
         <Bone className="h-4 w-72" />
       </div>
 
-      {/* Date presets */}
+      {/* Date preset */}
       <div className="flex items-center gap-2 mb-4">
-        {["This Week", "Last Week", "Trailing 4 Weeks", "MTD"].map((_, i) => (
-          <Bone key={i} className="h-7 w-20 rounded-md" />
-        ))}
+        <Bone className="h-7 w-28 rounded-md" />
       </div>
 
       {/* 6 metric tiles in 3x2 grid */}

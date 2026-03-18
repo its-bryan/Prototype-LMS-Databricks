@@ -9,6 +9,7 @@ import {
   getDateRangePresets,
   getComparisonDateRange,
   getSummaryDataWithChart,
+  buildRolling4WeekChartData,
   getLeadsForBranch,
   getTasksForBranch,
   getHierarchyForBranch,
@@ -223,15 +224,13 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
 
   const { stats, chartData: trendsChartData } = useMemo(() => {
     if (!dateRange) return { stats: getBMStats(leads, dateRange, branch), chartData: [] };
-    return getSummaryDataWithChart(
-      leads,
-      branchTasks,
-      dateRange,
-      branch,
-      useCustom ? "custom" : selectedPresetKey,
-      trendsGroupBy
-    );
-  }, [dateRange, selectedPresetKey, useCustom, trendsGroupBy, leads, branch, branchTasks]);
+    if (trendsGroupBy === "period") {
+      const { stats: s } = getSummaryDataWithChart(leads, branchTasks, dateRange, branch, "trailing_4_weeks", trendsGroupBy);
+      const chartData = buildRolling4WeekChartData(leads, branchTasks, branch);
+      return { stats: s, chartData };
+    }
+    return getSummaryDataWithChart(leads, branchTasks, dateRange, branch, "trailing_4_weeks", trendsGroupBy);
+  }, [dateRange, trendsGroupBy, leads, branch, branchTasks]);
 
   const isStackedView = trendsGroupBy !== "period";
 
@@ -1065,9 +1064,7 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
 
   const trendsGroupByLabel = trendsGroupBy === "period" ? "Period" : trendsGroupBy === "body_shop" ? "Body Shop" : trendsGroupBy === "insurance_company" ? "Insurance" : "Lead Status";
 
-  const trendsTimePeriodLabel = trendsUseCustom
-    ? (trendsCustomStart && trendsCustomEnd ? formatDateRange({ key: "custom" }, trendsCustomStart, trendsCustomEnd) : "Custom")
-    : (presets.find((p) => p.key === trendsTimePresetKey)?.label ?? "");
+  const trendsTimePeriodLabel = "Trailing 4 weeks";
   const trendsMetricLabel = trendsConfig.suffix === "%" ? `${trendsConfig.label} %` : trendsConfig.label;
   const overallConvRate = stats.total ? Math.round((stats.rented / stats.total) * 100) : 0;
   const overallSuffix =
@@ -1209,52 +1206,9 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
           Export
         </motion.button>
       } />
-      <div className="flex items-center gap-2 flex-nowrap mb-4 whitespace-nowrap overflow-x-auto">
-        <div className="flex items-center gap-1.5 flex-nowrap">
-          {presets.map((p) => {
-            const isActive = !useCustom && selectedPresetKey === p.key;
-            return (
-              <motion.button
-                key={p.key}
-                onClick={() => { setSelectedPresetKey(p.key); setTrendsTimePresetKey(p.key); setUseCustom(false); setTrendsUseCustom(false); setShowCustomCalendar(false); setTrendsShowCustomCalendar(false); }}
-                whileHover={!reduceMotion ? { scale: 1.03 } : {}}
-                whileTap={!reduceMotion ? { scale: 0.97 } : {}}
-                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors duration-200 cursor-pointer shrink-0 ${
-                  isActive
-                    ? "bg-[var(--hertz-primary)] text-[var(--hertz-black)] shadow-[var(--shadow-md)]"
-                    : "bg-[var(--neutral-50)] text-[var(--neutral-600)] border border-transparent hover:border-[var(--neutral-200)] hover:bg-[var(--neutral-100)]"
-                }`}
-              >
-                {p.label}
-              </motion.button>
-            );
-          })}
-          <span className="text-[var(--neutral-200)] mx-0.5">|</span>
-          <div ref={customAnchorRef} className="relative shrink-0">
-            <motion.button
-              onClick={() => { setUseCustom(true); setTrendsUseCustom(true); setShowCustomCalendar(true); setTrendsShowCustomCalendar(true); }}
-              whileHover={!reduceMotion ? { scale: 1.03 } : {}}
-              whileTap={!reduceMotion ? { scale: 0.97 } : {}}
-              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors duration-200 cursor-pointer shrink-0 ${
-                useCustom ? "bg-[var(--hertz-primary)] text-[var(--hertz-black)] shadow-[var(--shadow-md)]" : "bg-[var(--neutral-50)] text-[var(--neutral-600)] border border-transparent hover:border-[var(--neutral-200)] hover:bg-[var(--neutral-100)]"
-              }`}
-            >
-              Custom
-            </motion.button>
-            <AnimatePresence>
-              {showCustomCalendar && (
-                <DateRangeCalendar
-                  start={customStart}
-                  end={customEnd}
-                  onChange={({ start: s, end: e }) => { setCustomStart(s); setCustomEnd(e); setTrendsCustomStart(s); setTrendsCustomEnd(e); }}
-                  onClose={() => setShowCustomCalendar(false)}
-                  anchorRef={customAnchorRef}
-                />
-              )}
-            </AnimatePresence>
-          </div>
-          {rangeLabel && <span className="text-xs text-[var(--neutral-600)] ml-2 font-medium shrink-0">{rangeLabel}</span>}
-        </div>
+      <div className="flex items-center gap-2 mb-4">
+        <span className="px-2.5 py-1 rounded-md text-xs font-medium bg-[var(--hertz-primary)] text-[var(--hertz-black)] shadow-[var(--shadow-md)]">Trailing 4 weeks</span>
+        {rangeLabel && <span className="text-xs text-[var(--neutral-600)] font-medium">{rangeLabel}</span>}
       </div>
 
       {/* Rate tiles — click to view underlying data and drivers */}
@@ -1341,55 +1295,13 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
               </div>
               <div className="shrink-0">
                 <p className="text-xs font-semibold text-[var(--neutral-600)] uppercase tracking-wider mb-1.5">Time filter</p>
-                <div className="flex items-center gap-1">
-                  <select
-                    value={trendsUseCustom ? "custom" : trendsTimePresetKey}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      if (v === "custom") {
-                        setTrendsUseCustom(true);
-                        setUseCustom(true);
-                        setShowCustomCalendar(true);
-                        setTrendsShowCustomCalendar(true);
-                      } else {
-                        setTrendsUseCustom(false);
-                        setUseCustom(false);
-                        setTrendsShowCustomCalendar(false);
-                        setShowCustomCalendar(false);
-                        setTrendsTimePresetKey(v);
-                        setSelectedPresetKey(v);
-                      }
-                    }}
-                    className="w-[10rem] px-2.5 py-1.5 border border-[var(--neutral-200)] rounded-lg text-sm font-medium text-[var(--hertz-black)] bg-white focus:outline-none focus:border-[var(--hertz-primary)] focus:ring-1 focus:ring-[var(--hertz-primary)] cursor-pointer"
-                  >
-                    {presets.map((p) => (
-                      <option key={p.key} value={p.key}>{p.label}</option>
-                    ))}
-                    <option value="custom">Custom</option>
-                  </select>
-                  <div ref={trendsCustomAnchorRef} className="relative shrink-0">
-                    <AnimatePresence>
-                      {trendsUseCustom && trendsShowCustomCalendar && (
-                        <DateRangeCalendar
-                          start={trendsCustomStart}
-                          end={trendsCustomEnd}
-                          onChange={({ start: s, end: e }) => { setTrendsCustomStart(s); setTrendsCustomEnd(e); setCustomStart(s); setCustomEnd(e); }}
-                          onClose={() => setTrendsShowCustomCalendar(false)}
-                          anchorRef={trendsCustomAnchorRef}
-                        />
-                      )}
-                    </AnimatePresence>
-                    {trendsUseCustom && (
-                      <button
-                        type="button"
-                        onClick={() => setTrendsShowCustomCalendar((v) => !v)}
-                        className="px-2 py-1 rounded-md text-xs font-medium bg-[var(--neutral-50)] text-[var(--neutral-600)] border border-[var(--neutral-200)] hover:bg-[var(--neutral-100)]"
-                      >
-                        Pick dates
-                      </button>
-                    )}
-                  </div>
-                </div>
+                <select
+                  value="trailing_4_weeks"
+                  className="w-[10rem] px-2.5 py-1.5 border border-[var(--neutral-200)] rounded-lg text-sm font-medium text-[var(--hertz-black)] bg-white focus:outline-none focus:border-[var(--hertz-primary)] focus:ring-1 focus:ring-[var(--hertz-primary)] cursor-pointer"
+                  readOnly
+                >
+                  <option value="trailing_4_weeks">Trailing 4 weeks</option>
+                </select>
               </div>
               <div className="shrink-0">
                 <p className="text-xs font-semibold text-[var(--neutral-600)] uppercase tracking-wider mb-1.5">Group by</p>
@@ -2610,7 +2522,7 @@ function GMDashboardPage({ navigateTo }) {
   const [drilldownMetric, setDrilldownMetric] = useState(null);
   const presets = useMemo(() => getDateRangePresets(), [loading]);
 
-  const [selectedPresetKey, setSelectedPresetKey] = useState("this_week");
+  const [selectedPresetKey, setSelectedPresetKey] = useState("trailing_4_weeks");
   const [summaryTrendsMetric, setSummaryTrendsMetric] = useState("leadPipeline");
   const [trendsOverlayMetric, setTrendsOverlayMetric] = useState("conversionRate");
   const [trendsTimePresetKey, setTrendsTimePresetKey] = useState("trailing_4_weeks");
@@ -2729,9 +2641,7 @@ function GMDashboardPage({ navigateTo }) {
   ];
 
   const trendsGroupByLabel = trendsGroupBy === "period" ? "Period" : trendsGroupBy === "branch" ? "Branch" : trendsGroupBy === "body_shop" ? "Body Shop" : trendsGroupBy === "insurance_company" ? "Insurance" : "Lead Status";
-  const trendsTimePeriodLabel = trendsUseCustom
-    ? (trendsCustomStart && trendsCustomEnd ? formatDateRange({ key: "custom" }, trendsCustomStart, trendsCustomEnd) : "Custom")
-    : (presets.find((p) => p.key === trendsTimePresetKey)?.label ?? "");
+  const trendsTimePeriodLabel = "Trailing 4 weeks";
   const trendsMetricLabel = trendsConfig.suffix === "%" ? `${trendsConfig.label} %` : trendsConfig.label;
   const overallConvRate = chartStats?.total ? Math.round((chartStats.rented / chartStats.total) * 100) : 0;
   const overallSuffix =
@@ -2840,20 +2750,8 @@ function GMDashboardPage({ navigateTo }) {
         <SectionHeader title="Summary" subtitle="Zone-wide metrics and performance trends." />
 
         {/* Time filter */}
-        <div className="flex items-center gap-1.5 mb-4 flex-nowrap whitespace-nowrap overflow-x-auto">
-          {presets.map((p) => (
-            <button
-              key={p.key}
-              onClick={() => setSelectedPresetKey(p.key)}
-              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer shrink-0 ${
-                selectedPresetKey === p.key
-                  ? "bg-[var(--hertz-primary)] text-[var(--hertz-black)] shadow-[var(--shadow-md)]"
-                  : "bg-[var(--neutral-50)] text-[var(--neutral-600)] border border-transparent hover:border-[var(--neutral-200)] hover:bg-[var(--neutral-100)]"
-              }`}
-            >
-              {p.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-2 mb-4">
+          <span className="px-2.5 py-1 rounded-md text-xs font-medium bg-[var(--hertz-primary)] text-[var(--hertz-black)] shadow-[var(--shadow-md)]">Trailing 4 weeks</span>
         </div>
 
         {/* Metric tiles — 2 rows of 3, BM black-tile format */}
@@ -2937,37 +2835,13 @@ function GMDashboardPage({ navigateTo }) {
                 </div>
                 <div className="shrink-0">
                   <p className="text-xs font-semibold text-[var(--neutral-600)] uppercase tracking-wider mb-1.5">Time filter</p>
-                  <div className="flex items-center gap-1">
-                    <select
-                      value={trendsUseCustom ? "custom" : trendsTimePresetKey}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        if (v === "custom") {
-                          setTrendsUseCustom(true);
-                          setTrendsShowCustomCalendar(true);
-                        } else {
-                          setTrendsUseCustom(false);
-                          setTrendsShowCustomCalendar(false);
-                          setTrendsTimePresetKey(v);
-                        }
-                      }}
-                      className="w-[10rem] px-2.5 py-1.5 border border-[var(--neutral-200)] rounded-lg text-sm font-medium text-[var(--hertz-black)] bg-white focus:outline-none focus:border-[var(--hertz-primary)] focus:ring-1 focus:ring-[var(--hertz-primary)] cursor-pointer"
-                    >
-                      {presets.map((p) => (
-                        <option key={p.key} value={p.key}>{p.label}</option>
-                      ))}
-                      <option value="custom">Custom</option>
-                    </select>
-                    {trendsUseCustom && (
-                      <button
-                        type="button"
-                        onClick={() => setTrendsShowCustomCalendar((v) => !v)}
-                        className="px-2 py-1 rounded-md text-xs font-medium bg-[var(--neutral-50)] text-[var(--neutral-600)] border border-[var(--neutral-200)] hover:bg-[var(--neutral-100)]"
-                      >
-                        Pick dates
-                      </button>
-                    )}
-                  </div>
+                  <select
+                    value="trailing_4_weeks"
+                    className="w-[10rem] px-2.5 py-1.5 border border-[var(--neutral-200)] rounded-lg text-sm font-medium text-[var(--hertz-black)] bg-white focus:outline-none focus:border-[var(--hertz-primary)] focus:ring-1 focus:ring-[var(--hertz-primary)] cursor-pointer"
+                    readOnly
+                  >
+                    <option value="trailing_4_weeks">Trailing 4 weeks</option>
+                  </select>
                 </div>
                 <div className="shrink-0">
                   <p className="text-xs font-semibold text-[var(--neutral-600)] uppercase tracking-wider mb-1.5">Group by</p>

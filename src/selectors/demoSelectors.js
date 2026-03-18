@@ -91,13 +91,10 @@ export function getNextComplianceMeetingDate() {
 
 export function getDateRangePresets() {
   const thisMonday = getMonday(NOW);
-  // Anchor "This month" on the data week's Monday so that when the week
-  // spans a month boundary (e.g. Mon Feb 24 → Sun Mar 2), "This month"
-  // covers February (where the data lives) instead of March (empty).
   const thisMonthStart = new Date(thisMonday.getFullYear(), thisMonday.getMonth(), 1);
   const thisYearStart = new Date(NOW.getFullYear(), 0, 1);
   const trailing4WeeksEnd = new Date(NOW.getFullYear(), NOW.getMonth(), NOW.getDate(), 23, 59, 59);
-  const trailing4WeeksStart = new Date(trailing4WeeksEnd.getTime() - 27 * 86400000); // 28 days = 4 weeks (0-indexed: 27 days back + today)
+  const trailing4WeeksStart = new Date(trailing4WeeksEnd.getTime() - 27 * 86400000);
 
   return [
     { key: "this_week", label: "This week", start: thisMonday, end: new Date(thisMonday.getTime() + 6 * 86400000 + 86399999) },
@@ -972,6 +969,62 @@ export function getSummaryDataWithChart(leads, branchTasks, dateRange, branch, p
       ? buildChartDataByPeriodFromFiltered(filtered, branchTasks, dateRange, branch, presetKey, leads)
       : buildChartDataStackedFromFiltered(filtered, dateRange, branch, trendsGroupBy, presetKey);
   return { stats, chartData };
+}
+
+/**
+ * Build rolling trailing-4-week chart data.  Each bar represents a 28-day
+ * window ending on a given Sunday.  Returns `numWeeks` data points from
+ * the most recent Sunday backwards.
+ */
+export function buildRolling4WeekChartData(leads, branchTasks, branch, numWeeks = 8) {
+  const today = new Date(NOW.getFullYear(), NOW.getMonth(), NOW.getDate());
+  const dayOfWeek = today.getDay();
+  const lastSunday = new Date(today);
+  lastSunday.setDate(today.getDate() - (dayOfWeek === 0 ? 0 : dayOfWeek));
+
+  const result = [];
+  for (let i = numWeeks - 1; i >= 0; i--) {
+    const sundayEnd = new Date(lastSunday);
+    sundayEnd.setDate(lastSunday.getDate() - i * 7);
+    sundayEnd.setHours(23, 59, 59, 999);
+
+    const windowStart = new Date(sundayEnd);
+    windowStart.setDate(sundayEnd.getDate() - 27);
+    windowStart.setHours(0, 0, 0, 0);
+
+    const dateRange = { start: windowStart, end: sundayEnd };
+    const filtered = getFilteredLeads(leads, dateRange, branch);
+
+    const total = filtered.length;
+    const rented = filtered.filter((l) => l.status === "Rented").length;
+    const enriched = filtered.filter((l) => l.enrichmentComplete).length;
+    const conversionRate = total > 0 ? Math.round((rented / total) * 100) : 0;
+    const commentRate = total > 0 ? Math.round((enriched / total) * 100) : 0;
+
+    const windowTasks = tasksInDateRange(branchTasks, dateRange);
+    const openTasks = getOpenTasksCount(windowTasks);
+    const taskCompletionRate = getTaskCompletionRate(windowTasks) ?? 0;
+
+    const minutes = filtered
+      .map((l) => parseTimeToMinutes(l.timeToFirstContact))
+      .filter((m) => m != null);
+    const avgTimeToContact =
+      minutes.length > 0
+        ? Math.round(minutes.reduce((s, m) => s + m, 0) / minutes.length)
+        : 0;
+
+    result.push({
+      label: formatDateShort(sundayEnd),
+      totalLeads: total,
+      rented,
+      conversionRate,
+      commentRate,
+      openTasks: openTasks || 0,
+      taskCompletionRate,
+      avgTimeToContact,
+    });
+  }
+  return result;
 }
 
 /** Get leads for a zone (GM view). Filters by branches in that zone via org_mapping. */
