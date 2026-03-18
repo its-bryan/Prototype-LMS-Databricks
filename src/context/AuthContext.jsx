@@ -51,6 +51,7 @@ function profileFromApi(u) {
 export function AuthProvider({ children }) {
   const { setRole } = useApp();
   const [loading, setLoading] = useState(true);
+  const [signingIn, setSigningIn] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
   const [profileError, setProfileError] = useState(null);
 
@@ -84,20 +85,27 @@ export function AuthProvider({ children }) {
 
   const signIn = useCallback(async (email, password) => {
     setProfileError(null);
-    const res = await fetch(`${API_BASE}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: "Login failed" }));
-      throw new Error(err.detail || "Invalid email or password");
+    setSigningIn(true);
+    try {
+      const res = await fetch(`${API_BASE}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: "Login failed" }));
+        setSigningIn(false);
+        throw new Error(err.detail || "Invalid email or password");
+      }
+      const data = await res.json();
+      storeToken(data.token);
+      const profile = profileFromApi(data.user);
+      setUserProfile(profile);
+      setRole(profile.role);
+    } catch (e) {
+      setSigningIn(false);
+      throw e;
     }
-    const data = await res.json();
-    storeToken(data.token);
-    const profile = profileFromApi(data.user);
-    setUserProfile(profile);
-    setRole(profile.role);
   }, [setRole]);
 
   const signOut = useCallback(async () => {
@@ -107,7 +115,7 @@ export function AuthProvider({ children }) {
   }, [setRole]);
 
   return (
-    <AuthContext.Provider value={{ signIn, signOut, loading, userProfile, profileError }}>
+    <AuthContext.Provider value={{ signIn, signOut, loading, signingIn, userProfile, profileError }}>
       {children}
     </AuthContext.Provider>
   );

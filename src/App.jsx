@@ -18,10 +18,11 @@ function AppContent() {
 }
 
 function AppRoot() {
-  const { loading, userProfile } = useAuth();
+  const { loading, signingIn, userProfile } = useAuth();
   const { role } = useApp();
 
   if (loading) return <LoadingScreen />;
+  if (signingIn && !userProfile) return <LoadingScreen />;
   if (!userProfile || !role) return <LoginScreen />;
 
   return (
