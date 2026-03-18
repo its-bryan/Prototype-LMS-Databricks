@@ -1210,6 +1210,7 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
             branch={branch}
             dateRange={dateRange}
             reduceMotion={reduceMotion}
+            snapshotLeaderboard={snapshot?.leaderboard}
           />
         </div>
       </div>
@@ -3047,6 +3048,8 @@ function GMDashboardPage({ navigateTo }) {
             leads={leads}
             dateRange={dateRange}
             reduceMotion={reduceMotion}
+            snapshotLeaderboard={snapshot?.leaderboard}
+            gmName={gmName}
           />
           <ActivityReportModule
             navigateTo={navigateTo}

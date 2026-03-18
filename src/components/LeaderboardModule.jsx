@@ -15,11 +15,41 @@ const cardAnim = (i, reduced = false) => ({
   transition: { delay: reduced ? 0 : i * 0.06, duration: reduced ? 0.01 : 0.4, ease: [0.4, 0, 0.2, 1] },
 });
 
-export default function LeaderboardModule({ navigateTo, leads, branch, dateRange, reduceMotion }) {
-  const leaderboardData = useMemo(
-    () => (dateRange ? getBMLeaderboardData(leads ?? [], branch, dateRange, "conversionRate") : null),
-    [leads, branch, dateRange]
-  );
+export default function LeaderboardModule({ navigateTo, leads, branch, dateRange, reduceMotion, snapshotLeaderboard }) {
+  const leaderboardData = useMemo(() => {
+    if (!dateRange && !snapshotLeaderboard) return null;
+    if ((leads ?? []).length === 0 && snapshotLeaderboard?.length > 0 && branch) {
+      // #region agent log
+      fetch('http://127.0.0.1:7507/ingest/4cdc8682-4d34-4a46-8b0d-92860e51cbd8',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'9aea69'},body:JSON.stringify({sessionId:'9aea69',location:'LeaderboardModule.jsx',message:'BM leaderboard FROM SNAPSHOT',data:{branch,rows:snapshotLeaderboard.length},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
+      const myRow = snapshotLeaderboard.find((r) => r.branch === branch);
+      const gmName = myRow?.gm ?? null;
+      const cohort = gmName
+        ? snapshotLeaderboard.filter((r) => r.gm === gmName)
+        : [myRow].filter(Boolean);
+      const sorted = [...cohort].sort((a, b) => (b.conversionRate ?? -1) - (a.conversionRate ?? -1));
+      sorted.forEach((d, i) => { d.rank = i + 1; });
+      const myBranch = sorted.find((d) => d.branch === branch);
+      const avg = (arr, key) => {
+        const vals = arr.map((r) => r[key]).filter((v) => v != null);
+        return vals.length ? Math.round(vals.reduce((s, v) => s + v, 0) / vals.length) : null;
+      };
+      return {
+        myBranch: myBranch ? { ...myBranch, isCurrentBranch: true } : null,
+        peers: sorted.filter((d) => d.branch !== branch),
+        regionBenchmark: {
+          conversionRate: avg(cohort, "conversionRate"),
+          pctWithin30: avg(cohort, "pctWithin30"),
+          commentRate: avg(cohort, "commentRate"),
+          branchHrdPct: avg(cohort, "branchHrdPct"),
+        },
+        gmName,
+        cohortLabel: gmName ? `GM: ${gmName}` : "Your branch",
+        sorted,
+      };
+    }
+    return dateRange ? getBMLeaderboardData(leads ?? [], branch, dateRange, "conversionRate") : null;
+  }, [leads, branch, dateRange, snapshotLeaderboard]);
   const areasOfOpportunity = useMemo(() => {
     if (!leaderboardData?.myBranch || !leaderboardData?.regionBenchmark) return [];
     const my = leaderboardData.myBranch;
