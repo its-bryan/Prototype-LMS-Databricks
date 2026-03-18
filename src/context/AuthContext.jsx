@@ -110,6 +110,7 @@ export function AuthProvider({ children }) {
 
   const signOut = useCallback(async () => {
     clearToken();
+    setSigningIn(false);
     setUserProfile(null);
     setRole(null);
   }, [setRole]);
