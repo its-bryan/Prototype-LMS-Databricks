@@ -28,6 +28,7 @@ const {
   fetchDashboardSnapshot: apiFetchDashboardSnapshot,
   fetchLeads,
   fetchUploadSummary,
+  fetchAllConfig: apiFetchAllConfig,
   fetchOrgMapping: apiFetchOrgMapping,
   fetchBranchManagers: apiFetchBranchManagers,
   fetchWeeklyTrends: apiFetchWeeklyTrends,
@@ -296,32 +297,58 @@ export function DataProvider({ children }) {
   // Snapshot + config load on mount. Leads are deferred (loaded on-demand by
   // drill-down views) because the snapshot already has pre-computed metrics for
   // all dashboard/summary pages. This cuts GM initial load from ~32s to ~1s.
+  //
+  // Config data is fetched in a single batch request (/api/config/all) which
+  // runs 8 queries on one pooled connection instead of 8 separate HTTP calls
+  // each opening their own connection.
   useEffect(() => {
     if (!USE_LIVE_API) return;
 
     refetchSnapshot();
-    refetchOrgMapping();
-    refetchDataAsOfDate();
 
-    const wrap = (promise, key, setter, extra) => {
-      bumpPending(1);
-      promise
-        .then((data) => {
-          const val = data ?? (key === "weeklyTrends" ? { bm: [], gm: [] } : key === "leaderboardData" ? { branches: [], gms: [], ams: [], zones: [] } : []);
-          setter(val);
-          writeCache(key, val);
-          extra?.(val);
-        })
-        .catch((err) => console.error(`[DataContext] fetch ${key} failed:`, err))
-        .finally(() => bumpPending(-1));
-    };
+    bumpPending(1);
+    apiFetchAllConfig()
+      .then((cfg) => {
+        if (!cfg) return;
 
-    wrap(apiFetchWinsLearnings(), "winsLearnings", setWinsLearnings);
-    wrap(apiFetchCancellationReasonCategories(), "cancellationReasons", setCancellationReasonCategories);
-    wrap(apiFetchNextActions(), "nextActions", setNextActions);
-    wrap(apiFetchBranchManagers(), "branchManagers", setBranchManagers, (v) => setBranchManagersSource(v));
-    wrap(apiFetchWeeklyTrends(), "weeklyTrends", setWeeklyTrends, (v) => setWeeklyTrendsSource(v));
-    wrap(apiFetchLeaderboardData(), "leaderboardData", setLeaderboardData);
+        setOrgMapping(cfg.orgMapping);
+        setOrgMappingSource(cfg.orgMapping);
+        writeCache("orgMapping", cfg.orgMapping);
+        setOrgMappingReady(true);
+
+        setBranchManagers(cfg.branchManagers);
+        setBranchManagersSource(cfg.branchManagers);
+        writeCache("branchManagers", cfg.branchManagers);
+
+        setWeeklyTrends(cfg.weeklyTrends);
+        setWeeklyTrendsSource(cfg.weeklyTrends);
+        writeCache("weeklyTrends", cfg.weeklyTrends);
+
+        setLeaderboardData(cfg.leaderboard);
+        writeCache("leaderboardData", cfg.leaderboard);
+
+        setCancellationReasonCategories(cfg.cancelReasons);
+        writeCache("cancellationReasons", cfg.cancelReasons);
+
+        setNextActions(cfg.nextActions);
+        writeCache("nextActions", cfg.nextActions);
+
+        setWinsLearnings(cfg.winsLearnings);
+        writeCache("winsLearnings", cfg.winsLearnings);
+
+        const d = cfg.uploadSummary?.created_at ?? cfg.uploadSummary?.data_as_of_date ?? null;
+        setDataAsOfDate(d);
+        writeCache("dataAsOfDate", d);
+      })
+      .catch((err) => {
+        console.error("[DataContext] fetchAllConfig failed, falling back:", err);
+        refetchOrgMapping();
+        refetchDataAsOfDate();
+      })
+      .finally(() => {
+        setOrgMappingReady(true);
+        bumpPending(-1);
+      });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

@@ -279,6 +279,47 @@ export async function uploadHlesFile(file, options = {}) {
   return res.json();
 }
 
+/**
+ * Fetch ALL config tables in a single request (1 connection, 8 queries).
+ * Returns { orgMapping, branchManagers, weeklyTrends, uploadSummary,
+ *           leaderboard, cancelReasons, nextActions, winsLearnings }.
+ */
+export async function fetchAllConfig() {
+  const data = await apiGet("/config/all");
+  if (!data) return null;
+
+  const rawTrends = data.weeklyTrends;
+  let weeklyTrends;
+  if (Array.isArray(rawTrends)) {
+    const bm = rawTrends.filter((r) => r.total_leads !== undefined).map(weeklyTrendBmFromRow);
+    const gm = rawTrends.filter((r) => r.cancelled_unreviewed !== undefined).map(weeklyTrendGmFromRow);
+    weeklyTrends = { bm, gm };
+  } else {
+    weeklyTrends = {
+      bm: (rawTrends?.bm ?? []).map(weeklyTrendBmFromRow),
+      gm: (rawTrends?.gm ?? []).map(weeklyTrendGmFromRow),
+    };
+  }
+
+  const rawNextActions = data.nextActions ?? [];
+  const nextActions = rawNextActions.length === 0
+    ? []
+    : typeof rawNextActions[0] === "string"
+      ? rawNextActions
+      : rawNextActions.map((r) => r.action ?? r.name ?? r.label ?? "");
+
+  return {
+    orgMapping: (data.orgMapping ?? []).map(orgMappingFromRow),
+    branchManagers: (data.branchManagers ?? []).map(branchManagerFromRow),
+    weeklyTrends,
+    uploadSummary: data.uploadSummary ?? {},
+    leaderboard: data.leaderboard ?? {},
+    cancelReasons: (data.cancelReasons ?? []).map((r) => ({ category: r.category, reasons: r.reasons })),
+    nextActions,
+    winsLearnings: (data.winsLearnings ?? []).map(winsLearningFromRow),
+  };
+}
+
 /** Fetch the org-mapping (branch → BM/AM/GM/zone). */
 export async function fetchOrgMapping() {
   const rows = await apiGet("/config/org-mapping");
