@@ -72,7 +72,7 @@ function getMonday(date) {
   const day = d.getDay();
   const diff = day === 0 ? 6 : day - 1;
   d.setDate(d.getDate() - diff);
-  d.setHours(0, 0, 0, 0);
+  d.setHours(12, 0, 0, 0); // noon avoids PST/EDT day-boundary shifts in formatDateShort
   return d;
 }
 
@@ -105,7 +105,9 @@ export function getDateRangePresets() {
   trailing4WeeksStart.setDate(trailing4WeeksEnd.getDate() - 27);
   trailing4WeeksStart.setHours(0, 0, 0, 0);
 
-  const endLabel = formatDateShort(lastSunday);
+  const endLabelDate = new Date(lastSunday);
+  endLabelDate.setHours(12, 0, 0, 0); // noon avoids PST day-boundary shift
+  const endLabel = formatDateShort(endLabelDate);
 
   return [
     { key: "this_week", label: "This week", start: thisMonday, end: new Date(thisMonday.getTime() + 6 * 86400000 + 86399999) },
@@ -897,7 +899,7 @@ export function getBranchConversionRateForWeek(leads, branch, weekOf) {
 /** Format week date for display (e.g. "Feb 17–23") */
 export function formatWeekLabel(weekOf) {
   if (!weekOf) return "—";
-  const d = new Date(weekOf + "T00:00:00");
+  const d = new Date(weekOf + "T12:00:00");
   const mon = formatDateShort(d);
   const sun = new Date(d.getTime() + 6 * 86400000);
   const sunStr = formatDateShort(sun);
@@ -1024,8 +1026,9 @@ export function buildRolling4WeekChartData(leads, branchTasks, branch, numWeeks 
         ? Math.round(minutes.reduce((s, m) => s + m, 0) / minutes.length)
         : 0;
 
+    const labelDate = new Date(sundayEnd.getFullYear(), sundayEnd.getMonth(), sundayEnd.getDate(), 12);
     result.push({
-      label: formatDateShort(sundayEnd),
+      label: formatDateShort(labelDate),
       totalLeads: total,
       rented,
       conversionRate,
