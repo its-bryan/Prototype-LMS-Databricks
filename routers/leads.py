@@ -40,20 +40,38 @@ def _branches_for_gm(gm_name: str) -> list[str]:
 
 
 def _user_from_jwt(request: Request) -> dict | None:
-    """Extract user info from JWT Authorization header (best-effort, no 401)."""
-    auth = request.headers.get("authorization", "")
-    if not auth.startswith("Bearer "):
-        print(f"[leads-api] no Bearer token (auth header: {auth[:30]!r}...)", flush=True)
-        return None
+    """Extract user info from JWT — tries Authorization, X-Leo-Token, and _token query param."""
     import jwt as _jwt
     import os
+    token = None
+    source = None
+
+    auth = request.headers.get("authorization", "")
+    if auth.startswith("Bearer "):
+        token = auth[7:]
+        source = "Authorization"
+
+    if not token:
+        token = request.headers.get("x-leo-token")
+        if token:
+            source = "X-Leo-Token"
+
+    if not token:
+        token = request.query_params.get("_token")
+        if token:
+            source = "query-param"
+
+    if not token:
+        print("[leads-api] no JWT token found in any header or query param", flush=True)
+        return None
+
     secret = os.getenv("LEO_JWT_SECRET", "leo-mvp-secret-change-in-prod")
     try:
-        payload = _jwt.decode(auth[7:], secret, algorithms=["HS256"])
-        print(f"[leads-api] JWT decoded: role={payload.get('role')}, sub={payload.get('sub')}", flush=True)
+        payload = _jwt.decode(token, secret, algorithms=["HS256"])
+        print(f"[leads-api] JWT decoded via {source}: role={payload.get('role')}", flush=True)
         return payload
     except Exception as e:
-        print(f"[leads-api] JWT decode failed: {e}", flush=True)
+        print(f"[leads-api] JWT decode failed ({source}): {e}", flush=True)
         return None
 
 

@@ -22,10 +22,18 @@ function _getToken() {
 }
 
 async function apiFetch(path, options = {}) {
-  const url = `${API_BASE}${path}`;
   const token = _getToken();
+  let finalPath = path;
+  if (token) {
+    const sep = path.includes("?") ? "&" : "?";
+    finalPath = `${path}${sep}_token=${encodeURIComponent(token)}`;
+  }
+  const url = `${API_BASE}${finalPath}`;
   const headers = { "Content-Type": "application/json", ...options.headers };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+    headers["X-Leo-Token"] = token;
+  }
   const res = await fetch(url, { headers, ...options });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
