@@ -195,6 +195,12 @@ function weeklyTrendGmFromRow(r) {
 // Exported data-fetching functions
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Fetch the latest pre-computed dashboard snapshot (trailing 4 weeks). */
+export async function fetchDashboardSnapshot() {
+  const data = await apiGet("/dashboard-snapshot");
+  return data ?? null;
+}
+
 /** Fetch all leads. */
 export async function fetchLeads() {
   const rows = await apiGet("/leads");

@@ -93,12 +93,23 @@ export function getDateRangePresets() {
   const thisMonday = getMonday(NOW);
   const thisMonthStart = new Date(thisMonday.getFullYear(), thisMonday.getMonth(), 1);
   const thisYearStart = new Date(NOW.getFullYear(), 0, 1);
-  const trailing4WeeksEnd = new Date(NOW.getFullYear(), NOW.getMonth(), NOW.getDate(), 23, 59, 59);
-  const trailing4WeeksStart = new Date(trailing4WeeksEnd.getTime() - 27 * 86400000);
+
+  // Trailing 4 weeks always ends on the most recent Sunday (clean Mon–Sun boundaries)
+  const nowDate = new Date(NOW.getFullYear(), NOW.getMonth(), NOW.getDate());
+  const dayOfWeek = nowDate.getDay(); // 0=Sun
+  const lastSunday = new Date(nowDate);
+  lastSunday.setDate(nowDate.getDate() - (dayOfWeek === 0 ? 0 : dayOfWeek));
+  const trailing4WeeksEnd = new Date(lastSunday);
+  trailing4WeeksEnd.setHours(23, 59, 59, 999);
+  const trailing4WeeksStart = new Date(trailing4WeeksEnd);
+  trailing4WeeksStart.setDate(trailing4WeeksEnd.getDate() - 27);
+  trailing4WeeksStart.setHours(0, 0, 0, 0);
+
+  const endLabel = formatDateShort(lastSunday);
 
   return [
     { key: "this_week", label: "This week", start: thisMonday, end: new Date(thisMonday.getTime() + 6 * 86400000 + 86399999) },
-    { key: "trailing_4_weeks", label: "Trailing 4 weeks", start: trailing4WeeksStart, end: trailing4WeeksEnd },
+    { key: "trailing_4_weeks", label: "Trailing 4 weeks", sublabel: `ending ${endLabel}`, start: trailing4WeeksStart, end: trailing4WeeksEnd },
     { key: "this_month", label: "This month", start: thisMonthStart, end: new Date(NOW) },
     { key: "this_year", label: "This Year", start: thisYearStart, end: new Date(NOW) },
   ];
@@ -158,13 +169,13 @@ export function relChange(current, previous) {
 
 /** Check if a lead falls within a date range. Uses week_of or init_dt_final (lead received date) to align with Leads table semantics — not lastActivity. */
 function leadInDateRange(lead, start, end) {
-  const weekOf = lead.weekOf ?? lead.week_of;
   const initDt = lead.initDtFinal ?? lead.init_dt_final;
+  const weekOf = lead.weekOf ?? lead.week_of;
   let t = null;
-  if (weekOf) {
-    t = new Date(weekOf + "T00:00:00");
-  } else if (initDt) {
+  if (initDt) {
     t = new Date(initDt + "T00:00:00");
+  } else if (weekOf) {
+    t = new Date(weekOf + "T00:00:00");
   } else {
     t = lead.lastActivity ? new Date(lead.lastActivity) : (lead.translog?.[0] ? new Date(`${lead.translog[0].time}, 2026`) : null);
   }
@@ -1468,12 +1479,12 @@ export function getTrendsChartDataByDimension(leads, branchTasks, dateRange, bra
     .sort((a, b) => (b.totalLeads || 0) - (a.totalLeads || 0));
 }
 
-/** Get lead date for period assignment. Must match leadInDateRange fallbacks so chart and tiles use the same lead set. */
+/** Get lead date for period assignment. Prefers init_dt_final (per-lead date) over week_of (upload week) for granular bucketing. Must match leadInDateRange fallbacks so chart and tiles use the same lead set. */
 function getLeadDateForPeriod(lead) {
-  const weekOf = lead.weekOf ?? lead.week_of;
   const initDt = lead.initDtFinal ?? lead.init_dt_final;
-  if (weekOf) return new Date(weekOf + "T00:00:00");
+  const weekOf = lead.weekOf ?? lead.week_of;
   if (initDt) return new Date(initDt + "T00:00:00");
+  if (weekOf) return new Date(weekOf + "T00:00:00");
   if (lead.lastActivity) return new Date(lead.lastActivity);
   if (lead.translog?.[0]?.time) return new Date(`${lead.translog[0].time}, 2026`);
   return null;

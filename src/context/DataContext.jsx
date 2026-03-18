@@ -25,6 +25,7 @@ import {
 const dataModule = await import("../data/databricksData.js");
 
 const {
+  fetchDashboardSnapshot: apiFetchDashboardSnapshot,
   fetchLeads,
   fetchUploadSummary,
   fetchOrgMapping: apiFetchOrgMapping,
@@ -88,6 +89,7 @@ const _c = USE_LIVE_API
       winsLearnings: readCache("winsLearnings"),
       cancellationReasons: readCache("cancellationReasons"),
       nextActions: readCache("nextActions"),
+      snapshot: readCache("snapshot"),
     }
   : {};
 
@@ -155,6 +157,7 @@ export function DataProvider({ children }) {
   const [orgMapping, setOrgMapping] = useState(
     USE_LIVE_API ? (_c.orgMapping ?? []) : [...mockOrgMapping],
   );
+  const [snapshot, setSnapshot] = useState(USE_LIVE_API ? (_c.snapshot ?? null) : null);
   const [gmTasks, setGmTasks] = useState(() => (USE_LIVE_API ? null : [...mockTasks]));
   const [cancellationReasonCategories, setCancellationReasonCategories] = useState(
     USE_LIVE_API ? (_c.cancellationReasons ?? []) : [...mockCancellationReasonCategories],
@@ -252,10 +255,25 @@ export function DataProvider({ children }) {
     }
   }, []);
 
+  const refetchSnapshot = useCallback(async () => {
+    if (!USE_LIVE_API) return;
+    bumpPending(1);
+    try {
+      const data = await apiFetchDashboardSnapshot();
+      setSnapshot(data);
+      writeCache("snapshot", data);
+    } catch (err) {
+      console.error("[DataContext] fetchDashboardSnapshot failed:", err);
+    } finally {
+      bumpPending(-1);
+    }
+  }, []);
+
   // --- Initial data load (all fetches fire in parallel) ---
   useEffect(() => {
     if (!USE_LIVE_API) return;
 
+    refetchSnapshot();
     refetchLeads();
     refetchOrgMapping();
     refetchDataAsOfDate();
@@ -539,11 +557,13 @@ export function DataProvider({ children }) {
     isRefreshing,
     error,
     dataAsOfDate,
+    snapshot,
     orgMapping,
     gmTasks,
     refetchLeads,
     refetchOrgMapping,
     refetchDataAsOfDate,
+    refetchSnapshot,
     updateLeadEnrichment,
     updateLeadContact,
     updateLeadDirective,

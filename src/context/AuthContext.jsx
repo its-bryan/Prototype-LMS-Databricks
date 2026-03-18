@@ -1,62 +1,113 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useApp } from "./AppContext";
-import { roleUsers } from "../config/navigation";
+
+const API_BASE = "/api";
+const TOKEN_KEY = "leo_token";
 
 const defaultAuthValue = {
   signIn: async () => {},
   signOut: async () => {},
-  loading: false,
+  loading: true,
   userProfile: null,
   profileError: null,
-  updateProfile: async () => {},
-  completeOnboarding: async () => {},
 };
 
 const AuthContext = createContext(defaultAuthValue);
 
-/** Auth is role-based (Landing → select role). No Supabase; userProfile comes from roleUsers. */
+function getStoredToken() {
+  try {
+    return sessionStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function storeToken(token) {
+  try {
+    sessionStorage.setItem(TOKEN_KEY, token);
+  } catch { /* private browsing */ }
+}
+
+function clearToken() {
+  try {
+    sessionStorage.removeItem(TOKEN_KEY);
+  } catch { /* ok */ }
+}
+
+function profileFromApi(u) {
+  return {
+    id: u.id,
+    role: u.role,
+    displayName: u.displayName,
+    branch: u.branch ?? null,
+    email: u.email ?? null,
+    phone: null,
+    onboardingCompletedAt: new Date().toISOString(),
+    avatarUrl: null,
+    title: null,
+  };
+}
+
 export function AuthProvider({ children }) {
-  const { setRole, role } = useApp();
+  const { setRole } = useApp();
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState(null);
   const [profileError, setProfileError] = useState(null);
 
   useEffect(() => {
-    setLoading(false);
+    const token = getStoredToken();
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          clearToken();
+          setLoading(false);
+          return;
+        }
+        const data = await res.json();
+        const profile = profileFromApi(data.user);
+        setUserProfile(profile);
+        setRole(profile.role);
+      } catch {
+        clearToken();
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, []);
 
-  useEffect(() => {
-    if (!role) {
-      setUserProfile(null);
-      return;
-    }
-    const demoUser = roleUsers[role];
-    if (!demoUser) {
-      setUserProfile(null);
-      return;
-    }
-    setUserProfile({
-      id: `demo-${role}`,
-      role,
-      displayName: demoUser.name,
-      branch: null,
-      phone: null,
-      email: null,
-      onboardingCompletedAt: new Date().toISOString(),
-      avatarUrl: null,
-      title: null,
+  const signIn = useCallback(async (email, password) => {
+    setProfileError(null);
+    const res = await fetch(`${API_BASE}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
     });
-  }, [role]);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: "Login failed" }));
+      throw new Error(err.detail || "Invalid email or password");
+    }
+    const data = await res.json();
+    storeToken(data.token);
+    const profile = profileFromApi(data.user);
+    setUserProfile(profile);
+    setRole(profile.role);
+  }, [setRole]);
 
-  const signIn = useCallback(async () => {}, []);
   const signOut = useCallback(async () => {
+    clearToken();
+    setUserProfile(null);
     setRole(null);
   }, [setRole]);
-  const updateProfile = useCallback(async () => {}, []);
-  const completeOnboarding = useCallback(async () => {}, []);
 
   return (
-    <AuthContext.Provider value={{ signIn, signOut, loading, userProfile, profileError, updateProfile, completeOnboarding }}>
+    <AuthContext.Provider value={{ signIn, signOut, loading, userProfile, profileError }}>
       {children}
     </AuthContext.Provider>
   );

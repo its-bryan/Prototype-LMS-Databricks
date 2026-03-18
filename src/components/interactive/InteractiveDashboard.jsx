@@ -24,6 +24,9 @@ import {
   getGMDashboardStats,
   resolveGMName,
   relChange,
+  formatMinutesToDisplay,
+  getBranchesForGM,
+  leadInGmBranchList,
 } from "../../selectors/demoSelectors";
 import { roleMeta, roleUsers, roleDefaults } from "../../config/navigation";
 import MiniBarChart from "../MiniBarChart";
@@ -144,9 +147,11 @@ function leadToHlesRow(lead, org) {
 
 function BMDashboard({ navigateTo, selectLead, selectTask }) {
   const { userProfile } = useAuth();
-  const { leads, initialDataReady, fetchTasksForBranch, updateLeadEnrichment, updateTaskStatus, insertTask } = useData();
+  const { leads, initialDataReady, snapshot, fetchTasksForBranch, updateLeadEnrichment, updateTaskStatus, insertTask } = useData();
   const reduceMotion = useReducedMotion();
   const branch = (userProfile?.branch?.trim() || getDefaultBranchForDemo());
+  const snapshotBranch = snapshot?.branches?.[branch];
+  const useSnapshotData = leads.length === 0 && !!snapshotBranch;
 
   const [branchTasks, setBranchTasks] = useState(() =>
     []
@@ -223,6 +228,9 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
   const branchLeads = getLeadsForBranch(leads, branch);
 
   const { stats, chartData: trendsChartData } = useMemo(() => {
+    if (useSnapshotData && selectedPresetKey === "trailing_4_weeks" && !useCustom) {
+      return { stats: snapshotBranch.stats, chartData: snapshotBranch.chartData ?? [] };
+    }
     if (!dateRange) return { stats: getBMStats(leads, dateRange, branch), chartData: [] };
     if (trendsGroupBy === "period") {
       const { stats: s } = getSummaryDataWithChart(leads, branchTasks, dateRange, branch, "trailing_4_weeks", trendsGroupBy);
@@ -230,7 +238,7 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
       return { stats: s, chartData };
     }
     return getSummaryDataWithChart(leads, branchTasks, dateRange, branch, "trailing_4_weeks", trendsGroupBy);
-  }, [dateRange, trendsGroupBy, leads, branch, branchTasks]);
+  }, [dateRange, trendsGroupBy, leads, branch, branchTasks, useSnapshotData, snapshotBranch, selectedPresetKey, useCustom]);
 
   const isStackedView = trendsGroupBy !== "period";
 
@@ -383,10 +391,12 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
   const comparisonRange = useCustom
     ? getComparisonDateRange("custom", customStart, customEnd)
     : getComparisonDateRange(selectedPresetKey);
-  const comparisonStats = getBMStats(leads, comparisonRange, branch);
+  const comparisonStats = (useSnapshotData && snapshotBranch?.comparison)
+    ? snapshotBranch.comparison
+    : getBMStats(leads, comparisonRange, branch);
 
-  const convRate = stats.total ? Math.round((stats.rented / stats.total) * 100) : 0;
-  const prevConvRate = comparisonStats.total ? Math.round((comparisonStats.rented / comparisonStats.total) * 100) : 0;
+  const convRate = stats.conversionRate ?? (stats.total ? Math.round((stats.rented / stats.total) * 100) : 0);
+  const prevConvRate = comparisonStats.conversionRate ?? (comparisonStats.total ? Math.round((comparisonStats.rented / comparisonStats.total) * 100) : 0);
   const prevCommentRate = comparisonStats.enrichmentRate ?? 0;
 
   // Tasks in date range for period-over-period comparison (consistent with other metrics)
@@ -394,16 +404,22 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
   const tasksInComparison = comparisonRange
     ? tasksInDateRange(branchTasks, comparisonRange)
     : [];
-  const openInPeriod = getOpenTasksCount(tasksInPeriod);
-  const openInComparison = getOpenTasksCount(tasksInComparison);
-  const completionInPeriod = getTaskCompletionRate(tasksInPeriod);
-  const completionInComparison = getTaskCompletionRate(tasksInComparison);
 
-  const openTasksCount = dateRange ? openInPeriod : getOpenTasksCount(branchTasks);
-  const taskCompletionRate = dateRange && tasksInPeriod.length > 0 ? completionInPeriod : getTaskCompletionRate(branchTasks);
-  const avgTimeToContact = getAverageTimeToContact(leads, dateRange, branch);
-  const avgTimeToContactMin = getAverageTimeToContactMinutes(leads, dateRange, branch);
-  const prevAvgTimeToContactMin = getAverageTimeToContactMinutes(leads, comparisonRange, branch);
+  const _snapshotTasks = useSnapshotData ? snapshotBranch?.tasks : null;
+  const _snapshotCompTasks = useSnapshotData ? snapshotBranch?.comparisonTasks : null;
+
+  const openInPeriod = _snapshotTasks ? _snapshotTasks.open : getOpenTasksCount(tasksInPeriod);
+  const openInComparison = _snapshotCompTasks ? _snapshotCompTasks.open : getOpenTasksCount(tasksInComparison);
+  const completionInPeriod = _snapshotTasks ? _snapshotTasks.completionRate : getTaskCompletionRate(tasksInPeriod);
+  const completionInComparison = _snapshotCompTasks ? _snapshotCompTasks.completionRate : getTaskCompletionRate(tasksInComparison);
+
+  const openTasksCount = _snapshotTasks ? _snapshotTasks.open : (dateRange ? openInPeriod : getOpenTasksCount(branchTasks));
+  const taskCompletionRate = _snapshotTasks ? _snapshotTasks.completionRate : (dateRange && tasksInPeriod.length > 0 ? completionInPeriod : getTaskCompletionRate(branchTasks));
+  const avgTimeToContact = useSnapshotData
+    ? (_snapshotTasks?.avgTimeToContactMin ? formatMinutesToDisplay(_snapshotTasks.avgTimeToContactMin) : null)
+    : getAverageTimeToContact(leads, dateRange, branch);
+  const avgTimeToContactMin = _snapshotTasks?.avgTimeToContactMin ?? getAverageTimeToContactMinutes(leads, dateRange, branch);
+  const prevAvgTimeToContactMin = _snapshotCompTasks?.avgTimeToContactMin ?? getAverageTimeToContactMinutes(leads, comparisonRange, branch);
 
   const relChangeOpenTasks = comparisonRange != null && openInComparison > 0
     ? Math.round(((openInComparison - openInPeriod) / openInComparison) * 100) // fewer = better
@@ -1142,7 +1158,7 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
     );
   };
 
-  if (!initialDataReady) return <BMDashboardSkeleton />;
+  if (!initialDataReady && !snapshotBranch) return <BMDashboardSkeleton />;
 
   return (
     <div className="max-w-[var(--container-max)]">
@@ -2516,7 +2532,7 @@ function getGMContextualInsight({ stats, prevStats }) {
 
 function GMDashboardPage({ navigateTo }) {
   const { userProfile } = useAuth();
-  const { leads, loading, initialDataReady, orgMapping } = useData();
+  const { leads, loading, initialDataReady, orgMapping, snapshot } = useData();
   const reduceMotion = useReducedMotion();
   const displayName = userProfile?.displayName ?? roleUsers.gm?.name ?? "there";
   const [drilldownMetric, setDrilldownMetric] = useState(null);
@@ -2553,14 +2569,30 @@ function GMDashboardPage({ navigateTo }) {
     if (name && (orgMapping ?? []).some((r) => r.gm === name)) return name;
     return resolveGMName(name, userProfile?.id);
   }, [userProfile?.displayName, userProfile?.id, orgMapping]);
-  const stats = useMemo(() => getGMDashboardStats(leads, dateRange, gmName), [leads, dateRange, gmName]);
+
+  const snapshotGM = gmName ? (snapshot?.gms?.[gmName] ?? null) : null;
+  const useSnapshotGM = leads.length === 0 && !!snapshotGM;
+
+  const stats = useMemo(() => {
+    if (useSnapshotGM && selectedPresetKey === "trailing_4_weeks") return snapshotGM.stats;
+    return getGMDashboardStats(leads, dateRange, gmName);
+  }, [leads, dateRange, gmName, useSnapshotGM, snapshotGM, selectedPresetKey]);
   const prevRange = useMemo(() => getComparisonDateRange(selectedPresetKey), [selectedPresetKey]);
-  const prevStats = useMemo(() => (prevRange ? getGMDashboardStats(leads, prevRange, gmName) : null), [leads, prevRange, gmName]);
+  const prevStats = useMemo(() => {
+    if (useSnapshotGM && snapshotGM?.comparison) return snapshotGM.comparison;
+    return prevRange ? getGMDashboardStats(leads, prevRange, gmName) : null;
+  }, [leads, prevRange, gmName, useSnapshotGM, snapshotGM]);
 
   const greeting = getTimeOfDayGreeting();
   const insight = getGMContextualInsight({ stats, prevStats });
 
   const { stats: chartStats, chartData: trendsChartData } = useMemo(() => {
+    if (useSnapshotGM && trendsGroupBy === "period" && !trendsUseCustom && trendsTimePresetKey === "trailing_4_weeks") {
+      const cd = snapshotGM.chartData ?? [];
+      const total = cd.reduce((s, d) => s + (d.totalLeads ?? 0), 0);
+      const rented = cd.reduce((s, d) => s + (d.rented ?? 0), 0);
+      return { stats: { total, rented }, chartData: cd };
+    }
     if (!chartDateRange) return { stats: null, chartData: [] };
     return getSummaryDataWithChart(
       leads,
@@ -2570,7 +2602,7 @@ function GMDashboardPage({ navigateTo }) {
       trendsUseCustom ? "custom" : trendsTimePresetKey,
       trendsGroupBy
     );
-  }, [leads, chartDateRange, trendsTimePresetKey, trendsUseCustom, trendsGroupBy]);
+  }, [leads, chartDateRange, trendsTimePresetKey, trendsUseCustom, trendsGroupBy, useSnapshotGM, snapshotGM]);
 
   const isStackedView = trendsGroupBy !== "period";
   const effectiveTrendsMetric = isStackedView && !GM_STACKED_SUPPORTED_METRICS.includes(summaryTrendsMetric)
@@ -2660,7 +2692,7 @@ function GMDashboardPage({ navigateTo }) {
     return row.total;
   };
 
-  if (!initialDataReady) return <GMDashboardSkeleton />;
+  if (!initialDataReady && !snapshotGM) return <GMDashboardSkeleton />;
 
   return (
     <div className="max-w-[var(--container-max)]">

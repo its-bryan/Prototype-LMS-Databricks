@@ -40,7 +40,7 @@ export const roleMeta = {
 };
 
 export const roleUsers = {
-  bm: { name: "Sarah Chen", initials: "SC" },
+  bm: { name: "Jonathan Hoover", initials: "JH" },
   gm: { name: "Adam Frankel", initials: "AF" },
-  admin: { name: "Lisa Park", initials: "LP" },
+  admin: { name: "Leo Admin", initials: "LA" },
 };

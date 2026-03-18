@@ -89,7 +89,7 @@ export default function LoginScreen() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@hertz.demo"
+                  placeholder="you@hertz.com"
                   required
                   autoComplete="email"
                   className="w-full h-14 px-4 border-2 border-[#E5E5E5] rounded-xl text-[#272425] placeholder:text-[#888] focus:outline-none focus:border-[#272425] focus:ring-4 focus:ring-[#FFD100]/20 transition-all duration-200 text-base"

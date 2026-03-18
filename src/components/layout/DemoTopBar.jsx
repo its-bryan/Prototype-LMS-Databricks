@@ -1,12 +1,14 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useApp } from "../../context/AppContext";
+import { useAuth } from "../../context/AuthContext";
 import { useData } from "../../context/DataContext";
 import { BMDashboardInbox } from "../interactive/InteractiveDashboard";
 import { getAllLeads } from "../../selectors/demoSelectors";
 
 export default function DemoTopBar({ onHelpClick }) {
   const { role, navigateTo, selectLead, selectTask } = useApp();
+  const { userProfile, signOut } = useAuth();
   const { leads } = useData();
   const [inboxOpen, setInboxOpen] = useState(false);
   const panelRef = useRef(null);
@@ -108,6 +110,24 @@ export default function DemoTopBar({ onHelpClick }) {
               </AnimatePresence>
             </div>
           </>
+        )}
+
+        {userProfile && (
+          <div className="flex items-center gap-2 ml-2 pl-2 border-l border-white/20">
+            <span className="text-white/70 text-xs hidden sm:inline">{userProfile.displayName}</span>
+            <button
+              onClick={signOut}
+              className="p-2 text-white/70 hover:text-[#FFD100] hover:bg-white/10 rounded-md transition-colors duration-200 cursor-pointer"
+              title="Sign out"
+              aria-label="Sign out"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+            </button>
+          </div>
         )}
       </div>
     </div>

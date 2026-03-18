@@ -4,11 +4,11 @@ import { DataProvider } from "./context/DataContext";
 import AppLayout from "./components/layout/AppLayout";
 import JourneyMode from "./components/JourneyMode";
 import InteractiveShell from "./components/interactive/InteractiveShell";
-import Landing from "./components/Landing";
+import LoginScreen from "./components/LoginScreen";
 import LoadingScreen from "./components/LoadingScreen";
 
 function AppContent() {
-  const { mode, role } = useApp();
+  const { mode } = useApp();
 
   if (mode === "journey") {
     return <JourneyMode />;
@@ -18,11 +18,12 @@ function AppContent() {
 }
 
 function AppRoot() {
-  const { loading } = useAuth();
-  const { role, setRole } = useApp();
+  const { loading, userProfile } = useAuth();
+  const { role } = useApp();
 
   if (loading) return <LoadingScreen />;
-  if (!role) return <Landing onSelect={setRole} />;
+  if (!userProfile || !role) return <LoginScreen />;
+
   return (
     <AppLayout>
       <AppContent />

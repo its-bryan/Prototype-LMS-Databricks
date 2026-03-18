@@ -754,7 +754,7 @@ function OrphanActionSelector({ orphanedLeads, orphanAction, onOrphanAction }) {
 // Main Upload Wizard
 // ---------------------------------------------------------------------------
 export default function InteractiveUploads() {
-  const { leads: contextLeads, refetchLeads, refetchOrgMapping, refetchDataAsOfDate } = useData();
+  const { leads: contextLeads, refetchLeads, refetchOrgMapping, refetchDataAsOfDate, refetchSnapshot } = useData();
   const { userProfile } = useAuth();
 
   const [step, setStep] = useState("select");
@@ -908,6 +908,7 @@ export default function InteractiveUploads() {
         refetchLeads?.();
         refetchOrgMapping?.();
         refetchDataAsOfDate?.();
+        setTimeout(() => refetchSnapshot?.(), 2000);
         setStep("summary");
       } catch (err) {
         setCommitError(err?.message ?? "Upload failed");
@@ -939,7 +940,7 @@ export default function InteractiveUploads() {
     });
     setCommitting(false);
     setStep("summary");
-  }, [hlesReconciliation, translogReconciliation, translogParsed, conflictResolutions, orphanAction, hlesParsed, hlesFile, translogFile, refetchLeads, refetchOrgMapping, refetchDataAsOfDate, userProfile?.displayName, loadUploadHistory]);
+  }, [hlesReconciliation, translogReconciliation, translogParsed, conflictResolutions, orphanAction, hlesParsed, hlesFile, translogFile, refetchLeads, refetchOrgMapping, refetchDataAsOfDate, refetchSnapshot, userProfile?.displayName, loadUploadHistory]);
 
   const handleResolveConflict = useCallback((idx, resolution) => {
     setConflictResolutions((prev) => ({ ...prev, [idx]: resolution }));
