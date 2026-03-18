@@ -94,11 +94,16 @@ def _to_date(val) -> date | None:
 # ---------------------------------------------------------------------------
 
 def _lead_date(lead: dict) -> date | None:
-    """Primary date for a lead: week_of > init_dt_final > None."""
-    d = _to_date(lead.get("week_of"))
+    """Primary date for a lead: init_dt_final > week_of > None.
+
+    Prefers init_dt_final (per-lead date) over week_of (HLES upload week)
+    so leads spread across the correct weekly buckets in chart data.
+    Must match the JS equivalent (getLeadDateForPeriod / leadInDateRange).
+    """
+    d = _to_date(lead.get("init_dt_final"))
     if d:
         return d
-    return _to_date(lead.get("init_dt_final"))
+    return _to_date(lead.get("week_of"))
 
 
 def _lead_in_range(lead: dict, start: date, end: date) -> bool:
