@@ -24,12 +24,13 @@ async def get_tasks(lead_id: int = None, branch: str = None):
     if lead_id:
         return query("SELECT * FROM tasks WHERE lead_id = %s ORDER BY created_at DESC", (lead_id,))
     if branch:
+        normalized = " ".join(branch.split())
         return query(
             """SELECT t.* FROM tasks t
                JOIN leads l ON t.lead_id = l.id
-               WHERE regexp_replace(l.branch, '\\s+', ' ', 'g') = regexp_replace(%s, '\\s+', ' ', 'g')
+               WHERE trim(regexp_replace(l.branch, '\\s+', ' ', 'g')) = %s
                ORDER BY t.created_at DESC""",
-            (branch,)
+            (normalized,)
         )
     return query("SELECT * FROM tasks ORDER BY created_at DESC")
 

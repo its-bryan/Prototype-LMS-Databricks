@@ -1,10 +1,12 @@
 import os
 from fastapi import FastAPI
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from routers import leads, tasks, config, upload, directives, wins, snapshot, auth
 
 app = FastAPI(title="Hertz LMS API")
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # API routes — auth first (no DB-token dependency)
 app.include_router(auth.router, prefix="/api")
