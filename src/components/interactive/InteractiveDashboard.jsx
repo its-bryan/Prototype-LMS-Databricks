@@ -152,11 +152,24 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
   const reduceMotion = useReducedMotion();
   const branch = (userProfile?.branch?.trim() || getDefaultBranchForDemo());
   const snapshotBranch = useMemo(() => {
-    if (!snapshot?.branches || !branch) return null;
+    if (!snapshot?.branches || !branch) {
+      // #region agent log
+      console.log("[DEBUG-9aea69] snapshotBranch: null", { hasSnapshot: !!snapshot, hasBranches: !!snapshot?.branches, branch, leadsLen: leads.length, ts: Date.now() });
+      // #endregion
+      return null;
+    }
     const direct = snapshot.branches[branch];
-    if (direct) return direct;
+    if (direct) {
+      // #region agent log
+      console.log("[DEBUG-9aea69] snapshotBranch: FOUND direct", { branch, ts: Date.now() });
+      // #endregion
+      return direct;
+    }
     const norm = normalizeBranchKey(branch);
     const key = Object.keys(snapshot.branches).find((k) => normalizeBranchKey(k) === norm);
+    // #region agent log
+    console.log("[DEBUG-9aea69] snapshotBranch: normalized lookup", { branch, norm, foundKey: key ?? null, availableKeys: Object.keys(snapshot.branches).slice(0, 5), ts: Date.now() });
+    // #endregion
     return key ? snapshot.branches[key] : null;
   }, [snapshot, branch]);
   const useSnapshotData = leads.length === 0 && !!snapshotBranch;
@@ -2582,6 +2595,10 @@ function GMDashboardPage({ navigateTo }) {
   }, [userProfile?.displayName, userProfile?.id, orgMapping]);
 
   const snapshotGM = gmName ? (snapshot?.gms?.[gmName] ?? null) : null;
+  // #region agent log
+  if (!snapshotGM) console.log("[DEBUG-9aea69] snapshotGM: null", { gmName, hasSnapshot: !!snapshot, gmKeys: snapshot?.gms ? Object.keys(snapshot.gms).slice(0, 5) : null, leadsLen: leads.length, ts: Date.now() });
+  else console.log("[DEBUG-9aea69] snapshotGM: FOUND", { gmName, ts: Date.now() });
+  // #endregion
   const useSnapshotGM = leads.length === 0 && !!snapshotGM;
 
   const stats = useMemo(() => {

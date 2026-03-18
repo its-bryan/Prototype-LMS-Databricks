@@ -228,14 +228,14 @@ export function DataProvider({ children }) {
     if (!USE_LIVE_API) return;
     // #region agent log
     const _lt0 = Date.now();
-    fetch('http://127.0.0.1:7507/ingest/4cdc8682-4d34-4a46-8b0d-92860e51cbd8',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'9aea69'},body:JSON.stringify({sessionId:'9aea69',location:'DataContext.jsx:refetchLeads',message:'leads fetch START',data:{},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
+    console.log("[DEBUG-9aea69] leads fetch START", { ts: _lt0 });
     // #endregion
     bumpPending(1);
     setError(null);
     try {
       const data = await fetchLeads();
       // #region agent log
-      fetch('http://127.0.0.1:7507/ingest/4cdc8682-4d34-4a46-8b0d-92860e51cbd8',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'9aea69'},body:JSON.stringify({sessionId:'9aea69',location:'DataContext.jsx:refetchLeads',message:'leads fetch SUCCESS',data:{elapsed:Date.now()-_lt0,count:(data??[]).length},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
+      console.log("[DEBUG-9aea69] leads fetch SUCCESS", { elapsed: Date.now() - _lt0, count: (data ?? []).length, ts: Date.now() });
       // #endregion
       setLeads(data ?? []);
       writeCache("leads", data ?? []);
@@ -270,23 +270,25 @@ export function DataProvider({ children }) {
     const maxAttempts = poll ? 8 : 1;
     // #region agent log
     const _t0 = Date.now();
-    fetch('http://127.0.0.1:7507/ingest/4cdc8682-4d34-4a46-8b0d-92860e51cbd8',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'9aea69'},body:JSON.stringify({sessionId:'9aea69',location:'DataContext.jsx:refetchSnapshot',message:'snapshot fetch START',data:{poll,maxAttempts},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+    console.log("[DEBUG-9aea69] snapshot fetch START", { poll, maxAttempts, ts: _t0 });
     // #endregion
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       if (attempt > 0) await new Promise(r => setTimeout(r, 5000));
       bumpPending(1);
       try {
         const data = await apiFetchDashboardSnapshot();
+        // #region agent log
+        console.log("[DEBUG-9aea69] snapshot fetch RESPONSE", { attempt, elapsed: Date.now() - _t0, dataIsNull: data === null, dataType: typeof data, branchKeys: data ? Object.keys(data.branches || {}).slice(0, 5) : null, hasLeaderboard: !!(data?.leaderboard?.length), version: data?.version, ts: Date.now() });
+        // #endregion
         if (data) {
-          // #region agent log
-          fetch('http://127.0.0.1:7507/ingest/4cdc8682-4d34-4a46-8b0d-92860e51cbd8',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'9aea69'},body:JSON.stringify({sessionId:'9aea69',location:'DataContext.jsx:refetchSnapshot',message:'snapshot fetch SUCCESS',data:{attempt,elapsed:Date.now()-_t0,branches:Object.keys(data.branches||{}).length,hasLeaderboard:!!(data.leaderboard?.length)},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-          // #endregion
           setSnapshot(data);
           writeCache("snapshot", data);
           return;
         }
       } catch (err) {
-        console.error("[DataContext] fetchDashboardSnapshot failed:", err);
+        // #region agent log
+        console.error("[DEBUG-9aea69] snapshot fetch ERROR", err);
+        // #endregion
       } finally {
         bumpPending(-1);
       }
