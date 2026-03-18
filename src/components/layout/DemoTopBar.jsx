@@ -1,10 +1,13 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, lazy, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useApp } from "../../context/AppContext";
 import { useAuth } from "../../context/AuthContext";
 import { useData } from "../../context/DataContext";
-import { BMDashboardInbox } from "../interactive/InteractiveDashboard";
 import { getAllLeads } from "../../selectors/demoSelectors";
+
+const BMDashboardInbox = lazy(() =>
+  import("../interactive/InteractiveDashboard").then((m) => ({ default: m.BMDashboardInbox }))
+);
 
 export default function DemoTopBar({ onHelpClick }) {
   const { role, navigateTo, selectLead, selectTask } = useApp();
@@ -103,7 +106,9 @@ export default function DemoTopBar({ onHelpClick }) {
                     className="absolute right-6 top-[52px] w-[720px] max-h-[480px] overflow-y-auto bg-white rounded-lg shadow-[0_12px_40px_rgba(0,0,0,0.2)] border border-[#E5E5E5] z-50"
                   >
                     <div className="p-5">
-                      <BMDashboardInbox navigateTo={handleNavigate} selectLead={handleSelectLead} />
+                      <Suspense fallback={<div className="py-8 text-center text-sm text-neutral-500">Loading inbox…</div>}>
+                        <BMDashboardInbox navigateTo={handleNavigate} selectLead={handleSelectLead} />
+                      </Suspense>
                     </div>
                   </motion.div>
                 )}

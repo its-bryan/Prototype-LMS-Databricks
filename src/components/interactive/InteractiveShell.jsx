@@ -1,21 +1,23 @@
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useApp } from "../../context/AppContext";
-import InteractiveDashboard from "./InteractiveDashboard";
-import InteractiveLeadDetail from "./InteractiveLeadDetail";
-import InteractiveUploads from "./InteractiveUploads";
-import InteractiveOrgMapping from "./InteractiveOrgMapping";
-import InteractiveLegend from "./InteractiveLegend";
-import InteractiveThreeColumn from "./InteractiveThreeColumn";
-import ProfileView from "../ProfileView";
-import InteractiveTaskDetail from "./InteractiveTaskDetail";
-import InteractiveMeetingPrepPage from "./InteractiveMeetingPrepPage";
-import InteractiveLeaderboardPage from "./InteractiveLeaderboardPage";
-import InteractiveGMLeadsPage from "./InteractiveGMLeadsPage";
-import InteractiveGMLeaderboardPage from "./InteractiveGMLeaderboardPage";
-import InteractiveGMMeetingPrepPage from "./InteractiveGMMeetingPrepPage";
-import InteractiveGMSpotCheckPage from "./InteractiveGMSpotCheckPage";
-import InteractiveGMActivityReportPage from "./InteractiveGMActivityReportPage";
+import { Bone } from "../DashboardSkeleton";
+
+const InteractiveDashboard = lazy(() => import("./InteractiveDashboard"));
+const InteractiveLeadDetail = lazy(() => import("./InteractiveLeadDetail"));
+const InteractiveUploads = lazy(() => import("./InteractiveUploads"));
+const InteractiveOrgMapping = lazy(() => import("./InteractiveOrgMapping"));
+const InteractiveLegend = lazy(() => import("./InteractiveLegend"));
+const InteractiveThreeColumn = lazy(() => import("./InteractiveThreeColumn"));
+const InteractiveTaskDetail = lazy(() => import("./InteractiveTaskDetail"));
+const InteractiveMeetingPrepPage = lazy(() => import("./InteractiveMeetingPrepPage"));
+const InteractiveLeaderboardPage = lazy(() => import("./InteractiveLeaderboardPage"));
+const InteractiveGMLeadsPage = lazy(() => import("./InteractiveGMLeadsPage"));
+const InteractiveGMLeaderboardPage = lazy(() => import("./InteractiveGMLeaderboardPage"));
+const InteractiveGMMeetingPrepPage = lazy(() => import("./InteractiveGMMeetingPrepPage"));
+const InteractiveGMSpotCheckPage = lazy(() => import("./InteractiveGMSpotCheckPage"));
+const InteractiveGMActivityReportPage = lazy(() => import("./InteractiveGMActivityReportPage"));
+const ProfileView = lazy(() => import("../ProfileView"));
 
 const viewComponents = {
   "bm-home": InteractiveDashboard,
@@ -74,6 +76,16 @@ export default function InteractiveShell() {
     );
   }
 
+  const fallback = (
+    <div className="px-8 py-8 space-y-4">
+      <Bone className="h-6 w-48" />
+      <div className="grid grid-cols-3 gap-3">
+        <Bone className="h-24" /><Bone className="h-24" /><Bone className="h-24" />
+      </div>
+      <Bone className="h-48 w-full" />
+    </div>
+  );
+
   return (
     <AnimatePresence mode="wait">
       <motion.div
@@ -85,7 +97,9 @@ export default function InteractiveShell() {
         className="h-full"
       >
         <div id="dashboard-scroll-root" className="px-8 py-4 lg:px-12 lg:py-4 h-full min-h-0 overflow-y-auto overscroll-none bg-[var(--neutral-50)]">
-          <ViewComponent />
+          <Suspense fallback={fallback}>
+            <ViewComponent />
+          </Suspense>
         </div>
       </motion.div>
     </AnimatePresence>
