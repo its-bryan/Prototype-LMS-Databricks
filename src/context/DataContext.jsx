@@ -55,6 +55,7 @@ const {
 } = dataModule;
 
 import { setOrgMappingSource, setBranchManagersSource, setWeeklyTrendsSource, setNowFromLeads, setNowFromDate } from "../selectors/demoSelectors";
+import { useAuth } from "./AuthContext";
 
 const DataContext = createContext(null);
 
@@ -147,6 +148,9 @@ function ensureMismatchDemoLead(leads) {
 }
 
 export function DataProvider({ children }) {
+  const { userProfile } = useAuth();
+  const orgMappingRef = useRef(_c.orgMapping ?? []);
+
   // --- State initialised from cache (instant render) or empty (skeleton) ---
   const [leads, setLeads] = useState(() => {
     if (USE_LIVE_API) return _c.leads ?? [];
@@ -232,7 +236,18 @@ export function DataProvider({ children }) {
     bumpPending(1);
     setError(null);
     try {
-      const data = await fetchLeads();
+      // For non-admin users, filter leads server-side by their branches
+      let branches = null;
+      const role = userProfile?.role;
+      const branch = userProfile?.branch;
+      const om = orgMappingRef.current;
+      if (role === "bm" && branch) {
+        branches = [branch];
+      } else if (role === "gm" && userProfile?.displayName && om?.length) {
+        const nm = userProfile.displayName.trim().toLowerCase();
+        branches = om.filter((r) => (r.gm || "").trim().toLowerCase() === nm).map((r) => r.branch);
+      }
+      const data = await fetchLeads(branches);
       setLeads(data ?? []);
       writeCache("leads", data ?? []);
       if (data?.length) setNowFromLeads(data);
@@ -243,7 +258,7 @@ export function DataProvider({ children }) {
       setLoading(false);
       bumpPending(-1);
     }
-  }, []);
+  }, [userProfile]);
 
   /** Load leads on-demand. Call from views that need individual lead data
    *  (Meeting Prep, Lead Detail, Spot Check, etc.). No-op if already loaded. */
@@ -312,6 +327,7 @@ export function DataProvider({ children }) {
         if (!cfg) return;
 
         setOrgMapping(cfg.orgMapping);
+        orgMappingRef.current = cfg.orgMapping;
         setOrgMappingSource(cfg.orgMapping);
         writeCache("orgMapping", cfg.orgMapping);
         setOrgMappingReady(true);

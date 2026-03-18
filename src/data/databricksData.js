@@ -201,9 +201,12 @@ export async function fetchDashboardSnapshot() {
   return data ?? null;
 }
 
-/** Fetch all leads. */
-export async function fetchLeads() {
-  const rows = await apiGet("/leads");
+/** Fetch leads, optionally filtered by branches. */
+export async function fetchLeads(branches = null) {
+  const path = branches?.length
+    ? `/leads?branches=${branches.map(encodeURIComponent).join(",")}`
+    : "/leads";
+  const rows = await apiGet(path);
   return (rows ?? []).map(leadFromRow);
 }
 
