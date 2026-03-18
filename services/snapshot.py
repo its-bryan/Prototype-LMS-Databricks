@@ -127,6 +127,11 @@ def _filter_leads(leads: list[dict], start: date, end: date, branch: str | None 
     return out
 
 
+def _filter_from_list(branch_leads: list[dict], start: date, end: date) -> list[dict]:
+    """Filter pre-indexed branch leads by date range. Excludes Reviewed."""
+    return [l for l in branch_leads if l.get("status") != "Reviewed" and _lead_in_range(l, start, end)]
+
+
 # ---------------------------------------------------------------------------
 # Branch / GM resolution (mirrors getBranchesForGM, normalizeGmName)
 # ---------------------------------------------------------------------------
@@ -551,12 +556,129 @@ def _build_leaderboard(
     return sorted_rows
 
 
+def _build_leaderboard_indexed(
+    branch_current: dict[str, list[dict]],
+    branch_prev: dict[str, list[dict]],
+    org_by_branch: dict[str, dict],
+    all_branches: list[str],
+) -> list[dict]:
+    """Build leaderboard rows using pre-indexed/pre-filtered branch data.
+
+    Returns rows WITHOUT isMyBranch set (caller stamps that per-GM).
+    """
+    rows = []
+    for branch in all_branches:
+        bl = branch_current.get(branch, [])
+        total = len(bl)
+        rented = sum(1 for l in bl if l.get("status") == "Rented")
+        cancelled = sum(1 for l in bl if l.get("status") == "Cancelled")
+        unused = sum(1 for l in bl if l.get("status") == "Unused")
+        conversion_rate = round(rented / total * 100) if total else None
+
+        w30 = sum(1 for l in bl if (l.get("contact_range") or "") == "(a)<30min")
+        pct_within30 = round(w30 / total * 100) if total else None
+
+        bc = sum(1 for l in bl if (l.get("first_contact_by") or "") == "branch")
+        hc = sum(1 for l in bl if (l.get("first_contact_by") or "") == "hrd")
+        branch_hrd_pct = round(bc / (bc + hc) * 100) if (bc + hc) > 0 else None
+
+        actionable = [l for l in bl if l.get("status") in ("Cancelled", "Unused")]
+        with_comments = [
+            l for l in actionable
+            if (l.get("enrichment") or {}).get("reason") or (l.get("enrichment") or {}).get("notes")
+        ]
+        if actionable:
+            comment_rate = round(len(with_comments) / len(actionable) * 100)
+        elif total > 0:
+            comment_rate = 100
+        else:
+            comment_rate = None
+
+        cancelled_unreviewed = sum(
+            1 for l in bl
+            if l.get("status") == "Cancelled" and not l.get("archived") and not l.get("gm_directive")
+        )
+        unused_overdue = sum(
+            1 for l in bl
+            if l.get("status") == "Unused" and (l.get("days_open") or 0) > 5
+        )
+
+        org_row = org_by_branch.get(branch)
+
+        prev_bl = branch_prev.get(branch, [])
+        prev_total = len(prev_bl)
+        prev_rented = sum(1 for l in prev_bl if l.get("status") == "Rented")
+        prev_conversion = round(prev_rented / prev_total * 100) if prev_total else None
+
+        prev_w30 = sum(1 for l in prev_bl if (l.get("contact_range") or "") == "(a)<30min")
+        prev_pct_within30 = round(prev_w30 / prev_total * 100) if prev_total else None
+        prev_bc = sum(1 for l in prev_bl if (l.get("first_contact_by") or "") == "branch")
+        prev_hc = sum(1 for l in prev_bl if (l.get("first_contact_by") or "") == "hrd")
+        prev_branch_hrd_pct = round(prev_bc / (prev_bc + prev_hc) * 100) if (prev_bc + prev_hc) > 0 else None
+        prev_actionable = [l for l in prev_bl if l.get("status") in ("Cancelled", "Unused")]
+        prev_with_comments = [
+            l for l in prev_actionable
+            if (l.get("enrichment") or {}).get("reason") or (l.get("enrichment") or {}).get("notes")
+        ]
+        if prev_actionable:
+            prev_comment_rate = round(len(prev_with_comments) / len(prev_actionable) * 100)
+        elif prev_total > 0:
+            prev_comment_rate = 100
+        else:
+            prev_comment_rate = None
+
+        improvement_delta = (
+            (conversion_rate - prev_conversion)
+            if conversion_rate is not None and prev_conversion is not None
+            else None
+        )
+
+        rows.append({
+            "branch": branch,
+            "bmName": _resolve_bm_name(org_row, bl),
+            "zone": (org_row or {}).get("zone", "—"),
+            "gm": (org_row or {}).get("gm", "—"),
+            "total": total,
+            "rented": rented,
+            "cancelled": cancelled,
+            "unused": unused,
+            "conversionRate": conversion_rate,
+            "pctWithin30": pct_within30,
+            "branchHrdPct": branch_hrd_pct,
+            "commentRate": comment_rate,
+            "cancelledUnreviewed": cancelled_unreviewed,
+            "unusedOverdue": unused_overdue,
+            "improvementDelta": improvement_delta,
+            "prevConversionRate": prev_conversion,
+            "prevPctWithin30": prev_pct_within30,
+            "prevBranchHrdPct": prev_branch_hrd_pct,
+            "prevCommentRate": prev_comment_rate,
+        })
+
+    q_sorted = sorted(rows, key=lambda r: r["conversionRate"] if r["conversionRate"] is not None else -1, reverse=True)
+    n = len(q_sorted)
+    for i, row in enumerate(q_sorted):
+        if n == 0:
+            row["quartile"] = None
+        else:
+            pct = i / n
+            row["quartile"] = 1 if pct < 0.25 else 2 if pct < 0.5 else 3 if pct < 0.75 else 4
+
+    sorted_rows = sorted(rows, key=lambda r: r["conversionRate"] if r["conversionRate"] is not None else -1, reverse=True)
+    for i, row in enumerate(sorted_rows):
+        row["rank"] = i + 1
+
+    return sorted_rows
+
+
 # ---------------------------------------------------------------------------
 # Top-level orchestrator
 # ---------------------------------------------------------------------------
 
 def compute_and_store_snapshot():
     """Compute dashboard metrics for the trailing 4-week view and store as JSONB."""
+    import time as _time
+    t0 = _time.monotonic()
     print("[snapshot] compute_and_store_snapshot started", flush=True)
     try:
         leads = query("SELECT * FROM leads WHERE archived = false")
@@ -567,7 +689,8 @@ def compute_and_store_snapshot():
         logger.exception("Failed to read data for snapshot computation")
         return
 
-    print(f"[snapshot] loaded {len(leads)} leads, {len(org_rows)} org rows, {len(tasks)} tasks", flush=True)
+    t_load = _time.monotonic()
+    print(f"[snapshot] loaded {len(leads)} leads, {len(org_rows)} org rows, {len(tasks)} tasks in {t_load - t0:.1f}s", flush=True)
 
     if not leads:
         print("[snapshot] no leads found — skipping", flush=True)
@@ -578,16 +701,34 @@ def compute_and_store_snapshot():
     c_start, c_end = current["start"], current["end"]
     p_start, p_end = comparison["start"], comparison["end"]
 
+    # --- Pre-index leads by branch (avoids scanning 62K leads per branch) ---
+    leads_by_branch: dict[str, list[dict]] = {}
+    for lead in leads:
+        b = lead.get("branch")
+        if b:
+            leads_by_branch.setdefault(b, []).append(lead)
+
     lead_by_id = {l["id"]: l for l in leads}
 
-    # --- Per-branch metrics ---
     all_branches = list({r["branch"] for r in org_rows})
     org_by_branch = {r["branch"]: r for r in org_rows}
-    branches_snapshot: dict = {}
 
+    # --- Pre-filter per branch (current + comparison) ---
+    branch_current: dict[str, list[dict]] = {}
+    branch_prev: dict[str, list[dict]] = {}
     for branch in all_branches:
-        filtered = _filter_leads(leads, c_start, c_end, branch)
-        prev_filtered = _filter_leads(leads, p_start, p_end, branch)
+        bl = leads_by_branch.get(branch, [])
+        branch_current[branch] = _filter_from_list(bl, c_start, c_end)
+        branch_prev[branch] = _filter_from_list(bl, p_start, p_end)
+
+    t_index = _time.monotonic()
+    print(f"[snapshot] indexed {len(all_branches)} branches in {t_index - t_load:.1f}s", flush=True)
+
+    # --- Per-branch metrics ---
+    branches_snapshot: dict = {}
+    for branch in all_branches:
+        filtered = branch_current[branch]
+        prev_filtered = branch_prev[branch]
 
         org_row = org_by_branch.get(branch)
         gm = (org_row or {}).get("gm", "—")
@@ -605,21 +746,42 @@ def compute_and_store_snapshot():
             "meetingPrep": _meeting_prep(filtered),
         }
 
+    t_branches = _time.monotonic()
+    print(f"[snapshot] computed {len(branches_snapshot)} branch snapshots in {t_branches - t_index:.1f}s", flush=True)
+
+    # --- Leaderboard: compute ONCE for all branches, then tag per-GM ---
+    leaderboard_base = _build_leaderboard_indexed(
+        branch_current, branch_prev, org_by_branch, all_branches,
+    )
+
+    t_lb = _time.monotonic()
+    print(f"[snapshot] computed global leaderboard ({len(leaderboard_base)} rows) in {t_lb - t_branches:.1f}s", flush=True)
+
     # --- Per-GM metrics ---
     gm_names = list({r.get("gm") for r in org_rows if r.get("gm")})
     gms_snapshot: dict = {}
 
+    gm_branches_set: dict[str, set[str]] = {}
     for gm_name in gm_names:
         gm_branches = _branches_for_gm(gm_name, org_rows, leads)
-        gm_leads = [l for l in leads if l.get("branch") in gm_branches]
+        gm_branches_set[gm_name] = set(gm_branches)
+
+        gm_branch_leads = []
+        for b in gm_branches:
+            gm_branch_leads.extend(leads_by_branch.get(b, []))
 
         gm_filtered = [
-            l for l in gm_leads
+            l for l in gm_branch_leads
             if l.get("status") != "Reviewed" and _lead_in_range(l, c_start, c_end)
         ]
         gm_prev = [
-            l for l in gm_leads
+            l for l in gm_branch_leads
             if l.get("status") != "Reviewed" and _lead_in_range(l, p_start, p_end)
+        ]
+
+        gm_lb = [
+            {**row, "isMyBranch": row["branch"] in gm_branches_set[gm_name]}
+            for row in leaderboard_base
         ]
 
         gms_snapshot[gm_name] = {
@@ -628,10 +790,11 @@ def compute_and_store_snapshot():
             "stats": _gm_stats(gm_filtered),
             "comparison": _gm_stats(gm_prev),
             "chartData": _weekly_chart_data(gm_filtered, tasks, c_start, c_end),
-            "leaderboard": _build_leaderboard(
-                leads, org_rows, c_start, c_end, gm_name, gm_branches, p_start, p_end,
-            ),
+            "leaderboard": gm_lb,
         }
+
+    t_gms = _time.monotonic()
+    print(f"[snapshot] computed {len(gms_snapshot)} GM snapshots in {t_gms - t_lb:.1f}s", flush=True)
 
     snapshot = {
         "version": 1,
@@ -644,11 +807,13 @@ def compute_and_store_snapshot():
     }
 
     try:
+        payload = json.dumps(snapshot, default=str)
         execute(
             "INSERT INTO dashboard_snapshots (snapshot) VALUES (%s::jsonb)",
-            (json.dumps(snapshot, default=str),),
+            (payload,),
         )
-        print(f"[snapshot] STORED OK — now={now}, {len(branches_snapshot)} branches, {len(gms_snapshot)} GMs, json={len(json.dumps(snapshot, default=str))} chars", flush=True)
+        t_done = _time.monotonic()
+        print(f"[snapshot] STORED OK — now={now}, {len(branches_snapshot)} branches, {len(gms_snapshot)} GMs, json={len(payload)} chars, total={t_done - t0:.1f}s", flush=True)
     except Exception as exc:
         print(f"[snapshot] ERROR storing snapshot: {exc}", flush=True)
         logger.exception("Failed to store dashboard snapshot")
