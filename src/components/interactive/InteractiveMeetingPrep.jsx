@@ -22,6 +22,7 @@ import {
   getTasksForBranch,
   getNextComplianceMeetingDate,
   relChange,
+  leadBranchMatches,
 } from "../../selectors/demoSelectors";
 import MeetingPrepLeadQueue from "../MeetingPrepLeadQueue";
 import MeetingPrepLeadPanel from "./MeetingPrepLeadPanel";
@@ -129,9 +130,9 @@ export default function InteractiveMeetingPrep() {
 
   // Wins & Learnings — BM's own submissions for this branch
   const bmName = userProfile?.displayName ?? "Sarah Chen";
-  const gmName = useMemo(() => orgMapping.find((r) => r.branch === branch)?.gm ?? null, [branch]);
+  const gmName = useMemo(() => orgMapping.find((r) => leadBranchMatches(r.branch, branch))?.gm ?? null, [branch]);
   const myWinsLearnings = useMemo(
-    () => (winsLearnings ?? []).filter((e) => e.branch === branch).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
+    () => (winsLearnings ?? []).filter((e) => leadBranchMatches(e.branch, branch)).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
     [winsLearnings, branch]
   );
   const handleSubmitWL = useCallback(async () => {
@@ -273,6 +274,9 @@ export default function InteractiveMeetingPrep() {
     refetchLeads?.();
   };
 
+  // #region agent log
+  fetch('http://127.0.0.1:7507/ingest/4cdc8682-4d34-4a46-8b0d-92860e51cbd8',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2ecb09'},body:JSON.stringify({sessionId:'2ecb09',location:'InteractiveMeetingPrep.jsx:277',message:'MeetingPrep render - initialDataReady check',data:{initialDataReady,loading:!initialDataReady,leadsCount:(leads??[]).length},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+  // #endregion
   if (!initialDataReady) return <MeetingPrepSkeleton />;
 
   return (

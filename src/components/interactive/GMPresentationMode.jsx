@@ -20,6 +20,7 @@ import {
   getWinsLearningsForGM,
   getDateRangePresets,
   getBranchesForGM,
+  leadBranchMatches,
 } from "../../selectors/demoSelectors";
 import { formatDateShort } from "../../utils/dateTime";
 
@@ -612,7 +613,7 @@ function BranchLeadDetailPanel({ branch, leads, leaderboardRow, onBack }) {
   }, [sortCol]);
 
   const filteredRaw = useMemo(
-    () => (leads ?? []).filter((l) => l.branch === branch),
+    () => (leads ?? []).filter((l) => leadBranchMatches(l.branch, branch)),
     [leads, branch]
   );
 
@@ -767,7 +768,7 @@ function SlideBranch({ frozenLeads, dateRange, compRange, gmName, onBranchClick 
   }, []);
 
   if (selectedBranch) {
-    const row = leaderboardRaw.find((r) => r.branch === selectedBranch);
+    const row = leaderboardRaw.find((r) => leadBranchMatches(r.branch, selectedBranch));
     return (
       <BranchLeadDetailPanel
         branch={selectedBranch}
@@ -1529,7 +1530,7 @@ function SlideSpotCheck({ frozenLeads, gmName, initialBranch }) {
 
   const branchLeadsRaw = useMemo(() => {
     if (!selectedBranch) return [];
-    return (frozenLeads ?? []).filter((l) => l.branch === selectedBranch);
+    return (frozenLeads ?? []).filter((l) => leadBranchMatches(l.branch, selectedBranch));
   }, [selectedBranch, frozenLeads]);
 
   const branchLeadsFiltered = useMemo(() => {
@@ -1556,7 +1557,7 @@ function SlideSpotCheck({ frozenLeads, gmName, initialBranch }) {
     return { total, rented, cancelled, unused };
   }, [branchLeadsRaw]);
 
-  const orgBm = orgMapping.find((r) => r.branch === selectedBranch)?.bm;
+  const orgBm = orgMapping.find((r) => leadBranchMatches(r.branch, selectedBranch))?.bm;
   const bmName = (orgBm && orgBm !== "— Unassigned —")
     ? orgBm
     : branchLeadsRaw.find((l) => l.bmName && l.bmName !== "—")?.bmName ?? "—";

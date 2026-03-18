@@ -197,6 +197,9 @@ export function DataProvider({ children }) {
   );
 
   const initialDataReady = !loading && orgMappingReady;
+  // #region agent log
+  fetch('http://127.0.0.1:7507/ingest/4cdc8682-4d34-4a46-8b0d-92860e51cbd8',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2ecb09'},body:JSON.stringify({sessionId:'2ecb09',location:'DataContext.jsx:199',message:'DataContext render',data:{loading,orgMappingReady,initialDataReady},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+  // #endregion
 
   // --- Refetch helpers (used on mount AND after HLES upload) ---
 

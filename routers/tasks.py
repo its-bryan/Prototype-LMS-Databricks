@@ -27,7 +27,7 @@ async def get_tasks(lead_id: int = None, branch: str = None):
         return query(
             """SELECT t.* FROM tasks t
                JOIN leads l ON t.lead_id = l.id
-               WHERE l.branch = %s
+               WHERE regexp_replace(l.branch, '\\s+', ' ', 'g') = regexp_replace(%s, '\\s+', ' ', 'g')
                ORDER BY t.created_at DESC""",
             (branch,)
         )

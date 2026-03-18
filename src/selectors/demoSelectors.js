@@ -197,12 +197,12 @@ function leadInDateRange(lead, start, end) {
 
 // BM selectors — accept leads as first param (from useData().leads)
 export function getLeadsForBranch(leads, branch) {
-  return (leads ?? []).filter((l) => l.branch === branch);
+  return (leads ?? []).filter((l) => leadBranchMatches(l.branch, branch));
 }
 
 export function getLeadsForBranchInRange(leads, dateRange, branch) {
   let filtered = leads ?? [];
-  if (branch) filtered = filtered.filter((l) => l.branch === branch);
+  if (branch) filtered = filtered.filter((l) => leadBranchMatches(l.branch, branch));
   if (dateRange?.start || dateRange?.end) {
     filtered = filtered.filter((l) => leadInDateRange(l, dateRange.start, dateRange.end));
   }
@@ -298,7 +298,7 @@ export function getUntouchedLeads(leads) {
 }
 
 export function getUntouchedLeadsForBranch(leads, branch) {
-  return (leads ?? []).filter((l) => l.status === "Unused" && !l.enrichmentComplete && l.branch === branch);
+  return (leads ?? []).filter((l) => l.status === "Unused" && !l.enrichmentComplete && leadBranchMatches(l.branch, branch));
 }
 
 export function getMismatchLeads(leads) {
@@ -515,12 +515,12 @@ export function getContactSourceStats() {
 
 // Org hierarchy lookup by branch
 export function getHierarchyForBranch(branch) {
-  return orgMapping.find((r) => r.branch === branch) || null;
+  return orgMapping.find((r) => leadBranchMatches(r.branch, branch)) || null;
 }
 
 /** Get zone for a branch via org_mapping */
 export function getZoneForBranch(branch) {
-  const row = orgMapping.find((r) => r.branch === branch);
+  const row = orgMapping.find((r) => leadBranchMatches(r.branch, branch));
   return row?.zone ?? null;
 }
 
@@ -551,7 +551,7 @@ export function getZoneConversionRate(leads, branch) {
 
 /** Branch trailing 4-week conversion rate average. Uses week_of (or initDtFinal fallback) to group by week. */
 export function getBranchTrailing4WeekConversionRate(leads, branch) {
-  const branchLeads = (leads ?? []).filter((l) => l.branch === branch);
+  const branchLeads = (leads ?? []).filter((l) => leadBranchMatches(l.branch, branch));
   if (branchLeads.length === 0) return null;
   const weekRates = new Map();
   for (const l of branchLeads) {
@@ -591,7 +591,7 @@ export function getCurrentWeekMonday() {
 /** Leads for branch in a given week (weekOf = YYYY-MM-DD Monday) */
 export function getLeadsForBranchAndWeek(leads, branch, weekOf) {
   return (leads ?? []).filter((l) => {
-    if (l.branch !== branch) return false;
+    if (!leadBranchMatches(l.branch, branch)) return false;
     const w = getWeekOfForLead(l);
     return w === weekOf;
   });
@@ -638,7 +638,7 @@ export function getOverdueFollowUpCount(leads) {
 export function getFollowUpBreakdown(leads, branch) {
   const list = (leads ?? []).filter((l) => {
     if (l.status === "Rented" || l.archived) return false;
-    if (branch && l.branch !== branch) return false;
+    if (branch && !leadBranchMatches(l.branch, branch)) return false;
     return !!l.enrichment?.followUpDate;
   });
   let overdue = 0, dueToday = 0, dueThisWeek = 0;
@@ -783,7 +783,7 @@ export function getActivityReportData(leads, limitPerCategory = 10) {
 
 /** Aggregate recent activity from leads' enrichmentLog (most recent actions across all leads). */
 export function getRecentActivity(leads, branch, limit = 8) {
-  const branchLeads = (leads ?? []).filter((l) => !branch || l.branch === branch);
+  const branchLeads = (leads ?? []).filter((l) => !branch || leadBranchMatches(l.branch, branch));
   const entries = [];
   for (const lead of branchLeads) {
     const log = lead.enrichmentLog ?? [];
@@ -815,7 +815,7 @@ export function getRecentActivity(leads, branch, limit = 8) {
 /** Count of leads with an active (non-empty) GM directive for a branch. */
 export function getDirectiveCount(leads, branch) {
   return (leads ?? []).filter((l) => {
-    if (branch && l.branch !== branch) return false;
+    if (branch && !leadBranchMatches(l.branch, branch)) return false;
     return !!l.gmDirective && !l.archived;
   }).length;
 }
@@ -823,7 +823,7 @@ export function getDirectiveCount(leads, branch) {
 /** Leads with active GM directives for a branch. */
 export function getLeadsWithDirectives(leads, branch) {
   return (leads ?? []).filter((l) => {
-    if (branch && l.branch !== branch) return false;
+    if (branch && !leadBranchMatches(l.branch, branch)) return false;
     return !!l.gmDirective && !l.archived;
   });
 }
@@ -948,7 +948,7 @@ export function tasksInDateRange(tasksList, dateRange) {
 /** Return filtered leads array (by branch + dateRange) — same filter as getBMStats but returns the array instead of counts. Excludes Reviewed. */
 export function getFilteredLeads(leads, dateRange = null, branch = null) {
   let filtered = leads ?? [];
-  if (branch) filtered = filtered.filter((l) => l.branch === branch);
+  if (branch) filtered = filtered.filter((l) => leadBranchMatches(l.branch, branch));
   if (dateRange?.start || dateRange?.end) {
     filtered = filtered.filter((l) => leadInDateRange(l, dateRange.start, dateRange.end));
   }
@@ -1233,7 +1233,7 @@ export function formatMinutesToDisplay(min) {
 /** Average days open for leads (filtered by date range and branch) */
 export function getAverageDaysOpen(leads, dateRange = null, branch = null) {
   let filtered = leads ?? [];
-  if (branch) filtered = filtered.filter((l) => l.branch === branch);
+  if (branch) filtered = filtered.filter((l) => leadBranchMatches(l.branch, branch));
   if (dateRange?.start || dateRange?.end) {
     filtered = filtered.filter((l) => leadInDateRange(l, dateRange.start, dateRange.end));
   }
@@ -1252,7 +1252,7 @@ export function getAverageTimeToContact(leads, dateRange = null, branch = null) 
 /** Average time to first contact in minutes (for relChange calculation) */
 export function getAverageTimeToContactMinutes(leads, dateRange = null, branch = null) {
   let filtered = leads ?? [];
-  if (branch) filtered = filtered.filter((l) => l.branch === branch);
+  if (branch) filtered = filtered.filter((l) => leadBranchMatches(l.branch, branch));
   if (dateRange?.start || dateRange?.end) {
     filtered = filtered.filter((l) => leadInDateRange(l, dateRange.start, dateRange.end));
   }
@@ -1324,7 +1324,7 @@ function chartGranularity(presetKey, dateRange) {
 
 /** Get branches under the same GM as the given branch. Falls back to zone if branch has no GM. */
 export function getBranchesUnderSameGM(branch) {
-  const row = orgMapping.find((r) => r.branch === branch);
+  const row = orgMapping.find((r) => leadBranchMatches(r.branch, branch));
   if (!row) return [];
   if (row.gm) return orgMapping.filter((r) => r.gm === row.gm).map((r) => r.branch);
   if (row.zone) return orgMapping.filter((r) => r.zone === row.zone).map((r) => r.branch);
@@ -1361,7 +1361,7 @@ export function getBMLeaderboardData(leads, branch, dateRange, metricKey = "conv
   const branches = getBranchesUnderSameGM(branch);
   if (branches.length === 0) return { myBranch: null, peers: [], regionBenchmark: null, gmName: null };
 
-  const row = orgMapping.find((r) => r.branch === branch);
+  const row = orgMapping.find((r) => leadBranchMatches(r.branch, branch));
   const gmName = row?.gm ?? null;
   const cohortLabel = row?.gm ? `GM: ${row.gm}` : row?.zone ? `Zone: ${row.zone}` : "Your branch";
 
@@ -1438,7 +1438,7 @@ export function getTrendsChartDataByDimension(leads, branchTasks, dateRange, bra
 
   for (const task of tasksInRange) {
     const lead = task.leadId ? leadById.get(task.leadId) : null;
-    if (!lead || lead.branch !== branch) continue;
+    if (!lead || !leadBranchMatches(lead.branch, branch)) continue;
     if (dateRange && !leadInDateRange(lead, dateRange.start, dateRange.end)) continue;
     const key = getLeadGroupKey(lead, groupBy);
     if (groups.has(key)) {
@@ -1580,7 +1580,7 @@ function buildChartDataByPeriodFromFiltered(filtered, branchTasks, dateRange, br
 
   for (const task of tasksInRange) {
     const lead = task.leadId ? leadById.get(task.leadId) : null;
-    if (!lead || lead.branch !== branch) continue;
+    if (!lead || !leadBranchMatches(lead.branch, branch)) continue;
     if (dateRange && !leadInDateRange(lead, dateRange.start, dateRange.end)) continue;
     const leadDate = getLeadDateForPeriod(lead);
     const pk = leadDate ? leadToPeriodKey(leadDate, gran) : null;
@@ -1957,7 +1957,7 @@ export function getGMBranchLeaderboard(leads, dateRange, sortMetric = "conversio
     const withComments = actionable.filter((l) => l.enrichment?.reason || l.enrichment?.notes);
     const commentRate = actionable.length > 0 ? Math.round((withComments.length / actionable.length) * 100) : (total > 0 ? 100 : null);
 
-    const row = orgMapping.find((r) => r.branch === branch);
+    const row = orgMapping.find((r) => leadBranchMatches(r.branch, branch));
     return {
       branch,
       bmName: resolveBMName(row, branchLeads),
@@ -1999,10 +1999,10 @@ export function getGMBranchLeaderboard(leads, dateRange, sortMetric = "conversio
       row.prevCancelledUnreviewed = prevLeads.filter((l) => l.status === "Cancelled" && !l.archived && !l.gmDirective).length;
       row.prevUnusedOverdue = prevLeads.filter((l) => l.status === "Unused" && (l.daysOpen ?? 0) > 5).length;
       row.prevConversionRate = prevConversion;
-      row.cancelledUnreviewed = branchData.find((b) => b.branch === row.branch)
-        ? (leads ?? []).filter((l) => l.branch === row.branch && leadInDateRange(l, dateRange.start, dateRange.end) && l.status !== "Reviewed" && l.status === "Cancelled" && !l.archived && !l.gmDirective).length
+      row.cancelledUnreviewed = branchData.find((b) => leadBranchMatches(b.branch, row.branch))
+        ? (leads ?? []).filter((l) => leadBranchMatches(l.branch, row.branch) && leadInDateRange(l, dateRange.start, dateRange.end) && l.status !== "Reviewed" && l.status === "Cancelled" && !l.archived && !l.gmDirective).length
         : 0;
-      row.unusedOverdue = (leads ?? []).filter((l) => l.branch === row.branch && leadInDateRange(l, dateRange.start, dateRange.end) && l.status !== "Reviewed" && l.status === "Unused" && (l.daysOpen ?? 0) > 5).length;
+      row.unusedOverdue = (leads ?? []).filter((l) => leadBranchMatches(l.branch, row.branch) && leadInDateRange(l, dateRange.start, dateRange.end) && l.status !== "Reviewed" && l.status === "Unused" && (l.daysOpen ?? 0) > 5).length;
     }
   } else {
     for (const row of branchData) {
@@ -2073,7 +2073,7 @@ export function getGMLeads(leads, dateRange = null, filters = {}, gmName = null)
     filtered = filtered.filter((l) => l.bmName === bmFilter);
   }
   if (branchFilter && branchFilter !== "All") {
-    filtered = filtered.filter((l) => l.branch === branchFilter);
+    filtered = filtered.filter((l) => leadBranchMatches(l.branch, branchFilter));
   }
   if (insuranceFilter && insuranceFilter !== "All") {
     filtered = filtered.filter((l) => l.insuranceCompany === insuranceFilter);
@@ -2188,8 +2188,8 @@ export function getConversionByBranch(leads, dateRange, compRange = null, gmName
     const prevConversionRate = prevTotal ? Math.round((prevRented / prevTotal) * 100) : null;
 
     const delta = conversionRate !== null && prevConversionRate !== null ? conversionRate - prevConversionRate : null;
-    const row = orgMapping.find((r) => r.branch === branch);
-    const allBranchLeads = (leads ?? []).filter((l) => l.branch === branch);
+    const row = orgMapping.find((r) => leadBranchMatches(r.branch, branch));
+    const allBranchLeads = (leads ?? []).filter((l) => leadBranchMatches(l.branch, branch));
 
     return { branch, bmName: resolveBMName(row, allBranchLeads), total, rented, cancelled, unused, conversionRate, prevConversionRate, delta };
   });
@@ -2297,7 +2297,7 @@ export function getStackedWeeklyByBranch(leads, branch = null, gmName = "D. Will
 
   let filtered = (leads ?? []).filter((l) => leadInDateRange(l, start, end));
   if (branch) {
-    filtered = filtered.filter((l) => l.branch === branch);
+    filtered = filtered.filter((l) => leadBranchMatches(l.branch, branch));
   } else {
     filtered = filtered.filter((l) => leadInGmBranchList(l.branch, myBranches));
   }
@@ -2403,8 +2403,8 @@ export function getBranchesWithFlags(leads, dateRange = null, gmName = "D. Willi
   const branchNames = getBranchesForGM(gmName, leads);
   const flagged = [];
   for (const branch of branchNames) {
-    const row = orgMapping.find((r) => r.branch === branch);
-    const branchLeads = (leads ?? []).filter((l) => l.branch === branch);
+    const row = orgMapping.find((r) => leadBranchMatches(r.branch, branch));
+    const branchLeads = (leads ?? []).filter((l) => leadBranchMatches(l.branch, branch));
     const bm = row?.bm ?? branchLeads[0]?.bmName ?? branchLeads[0]?.bm_name ?? "";
     const data = getSpotCheckData(leads, branch, dateRange);
     if (data.untouched.length > 0 || data.mismatches.length > 0) {

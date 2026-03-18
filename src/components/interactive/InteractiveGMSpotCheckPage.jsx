@@ -15,6 +15,7 @@ import {
   resolveGMName,
   getBranchesForGM,
   normalizeGmName,
+  leadBranchMatches,
 } from "../../selectors/demoSelectors";
 import MetricDrilldownModal from "../MetricDrilldownModal";
 import { SpotCheckSkeleton } from "../DashboardSkeleton";
@@ -106,9 +107,9 @@ export default function InteractiveGMSpotCheckPage() {
 
   const selectedLead = selectedLeadId ? getLeadById(leads, selectedLeadId) : null;
   const bmName = useMemo(() => {
-    const orgBm = orgMapping.find((r) => r.branch === selectedBranch)?.bm;
+    const orgBm = orgMapping.find((r) => leadBranchMatches(r.branch, selectedBranch))?.bm;
     if (orgBm && orgBm !== "— Unassigned —") return orgBm;
-    const fromLead = (leads ?? []).find((l) => l.branch === selectedBranch && l.bmName && l.bmName !== "—")?.bmName;
+    const fromLead = (leads ?? []).find((l) => leadBranchMatches(l.branch, selectedBranch) && l.bmName && l.bmName !== "—")?.bmName;
     return fromLead ?? "—";
   }, [orgMapping, selectedBranch, leads]);
 
@@ -148,6 +149,9 @@ export default function InteractiveGMSpotCheckPage() {
     navigateTo("gm-lead-detail");
   };
 
+  // #region agent log
+  fetch('http://127.0.0.1:7507/ingest/4cdc8682-4d34-4a46-8b0d-92860e51cbd8',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2ecb09'},body:JSON.stringify({sessionId:'2ecb09',location:'InteractiveGMSpotCheckPage.jsx:152',message:'SpotCheck render - initialDataReady check',data:{initialDataReady,loading,leadsCount:(leads??[]).length},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+  // #endregion
   if (!initialDataReady) return <SpotCheckSkeleton />;
 
   return (

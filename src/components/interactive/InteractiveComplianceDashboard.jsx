@@ -14,6 +14,7 @@ import {
   resolveGMName,
   getBranchesForGM,
   normalizeGmName,
+  leadBranchMatches,
 } from "../../selectors/demoSelectors";
 import GMMetricDrilldownModal from "../GMMetricDrilldownModal";
 import { ComplianceSkeleton } from "../DashboardSkeleton";
@@ -49,7 +50,7 @@ export default function InteractiveComplianceDashboard() {
     const row = orgMapping.find((r) => r.gm && normalizeGmName(r.gm) === normalizeGmName(gmName) && r.zone);
     if (row?.zone) return row.zone;
     const b = gmBranches[0];
-    const fromLead = b ? (leads ?? []).find((l) => l.branch === b) : null;
+    const fromLead = b ? (leads ?? []).find((l) => leadBranchMatches(l.branch, b)) : null;
     return fromLead?.zone ?? null;
   }, [orgMapping, gmName, gmBranches, leads]);
 
@@ -96,7 +97,7 @@ export default function InteractiveComplianceDashboard() {
       result = result.filter((l) => zoneBranches.includes(l.branch));
     }
     if (branchFilter !== "All") {
-      result = result.filter((l) => l.branch === branchFilter);
+      result = result.filter((l) => leadBranchMatches(l.branch, branchFilter));
     }
     if (insuranceFilter !== "All") {
       result = result.filter((l) => l.insuranceCompany === insuranceFilter);
