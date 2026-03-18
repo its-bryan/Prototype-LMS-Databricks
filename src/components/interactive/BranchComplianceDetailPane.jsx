@@ -3,12 +3,13 @@
  * for each metric in the Branch Compliance table (Meeting Prep).
  */
 import { useState, useMemo, useEffect } from "react";
-import { AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useApp } from "../../context/AppContext";
 import StatusBadge from "../StatusBadge";
 import {
   leadCancelledWithoutBmComment,
   leadUnusedWithoutBmTouchInPeriod,
+  leadBranchMatches,
 } from "../../selectors/demoSelectors";
 import { useData } from "../../context/DataContext";
 import { formatDateRange } from "../../utils/dateTime";
@@ -107,7 +108,7 @@ export default function BranchComplianceDetailPane({ branchRow, dateRange, leads
   const [activeTab, setActiveTab] = useState("cancelledNoBmComment");
 
   const branchLeadsAll = useMemo(
-    () => (leads ?? []).filter((l) => l.branch === branchRow?.branch),
+    () => (leads ?? []).filter((l) => leadBranchMatches(l.branch, branchRow?.branch)),
     [leads, branchRow?.branch]
   );
 
@@ -121,7 +122,8 @@ export default function BranchComplianceDetailPane({ branchRow, dateRange, leads
   }, [branchLeadsAll, dateRange]);
 
   const zone = useMemo(() => {
-    const row = orgMapping.find((r) => r.branch === branchRow?.branch);
+    const norm = (s) => (s == null ? "" : String(s).trim().replace(/\s+/g, " "));
+    const row = (orgMapping ?? []).find((r) => norm(r.branch) === norm(branchRow?.branch));
     return row?.zone ?? "—";
   }, [branchRow?.branch, orgMapping]);
 

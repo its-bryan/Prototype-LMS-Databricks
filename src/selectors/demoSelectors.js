@@ -217,14 +217,21 @@ function enrichmentLogEntryTs(entry) {
  * BM touched the lead in [start, end] (enrichment_log activity, or lastActivity when enrichment text exists).
  */
 export function hasBmActivityInDateRange(lead, start, end) {
-  if (!start || !end) return !!(lead.enrichment?.reason || lead.enrichment?.notes);
+  if (!start || !end) {
+    return (
+      String(lead.enrichment?.reason ?? "").trim().length > 0 ||
+      String(lead.enrichment?.notes ?? "").trim().length > 0
+    );
+  }
   const sDay = new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime();
   const eDay = new Date(end.getFullYear(), end.getMonth(), end.getDate(), 23, 59, 59, 999).getTime();
   for (const entry of lead.enrichmentLog ?? []) {
     const ts = enrichmentLogEntryTs(entry);
     if (ts >= sDay && ts <= eDay) return true;
   }
-  const hasText = !!(lead.enrichment?.reason || lead.enrichment?.notes);
+  const hasText =
+    String(lead.enrichment?.reason ?? "").trim().length > 0 ||
+    String(lead.enrichment?.notes ?? "").trim().length > 0;
   if (hasText && lead.lastActivity) {
     const ts = new Date(lead.lastActivity).getTime();
     if (!Number.isNaN(ts) && ts >= sDay && ts <= eDay) return true;
@@ -233,18 +240,24 @@ export function hasBmActivityInDateRange(lead, start, end) {
 }
 
 export function leadCancelledWithoutBmComment(lead) {
-  return lead.status === "Cancelled" && !lead.archived && !(lead.enrichment?.reason || lead.enrichment?.notes);
+  const hasBm =
+    String(lead.enrichment?.reason ?? "").trim().length > 0 ||
+    String(lead.enrichment?.notes ?? "").trim().length > 0;
+  return lead.status === "Cancelled" && !lead.archived && !hasBm;
 }
 
 export function leadUnusedWithoutBmTouchInPeriod(lead, start, end) {
   if (lead.status !== "Unused" || lead.archived) return false;
-  if (!start || !end) return !(lead.enrichment?.reason || lead.enrichment?.notes);
+  const hasBm =
+    String(lead.enrichment?.reason ?? "").trim().length > 0 ||
+    String(lead.enrichment?.notes ?? "").trim().length > 0;
+  if (!start || !end) return !hasBm;
   return !hasBmActivityInDateRange(lead, start, end);
 }
 
 /** Leads with any outstanding compliance item for GM meeting prep / task creation. */
 export function getLeadsWithOutstandingItemsForBranch(leads, dateRange, branch) {
-  const branchLeads = (leads ?? []).filter((l) => l.branch === branch);
+  const branchLeads = (leads ?? []).filter((l) => leadBranchMatches(l.branch, branch));
   const start = dateRange?.start ?? null;
   const end = dateRange?.end ?? null;
   return branchLeads.filter((l) => {
@@ -370,6 +383,35 @@ export function getBranchesForGM(gmName, leads = null) {
         ]
       : [];
   return [...new Set([...fromOrg, ...fromLeads])];
+}
+
+/** HLES vs org_mapping often differ only by whitespace around " - ". */
+export function normalizeBranchKey(s) {
+  if (s == null || s === "") return "";
+  return String(s).trim().replace(/\s+/g, " ");
+}
+
+export function leadBranchMatches(leadBranch, branchKey) {
+  if (branchKey == null || branchKey === "") return false;
+  return normalizeBranchKey(leadBranch) === normalizeBranchKey(branchKey);
+}
+
+export function leadInGmBranchList(leadBranch, myBranches) {
+  return (myBranches ?? []).some((b) => leadBranchMatches(leadBranch, b));
+}
+
+/** One row per physical branch when org and leads use different spacing. */
+export function dedupeGmBranches(branches) {
+  const m = new Map();
+  for (const b of branches ?? []) {
+    const k = normalizeBranchKey(b);
+    if (k && !m.has(k)) m.set(k, b);
+  }
+  return [...m.values()];
+}
+
+function taskAssignedToGmBranch(assignedBranch, myBranches) {
+  return (myBranches ?? []).some((b) => leadBranchMatches(assignedBranch, b));
 }
 
 export function getGMBranches(userId = null, gmName = null, leads = null) {
@@ -1173,7 +1215,7 @@ export function getTasksForLead(leadId, tasksList) {
 export function getTasksForGMBranches(tasksList, gmName = "D. Williams", leads = null) {
   const list = tasksList ?? defaultTasks;
   const myBranches = getBranchesForGM(gmName, leads);
-  const open = list.filter((t) => t.status !== "Done" && myBranches.includes(t.assignedBranch));
+  const open = list.filter((t) => t.status !== "Done" && taskAssignedToGmBranch(t.assignedBranch, myBranches));
   const now = new Date(NOW);
 
   return [...open].sort((a, b) => {
@@ -1192,7 +1234,7 @@ export function getTasksForGMBranches(tasksList, gmName = "D. Williams", leads =
 export function getGMTasksProgress(tasksList, gmName = "D. Williams", leads = null) {
   const list = tasksList ?? defaultTasks;
   const myBranches = getBranchesForGM(gmName, leads);
-  const gmTasks = list.filter((t) => myBranches.includes(t.assignedBranch));
+  const gmTasks = list.filter((t) => taskAssignedToGmBranch(t.assignedBranch, myBranches));
   const total = gmTasks.length;
   const completed = gmTasks.filter((t) => t.status === "Done").length;
   const open = total - completed;
@@ -1595,7 +1637,7 @@ export function getGMDashboardStats(leads, dateRange = null, gmName = null) {
   let filtered = leads ?? [];
   if (gmName) {
     const myBranches = getBranchesForGM(gmName, leads);
-    filtered = filtered.filter((l) => myBranches.includes(l.branch));
+    filtered = filtered.filter((l) => leadInGmBranchList(l.branch, myBranches));
   }
   if (dateRange?.start || dateRange?.end) {
     filtered = filtered.filter((l) => leadInDateRange(l, dateRange.start, dateRange.end));
@@ -1646,7 +1688,7 @@ export function getUnreachableLeads(leads, dateRange = null, gmName = null) {
   let filtered = leads ?? [];
   if (gmName) {
     const myBranches = getBranchesForGM(gmName, leads);
-    filtered = filtered.filter((l) => myBranches.includes(l.branch));
+    filtered = filtered.filter((l) => leadInGmBranchList(l.branch, myBranches));
   }
   if (dateRange?.start || dateRange?.end) {
     filtered = filtered.filter((l) => leadInDateRange(l, dateRange.start, dateRange.end));
@@ -1669,7 +1711,7 @@ export function getUnreachableLeadsStats(leads, dateRange = null, gmName = null)
   let allFiltered = leads ?? [];
   if (gmName) {
     const myBranches = getBranchesForGM(gmName, leads);
-    allFiltered = allFiltered.filter((l) => myBranches.includes(l.branch));
+    allFiltered = allFiltered.filter((l) => leadInGmBranchList(l.branch, myBranches));
   }
   if (dateRange?.start || dateRange?.end) {
     allFiltered = allFiltered.filter((l) => leadInDateRange(l, dateRange.start, dateRange.end));
@@ -1858,7 +1900,7 @@ export function getGMBranchLeaderboard(leads, dateRange, sortMetric = "conversio
       pctWithin30,
       branchHrdPct,
       commentRate,
-      isMyBranch: myBranches.includes(branch),
+      isMyBranch: leadInGmBranchList(branch, myBranches),
     };
   });
 
@@ -1946,7 +1988,7 @@ export function getGMLeads(leads, dateRange = null, filters = {}, gmName = null)
   let filtered = leads ?? [];
   if (gmName) {
     const myBranches = getBranchesForGM(gmName, leads);
-    filtered = filtered.filter((l) => myBranches.includes(l.branch));
+    filtered = filtered.filter((l) => leadInGmBranchList(l.branch, myBranches));
   }
   if (dateRange?.start || dateRange?.end) {
     filtered = filtered.filter((l) => leadInDateRange(l, dateRange.start, dateRange.end));
@@ -1977,13 +2019,18 @@ export function getGMLeads(leads, dateRange = null, filters = {}, gmName = null)
 
 /** GM meeting prep data: per-branch compliance checklist + zone-level outstanding items. */
 export function getGMMeetingPrepData(leads, dateRange = null, gmName = "D. Williams") {
-  const myBranches = getBranchesForGM(gmName, leads);
+  const myBranches = dedupeGmBranches(getBranchesForGM(gmName, leads));
   const periodStart = dateRange?.start ?? null;
   const periodEnd = dateRange?.end ?? null;
 
   const branchChecklist = myBranches.map((branch) => {
-    const branchLeadsAll = (leads ?? []).filter((l) => l.branch === branch);
-    const branchLeadsInRange = getLeadsForBranchInRange(leads ?? [], dateRange, branch);
+    const branchLeadsAll = (leads ?? []).filter((l) => leadBranchMatches(l.branch, branch));
+    let branchLeadsInRange = branchLeadsAll;
+    if (dateRange?.start || dateRange?.end) {
+      branchLeadsInRange = branchLeadsAll.filter((l) =>
+        leadInDateRange(l, dateRange.start, dateRange.end)
+      );
+    }
     const total = branchLeadsInRange.length;
 
     const cancelledNoBmComment = branchLeadsAll.filter(leadCancelledWithoutBmComment).length;
@@ -1995,7 +2042,7 @@ export function getGMMeetingPrepData(leads, dateRange = null, gmName = "D. Willi
     const mismatchCount = mismatchLeads.length;
 
     const outstanding = cancelledNoBmComment + unusedNoBmThisPeriod + mismatchCount;
-    const row = orgMapping.find((r) => r.branch === branch);
+    const row = orgMapping.find((r) => leadBranchMatches(r.branch, branch));
 
     return {
       branch,
@@ -2036,7 +2083,7 @@ export function getGMLeadsToReviewCount(leads, dateRange = null, gmName = null) 
   let filtered = leads ?? [];
   if (gmName) {
     const myBranches = getBranchesForGM(gmName, filtered);
-    filtered = filtered.filter((l) => myBranches.includes(l.branch));
+    filtered = filtered.filter((l) => leadInGmBranchList(l.branch, myBranches));
   }
   if (dateRange?.start || dateRange?.end) {
     filtered = filtered.filter((l) => leadInDateRange(l, dateRange.start, dateRange.end));
@@ -2088,12 +2135,12 @@ export function getConversionByBranch(leads, dateRange, compRange = null, gmName
 export function getConversionByInsurer(leads, dateRange, compRange = null, gmName = "D. Williams") {
   const myBranches = getBranchesForGM(gmName, leads);
 
-  let currLeads = (leads ?? []).filter((l) => myBranches.includes(l.branch));
+  let currLeads = (leads ?? []).filter((l) => leadInGmBranchList(l.branch, myBranches));
   if (dateRange?.start || dateRange?.end) {
     currLeads = currLeads.filter((l) => leadInDateRange(l, dateRange.start, dateRange.end));
   }
 
-  let prevLeads = (leads ?? []).filter((l) => myBranches.includes(l.branch));
+  let prevLeads = (leads ?? []).filter((l) => leadInGmBranchList(l.branch, myBranches));
   if (compRange?.start || compRange?.end) {
     prevLeads = prevLeads.filter((l) => leadInDateRange(l, compRange.start, compRange.end));
   } else {
@@ -2128,12 +2175,12 @@ export function getConversionByInsurer(leads, dateRange, compRange = null, gmNam
 export function getConversionByBodyShop(leads, dateRange, compRange = null, gmName = "D. Williams") {
   const myBranches = getBranchesForGM(gmName, leads);
 
-  let currLeads = (leads ?? []).filter((l) => myBranches.includes(l.branch));
+  let currLeads = (leads ?? []).filter((l) => leadInGmBranchList(l.branch, myBranches));
   if (dateRange?.start || dateRange?.end) {
     currLeads = currLeads.filter((l) => leadInDateRange(l, dateRange.start, dateRange.end));
   }
 
-  let prevLeads = (leads ?? []).filter((l) => myBranches.includes(l.branch));
+  let prevLeads = (leads ?? []).filter((l) => leadInGmBranchList(l.branch, myBranches));
   if (compRange?.start || compRange?.end) {
     prevLeads = prevLeads.filter((l) => leadInDateRange(l, compRange.start, compRange.end));
   } else {
@@ -2181,7 +2228,7 @@ export function getStackedWeeklyByBranch(leads, branch = null, gmName = "D. Will
   if (branch) {
     filtered = filtered.filter((l) => l.branch === branch);
   } else {
-    filtered = filtered.filter((l) => myBranches.includes(l.branch));
+    filtered = filtered.filter((l) => leadInGmBranchList(l.branch, myBranches));
   }
 
   const weekMap = new Map();
@@ -2269,7 +2316,7 @@ export function getSpotCheckData(leads, branch, dateRange = null) {
 export function getZoneBenchmark(leads, dateRange = null, gmName = "D. Williams") {
   const myBranches = getBranchesForGM(gmName, leads);
   const stats = getGMDashboardStats(
-    (leads ?? []).filter((l) => myBranches.includes(l.branch)),
+    (leads ?? []).filter((l) => leadInGmBranchList(l.branch, myBranches)),
     dateRange
   );
   return {

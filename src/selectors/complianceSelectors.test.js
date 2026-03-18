@@ -159,6 +159,24 @@ describe("getGMMeetingPrepData (E2E-style)", () => {
     expect(data.branchChecklist[0].isComplete).toBe(true);
   });
 
+  it("matches HLES vs org_mapping branch strings (whitespace around dash)", () => {
+    setOrgMappingSource([
+      { branch: "7401-01 - PERRINE HLE", gm: "Test GM", bm: "BM", am: "AM", zone: "FL" },
+    ]);
+    const leads = [
+      {
+        branch: "7401-01    - PERRINE HLE",
+        status: "Cancelled",
+        archived: false,
+        enrichment: {},
+      },
+    ];
+    const data = getGMMeetingPrepData(leads, dateRange, "Test GM");
+    expect(data.branchChecklist.length).toBe(1);
+    expect(data.branchChecklist[0].cancelledNoBmComment).toBe(1);
+    expect(data.branchChecklist[0].isComplete).toBe(false);
+  });
+
   it("per-branch isolation: cancelled on branch B does not count on branch A", () => {
     setOrgMappingSource([
       { branch: "7401-01 - BRANCH A", gm: "Test GM", bm: "BM A", am: "AM", zone: "FL" },

@@ -20,6 +20,7 @@ import {
   relChange,
   resolveGMName,
   getBranchesForGM,
+  leadInGmBranchList,
   normalizeGmName,
 } from "../../selectors/demoSelectors";
 import StatusBadge from "../StatusBadge";
@@ -143,7 +144,7 @@ export default function InteractiveGMMeetingPrepPage() {
   const gmFilteredLeads = useMemo(() => {
     if (!gmName) return leads ?? [];
     const myBranches = getBranchesForGM(gmName, leads ?? []);
-    return (leads ?? []).filter((l) => myBranches.includes(l.branch));
+    return (leads ?? []).filter((l) => leadInGmBranchList(l.branch, myBranches));
   }, [leads, gmName]);
   const stats = useMemo(() => getGMDashboardStats(leads, dateRange, gmName), [leads, dateRange, gmName]);
   const prevStats = useMemo(() => (comparisonRange ? getGMDashboardStats(leads, comparisonRange, gmName) : null), [leads, comparisonRange, gmName]);
@@ -527,7 +528,12 @@ export default function InteractiveGMMeetingPrepPage() {
           Branch Compliance — Who Needs Follow Up
         </h3>
         {(() => {
-          const branchProgressPct = meetingPrepData.totalBranches > 0 ? Math.round((meetingPrepData.branchesComplete / meetingPrepData.totalBranches) * 100) : 100;
+          const branchProgressPct =
+            meetingPrepData.totalBranches > 0
+              ? Math.round((meetingPrepData.branchesComplete / meetingPrepData.totalBranches) * 100)
+              : meetingPrepData.totalOutstanding > 0
+                ? 0
+                : 100;
           const colors = getProgressModuleColors(branchProgressPct);
           return (
             <button
