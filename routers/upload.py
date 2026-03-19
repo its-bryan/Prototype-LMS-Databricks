@@ -8,6 +8,7 @@ from datetime import datetime
 from db import execute, query, with_connection
 from etl.clean import clean_hles_data, clean_translog_data
 from services.snapshot import compute_and_store_snapshot
+from services.days_open import refresh_days_open
 
 router = APIRouter()
 
@@ -228,7 +229,8 @@ async def upload_hles(
         (json.dumps(stats), "{}", str(pd.Timestamp.now().date())),
     )
     background_tasks.add_task(compute_and_store_snapshot)
-    print(f"[upload] HLES ETL done — snapshot background task queued", flush=True)
+    background_tasks.add_task(refresh_days_open)
+    print(f"[upload] HLES ETL done — snapshot + days_open background tasks queued", flush=True)
     return stats
 
 @router.post("/upload/translog")
@@ -278,3 +280,14 @@ async def upload_translog(file: UploadFile = File(...)):
             stats["orphan"] += 1
 
     return stats
+
+
+@router.post("/upload/refresh-days-open")
+def trigger_days_open_refresh():
+    """
+    Admin endpoint: manually recalculate days_open for all leads from init_dt_final.
+    Useful for backfilling historical records without uploading a new HLES file.
+    Runs synchronously and returns the count of rows updated.
+    """
+    result = refresh_days_open()
+    return result
