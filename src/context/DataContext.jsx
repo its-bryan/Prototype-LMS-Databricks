@@ -58,8 +58,8 @@ import { setOrgMappingSource, setBranchManagersSource, setWeeklyTrendsSource, se
 
 const DataContext = createContext(null);
 
-// true = use live Databricks API; false = use mock data
-const USE_LIVE_API = true;
+// Set VITE_USE_LIVE_API=false to use mock data locally.
+const USE_LIVE_API = import.meta.env.VITE_USE_LIVE_API !== "false";
 const STORAGE_KEY = "hertz_lms_leads";
 
 // ---------------------------------------------------------------------------
