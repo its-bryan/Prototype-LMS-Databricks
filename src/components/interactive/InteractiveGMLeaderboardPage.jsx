@@ -44,15 +44,17 @@ export default function InteractiveGMLeaderboardPage() {
   const [sortMetric, setSortMetric] = useState("conversionRate");
   const [selectedBranch, setSelectedBranch] = useState(null);
 
-  // Resolve the logged-in GM's canonical name (same pattern as InteractiveGMMeetingPrepPage)
+  // Resolve the logged-in GM's canonical name from orgMapping (must match
+  // the casing stored in the snapshot, which is ALL CAPS from the DB).
   const gmName = useMemo(() => {
     const name = userProfile?.displayName;
     if (!name) return resolveGMName(null, userProfile?.id);
     const nm = normalizeGmName(name);
-    if ((orgMapping ?? []).some((r) => r.gm && normalizeGmName(r.gm) === nm)) return name;
+    const orgMatch = (orgMapping ?? []).find((r) => r.gm && normalizeGmName(r.gm) === nm);
+    if (orgMatch) return orgMatch.gm;
     if ((leads ?? []).some((l) => normalizeGmName(l.generalMgr ?? l.general_mgr) === nm)) return name;
     return resolveGMName(name, userProfile?.id);
-  }, [userProfile?.displayName, userProfile?.id, leads]);
+  }, [userProfile?.displayName, userProfile?.id, orgMapping, leads]);
 
   // Trailing 4 weeks preset — locked; used as fallback dateRange when snapshot is unavailable
   const presets = useMemo(() => getDateRangePresets(), [loading]);
@@ -69,8 +71,9 @@ export default function InteractiveGMLeaderboardPage() {
 
   const leaderboard = useMemo(() => {
     if (useSnapshot) {
+      const nmGm = normalizeGmName(gmName);
       const rows = snapshot.leaderboard
-        .filter((r) => r.gm === gmName)
+        .filter((r) => normalizeGmName(r.gm) === nmGm)
         .map((r) => ({ ...r, isMyBranch: true }));
 
       const sortKey = sortMetric === "mostImproved" ? "improvementDelta" : sortMetric;
