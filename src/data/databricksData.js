@@ -213,12 +213,6 @@ export async function fetchDashboardSnapshot() {
   return data ?? null;
 }
 
-/** Fetch the latest pre-computed observatory snapshot (12 months / 24 weeks). */
-export async function fetchObservatorySnapshot() {
-  const data = await apiGet("/observatory-snapshot");
-  return data ?? null;
-}
-
 /** Fetch leads. The backend reads the JWT to filter by user role/branches. */
 export async function fetchLeads() {
   const rows = await apiGet("/leads");

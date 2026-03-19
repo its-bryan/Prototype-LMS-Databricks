@@ -32,10 +32,6 @@ export const viewPaths = {
   "admin-uploads": "/admin/uploads",
   "admin-org-mapping": "/admin/org-mapping",
   "admin-legend": "/admin/legend",
-  "observatory": "/observatory/conversion",
-  "obs-conversion": "/observatory/conversion",
-  "obs-leads": "/observatory/leads",
-  "obs-leaderboard": "/observatory/leaderboard",
   profile: "/profile",
 };
 
@@ -47,10 +43,6 @@ export const roleNav = {
     { id: "bm-leaderboard", label: "Leaderboard", icon: "trophy", sectionId: "leaderboard", parentId: "bm-work" },
     { id: "bm-leads", label: "My Leads", icon: "list", sectionId: "lead-pipeline", parentId: "bm-work" },
     { id: "bm-todo", label: "Open Tasks", icon: "check-circle", sectionId: "open-tasks", parentId: "bm-work" },
-    { id: "observatory", label: "Observatory Tower", icon: "bar-chart" },
-    { id: "obs-conversion", label: "Conversion %", icon: "bar-chart", parentId: "observatory" },
-    { id: "obs-leads", label: "Total Leads", icon: "list", parentId: "observatory" },
-    { id: "obs-leaderboard", label: "Org Leaderboard", icon: "trophy", parentId: "observatory" },
   ],
   gm: [
     { id: "gm-overview", label: "Summary", icon: "grid" },
@@ -60,20 +52,12 @@ export const roleNav = {
     { id: "gm-meeting-prep", label: "Meeting Prep", icon: "columns", parentId: "gm-todos" },
     { id: "gm-spot-check", label: "Spot Check", icon: "eye", parentId: "gm-todos" },
     { id: "gm-leads", label: "My Leads", icon: "list", parentId: "gm-todos" },
-    { id: "observatory", label: "Observatory Tower", icon: "bar-chart" },
-    { id: "obs-conversion", label: "Conversion %", icon: "bar-chart", parentId: "observatory" },
-    { id: "obs-leads", label: "Total Leads", icon: "list", parentId: "observatory" },
-    { id: "obs-leaderboard", label: "Org Leaderboard", icon: "trophy", parentId: "observatory" },
   ],
   admin: [
     { id: "admin-dashboard", label: "Dashboard", icon: "grid" },
     { id: "admin-uploads", label: "Data Uploads", icon: "upload" },
     { id: "admin-org-mapping", label: "Org Mapping", icon: "users" },
     { id: "admin-legend", label: "Cancellation Reasons", icon: "book" },
-    { id: "observatory", label: "Observatory Tower", icon: "bar-chart" },
-    { id: "obs-conversion", label: "Conversion %", icon: "bar-chart", parentId: "observatory" },
-    { id: "obs-leads", label: "Total Leads", icon: "list", parentId: "observatory" },
-    { id: "obs-leaderboard", label: "Org Leaderboard", icon: "trophy", parentId: "observatory" },
   ],
 };
 

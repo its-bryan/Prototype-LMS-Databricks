@@ -228,11 +228,6 @@ export default function Sidebar() {
   const gmTodosExpanded = true;
   const gmOverviewExpanded = true;
 
-  const obsChildIds = ["obs-conversion", "obs-leads", "obs-leaderboard"];
-  const hasObsChildren = navItems.some((n) => obsChildIds.includes(n.id));
-  const inObsSection = resolvedActive === "observatory" || obsChildIds.includes(resolvedActive);
-  const obsExpanded = true;
-
   const navScrollRef = useRef(null);
   useEffect(() => {
     if (!navScrollRef.current || !resolvedActive) return;
@@ -278,9 +273,6 @@ export default function Sidebar() {
           if (isGmOverviewChild && !gmOverviewExpanded) return null;
           if (isGmTodosChild && !gmTodosExpanded) return null;
 
-          const isObsChild = item.parentId === "observatory";
-          if (isObsChild && !obsExpanded) return null;
-
           // Determine active state
           let isActive;
           if (item.id === "bm-work") {
@@ -291,8 +283,6 @@ export default function Sidebar() {
             isActive = gmOverviewChildIds.includes(resolvedActive) || resolvedActive === "gm-overview";
           } else if (item.id === "gm-todos") {
             isActive = gmTodosChildIds.includes(resolvedActive) || resolvedActive === "gm-todos";
-          } else if (item.id === "observatory") {
-            isActive = obsChildIds.includes(resolvedActive) || resolvedActive === "observatory";
           } else {
             isActive = resolvedActive === item.id;
           }
@@ -330,15 +320,13 @@ export default function Sidebar() {
           const isSummaryParent = item.id === "bm-dashboard" && hasSummaryChildren;
           const isGmOverviewParent = item.id === "gm-overview" && hasGmOverviewChildren;
           const isGmTodosParent = item.id === "gm-todos" && hasGmTodosChildren;
-          const isObsParent = item.id === "observatory" && hasObsChildren;
-          const hasChevron = isWorkParent || isSummaryParent || isGmOverviewParent || isGmTodosParent || isObsParent;
+          const hasChevron = isWorkParent || isSummaryParent || isGmOverviewParent || isGmTodosParent;
 
           // Chevron expanded state
           const chevronExpanded = isWorkParent ? workExpanded
             : isSummaryParent ? summaryExpanded
             : isGmOverviewParent ? gmOverviewExpanded
             : isGmTodosParent ? gmTodosExpanded
-            : isObsParent ? obsExpanded
             : false;
 
           // Navigation target: parent items scroll to first child section

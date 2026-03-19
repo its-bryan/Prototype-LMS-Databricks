@@ -8,6 +8,7 @@ import {
   getDateRangePresets,
   getComparisonDateRange,
   getSummaryDataWithChart,
+  getLeadsForBranch,
   getTasksForBranch,
   getDefaultBranchForDemo,
   getAllLeads,
@@ -114,6 +115,8 @@ export function BMDashboard({ navigateTo }) {
     const preset = presets.find((p) => p.key === selectedPresetKey);
     return preset ? { start: preset.start, end: preset.end } : null;
   }, [selectedPresetKey, useCustom, customStart, customEnd, presets]);
+
+  const branchLeads = getLeadsForBranch(leads, branch);
 
   // Demand-load leads when user picks a custom date range (snapshot only covers trailing 4 weeks)
   useEffect(() => {
@@ -344,7 +347,7 @@ export function BMDashboard({ navigateTo }) {
                   </div>
                   <div className="min-w-0">
                     <h3 className="text-lg font-extrabold text-[var(--hertz-black)] tracking-tight leading-snug">My Leads</h3>
-                    <p className="text-sm text-[var(--neutral-600)] mt-0.5">Check all leads in my branch</p>
+                    <p className="text-sm text-[var(--neutral-600)] mt-0.5">{branchLeads.length} leads assigned to your branch.</p>
                   </div>
                 </div>
                 <div className="flex items-center shrink-0">
@@ -499,6 +502,8 @@ export function GMDashboardPage({ navigateTo }) {
     if (useSnapshotGM && snapshotGM?.comparison) return snapshotGM.comparison;
     return prevRange ? getGMDashboardStats(leads, prevRange, gmName) : null;
   }, [leads, prevRange, gmName, useSnapshotGM, snapshotGM]);
+
+  const gmLeadCount = useMemo(() => (leads ?? []).length, [leads]);
 
   const greeting = getTimeOfDayGreeting();
   const insight = getGMContextualInsight({ stats });
@@ -686,7 +691,7 @@ export function GMDashboardPage({ navigateTo }) {
                   </div>
                   <div className="min-w-0">
                     <h3 className="text-lg font-extrabold text-[var(--hertz-black)] tracking-tight leading-snug">My Leads</h3>
-                    <p className="text-sm text-[var(--neutral-600)] mt-0.5">Check all leads across my branches</p>
+                    <p className="text-sm text-[var(--neutral-600)] mt-0.5">{gmLeadCount} leads across your branches.</p>
                   </div>
                 </div>
                 <div className="flex items-center shrink-0">

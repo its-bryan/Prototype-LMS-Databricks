@@ -7,7 +7,7 @@ import {
 import { formatDateShort, formatWeekday, formatMonthYear } from "../utils/dateTime";
 
 /** Module-level data — updated by DataContext when Supabase provides real data. */
-export let orgMapping = [...defaultOrgMapping];
+let orgMapping = [...defaultOrgMapping];
 let branchManagers = [...defaultBranchManagers];
 let weeklyTrends = { ...defaultWeeklyTrends };
 
@@ -1848,7 +1848,7 @@ export function getContactRangeDistribution(leads, dateRange = null) {
  * Uses the SAME date range and period logic as BM Summary (getPeriodsForRange + getLeadDateForPeriod + leadToPeriodKey)
  * so the chart reads from the same data and shows consistent results. */
 export function getGMMetricTrendByWeek(leads, opts = {}) {
-  const { metric = "conversion_rate", groupBy, timeframe = "trailing_4_weeks", gmName } = opts;
+  const { metric = "conversion_rate", groupBy, timeframe = "trailing_4_weeks" } = opts;
 
   const presets = getDateRangePresets();
   const preset = presets.find((p) => p.key === timeframe);
@@ -1861,10 +1861,6 @@ export function getGMMetricTrendByWeek(leads, opts = {}) {
   const weekLabels = periods.map((p) => p.label);
 
   let filtered = (leads ?? []).filter((l) => l.status !== "Reviewed");
-  if (gmName) {
-    const myBranches = getBranchesForGM(gmName, leads);
-    filtered = filtered.filter((l) => leadInGmBranchList(l.branch, myBranches));
-  }
 
   const getValueForWeek = (weekLeads, metricKey) => {
     if (weekLeads.length === 0) return null;

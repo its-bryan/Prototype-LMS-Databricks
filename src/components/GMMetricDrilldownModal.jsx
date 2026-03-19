@@ -293,8 +293,8 @@ export default function GMMetricDrilldownModal({
     : (relChangeVal != null && relChangeVal < 0);
 
   const trendData = useMemo(
-    () => getGMMetricTrendByWeek(leads, { metric: metricKey, timeframe: "trailing_4_weeks", gmName }),
-    [leads, metricKey, gmName]
+    () => getGMMetricTrendByWeek(leads, { metric: metricKey, timeframe: "trailing_4_weeks" }),
+    [leads, metricKey]
   );
 
   const leaderboard = useMemo(

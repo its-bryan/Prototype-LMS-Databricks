@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useData } from "../../context/DataContext";
@@ -35,6 +35,7 @@ export default function InteractiveGMLeadsPage() {
   const [selectedLeadId, setSelectedLeadId] = useState(null);
   const [directive, setDirective] = useState("");
   const [directiveSaved, setDirectiveSaved] = useState(false);
+  const panelRef = useRef(null);
 
   const currentPreset = presets.find((p) => p.key === selectedPresetKey);
   const dateRange = currentPreset ? { start: currentPreset.start, end: currentPreset.end } : null;
@@ -71,13 +72,16 @@ export default function InteractiveGMLeadsPage() {
 
   const selectedLead = selectedLeadId ? getLeadById(leads, selectedLeadId) : null;
 
-  const handleSelectLead = (id, rowEl) => {
+  useEffect(() => {
+    if (selectedLead && panelRef.current) {
+      panelRef.current.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [selectedLeadId]);
+
+  const handleSelectLead = (id) => {
     setSelectedLeadId(id);
     setDirective("");
     setDirectiveSaved(false);
-    if (rowEl && typeof rowEl.scrollIntoView === "function") {
-      rowEl.scrollIntoView({ block: "nearest", inline: "nearest" });
-    }
   };
 
   const [directiveSaving, setDirectiveSaving] = useState(false);
@@ -211,7 +215,7 @@ export default function InteractiveGMLeadsPage() {
                 {filteredLeads.map((lead) => (
                   <tr
                     key={lead.id}
-                    onClick={(e) => handleSelectLead(lead.id, e.currentTarget)}
+                    onClick={() => handleSelectLead(lead.id)}
                     className={`border-b border-[var(--neutral-100)] cursor-pointer transition-colors ${
                       selectedLeadId === lead.id
                         ? "bg-[var(--hertz-primary-subtle)]"
@@ -252,6 +256,7 @@ export default function InteractiveGMLeadsPage() {
             exit={{ x: 40, opacity: 0 }}
             transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
             className="w-[55%] border-l border-[var(--neutral-200)] bg-white overflow-y-auto pl-6"
+            ref={panelRef}
           >
             <div className="sticky top-0 bg-white z-10 pb-3 pt-1 flex items-center justify-between">
               <h2 className="text-lg font-bold text-[var(--hertz-black)]">{selectedLead.customer}</h2>
