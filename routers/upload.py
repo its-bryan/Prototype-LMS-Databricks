@@ -8,6 +8,7 @@ from datetime import datetime
 from db import execute, query, with_connection
 from etl.clean import clean_hles_data, clean_translog_data
 from services.snapshot import compute_and_store_snapshot
+from services.observatory_snapshot import compute_observatory_snapshot
 from services.days_open import refresh_days_open
 
 router = APIRouter()
@@ -229,8 +230,9 @@ async def upload_hles(
         (json.dumps(stats), "{}", str(pd.Timestamp.now().date())),
     )
     background_tasks.add_task(compute_and_store_snapshot)
+    background_tasks.add_task(compute_observatory_snapshot)
     background_tasks.add_task(refresh_days_open)
-    print(f"[upload] HLES ETL done — snapshot + days_open background tasks queued", flush=True)
+    print(f"[upload] HLES ETL done — snapshot + observatory + days_open background tasks queued", flush=True)
     return stats
 
 @router.post("/upload/translog")
