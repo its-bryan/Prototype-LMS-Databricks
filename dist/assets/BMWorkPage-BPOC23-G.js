@@ -1,1 +1,0 @@
-import{j as r}from"./index-_PAKUjrl.js";import o from"./BMSummaryPage-Bo977JM1.js";import"./InteractiveDashboard-CkqvMIuD.js";import"./StatusBadge-Cs3Xqtul.js";import"./MetricDrilldownModal-CdGyHctR.js";import"./GMMetricDrilldownModal-DAFNaTId.js";import"./dashboardHelpers-JrLWjrvz.js";import"./DashboardSkeleton-Dkemz05H.js";function f(){return r.jsx(o,{})}export{f as default};
