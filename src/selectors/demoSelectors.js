@@ -1530,7 +1530,10 @@ function getPeriodsForRange(dateRange, presetKey) {
       const key = cur.toISOString().split("T")[0];
       if (!seen.has(key)) {
         seen.add(key);
-        periods.push({ key, label: formatDateShort(cur) });
+        const sunday = new Date(cur);
+        sunday.setDate(cur.getDate() + 6);
+        sunday.setHours(12, 0, 0, 0);
+        periods.push({ key, label: formatDateShort(sunday) });
       }
       cur.setDate(cur.getDate() + 7);
     }
@@ -2073,7 +2076,12 @@ export function getGMLeads(leads, dateRange = null, filters = {}, gmName = null)
   if (dateRange?.start || dateRange?.end) {
     filtered = filtered.filter((l) => leadInDateRange(l, dateRange.start, dateRange.end));
   }
-  filtered = filtered.filter((l) => l.status === "Cancelled" || l.status === "Unused");
+  // When statusFilter is explicitly "Rented", include all statuses so the statusFilter below can work.
+  // Otherwise, restrict to actionable statuses (Cancelled + Unused).
+  if (!statusFilter || statusFilter === "All" || statusFilter === "Cancelled" || statusFilter === "Unused") {
+    filtered = filtered.filter((l) => l.status === "Cancelled" || l.status === "Unused");
+  }
+  // If statusFilter is "Rented", don't pre-filter — let the statusFilter block below narrow to Rented.
 
   if (statusFilter && statusFilter !== "All") {
     filtered = filtered.filter((l) => l.status === statusFilter);

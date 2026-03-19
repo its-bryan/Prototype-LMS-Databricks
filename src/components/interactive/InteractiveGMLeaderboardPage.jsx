@@ -29,12 +29,10 @@ const SORT_METRICS = [
   { value: "mostImproved", label: "Most Improved", suffix: " pp" },
 ];
 
-const QUARTILE_COLORS = {
-  1: { border: "border-l-emerald-500", label: "Q1", bg: "bg-emerald-50", text: "text-emerald-700" },
-  2: { border: "border-l-[var(--neutral-300)]", label: "Q2", bg: "bg-[var(--neutral-50)]", text: "text-[var(--neutral-600)]" },
-  3: { border: "border-l-[var(--neutral-300)]", label: "Q3", bg: "bg-[var(--neutral-50)]", text: "text-[var(--neutral-600)]" },
-  4: { border: "border-l-red-400", label: "Q4", bg: "bg-red-50", text: "text-red-700" },
-};
+function fmtMD(d) {
+  if (!d) return "";
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }).replace(" ", "/");
+}
 
 export default function InteractiveGMLeaderboardPage() {
   const { leads, loading, demandLeads, initialDataReady, snapshot, orgMapping } = useData();
@@ -60,6 +58,18 @@ export default function InteractiveGMLeaderboardPage() {
   const presets = useMemo(() => getDateRangePresets(), [loading]);
   const trailing4wPreset = presets.find((p) => p.key === "trailing_4_weeks");
   const dateRange = trailing4wPreset ? { start: trailing4wPreset.start, end: trailing4wPreset.end } : null;
+
+  // Comparison period for "Change" column header: the 4 weeks before the current trailing_4_weeks
+  const comparisonDateRange = useMemo(() => {
+    if (!trailing4wPreset) return null;
+    const end = new Date(trailing4wPreset.start);
+    end.setDate(end.getDate() - 1);
+    end.setHours(23, 59, 59, 999);
+    const start = new Date(end);
+    start.setDate(end.getDate() - 27);
+    start.setHours(0, 0, 0, 0);
+    return { start, end };
+  }, [trailing4wPreset]);
 
   // Primary path: snapshot.leaderboard filtered to GM's branches, re-sorted client-side.
   // Fallback path: demand leads + compute via selector (covers first-load before snapshot arrives).
@@ -167,8 +177,8 @@ export default function InteractiveGMLeaderboardPage() {
           <thead>
             <tr className="bg-[var(--hertz-black)]">
               <th className="text-center text-white text-xs font-semibold px-4 py-3 w-12">#</th>
-              <th className="text-center text-white text-xs font-semibold px-4 py-3">Branch</th>
-              <th className="text-center text-white text-xs font-semibold px-4 py-3">BM</th>
+              <th className="text-left text-white text-xs font-semibold px-4 py-3">Branch</th>
+              <th className="text-left text-white text-xs font-semibold px-4 py-3">BM</th>
               <th className="text-center text-white text-xs font-semibold px-4 py-3">Zone</th>
               {SORT_METRICS.filter((m) => m.value !== "mostImproved").map((m) => (
                 <th
@@ -187,7 +197,10 @@ export default function InteractiveGMLeaderboardPage() {
                   sortMetric === "mostImproved" ? "text-[var(--hertz-primary)]" : "text-white hover:text-[var(--neutral-300)]"
                 }`}
               >
-                Change {sortMetric === "mostImproved" && "▼"}
+                {comparisonDateRange
+                  ? `Change from ${fmtMD(comparisonDateRange.start)}–${fmtMD(comparisonDateRange.end)}`
+                  : "Change"}
+                {sortMetric === "mostImproved" && " ▼"}
               </th>
             </tr>
           </thead>
@@ -199,33 +212,24 @@ export default function InteractiveGMLeaderboardPage() {
                 </td>
               </tr>
             )}
-            {leaderboard.sorted.map((row, i) => {
-              const qStyle = QUARTILE_COLORS[row.quartile] ?? {};
-              return (
+            {leaderboard.sorted.map((row, i) => (
                 <motion.tr
                   key={row.branch}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.03, duration: 0.3 }}
                   onClick={() => setSelectedBranch(row)}
-                  className={`border-b border-[var(--neutral-100)] transition-colors hover:bg-[var(--neutral-50)] cursor-pointer border-l-3 ${qStyle.border ?? ""}`}
+                  className="border-b border-[var(--neutral-100)] transition-colors hover:bg-[var(--neutral-50)] cursor-pointer"
                 >
                   <td className="px-4 py-3 text-center">
-                    <div className="flex items-center justify-center gap-1.5">
-                      <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
-                        row.rank <= 3 ? "bg-[var(--hertz-primary)] text-[var(--hertz-black)]" : "bg-[var(--neutral-100)] text-[var(--neutral-600)]"
-                      }`}>
-                        {row.rank}
-                      </span>
-                      {row.quartile && (
-                        <span className={`text-[10px] font-semibold px-1 py-0.5 rounded ${qStyle.bg} ${qStyle.text}`}>
-                          {qStyle.label}
-                        </span>
-                      )}
-                    </div>
+                    <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
+                      row.rank <= 3 ? "bg-[var(--hertz-primary)] text-[var(--hertz-black)]" : "bg-[var(--neutral-100)] text-[var(--neutral-600)]"
+                    }`}>
+                      {row.rank}
+                    </span>
                   </td>
-                  <td className="px-4 py-3 text-center font-medium text-[var(--hertz-black)]">{row.branch}</td>
-                  <td className="px-4 py-3 text-center text-[var(--neutral-600)]">{row.bmName}</td>
+                  <td className="px-4 py-3 text-left font-medium text-[var(--hertz-black)]">{row.branch}</td>
+                  <td className="px-4 py-3 text-left text-[var(--neutral-600)]">{row.bmName}</td>
                   <td className="px-4 py-3 text-center text-[var(--neutral-600)]">{row.zone}</td>
                   {SORT_METRICS.filter((m) => m.value !== "mostImproved").map((m) => {
                     const val = row[m.value];
@@ -247,8 +251,7 @@ export default function InteractiveGMLeaderboardPage() {
                     ) : "—"}
                   </td>
                 </motion.tr>
-              );
-            })}
+            ))}
           </tbody>
         </table>
       </div>

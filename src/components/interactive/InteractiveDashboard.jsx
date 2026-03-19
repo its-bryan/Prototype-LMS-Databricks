@@ -19,6 +19,7 @@ import {
   tasksInDateRange,
   getGMDashboardStats,
   resolveGMName,
+  normalizeGmName,
   relChange,
   formatMinutesToDisplay,
   normalizeBranchKey,
@@ -184,8 +185,8 @@ export function BMDashboard({ navigateTo }) {
 
   const secondaryTiles = [
     { label: "Open Tasks", value: openTasksCount, color: "text-[var(--hertz-black)]", relChange: relChangeOpenTasks, metricKey: "open_tasks" },
-    { label: "Task Completion Rate", value: taskCompletionRate != null ? `${taskCompletionRate}%` : "â€”", color: "text-[var(--neutral-700)]", relChange: relChangeCompletion, metricKey: "task_completion_rate" },
-    { label: "Average Time for First Contact", value: avgTimeToContact ?? "â€”", color: "text-[var(--neutral-700)]", relChange: relChangeAvgTime, lowerIsBetter: true, metricKey: "avg_time_to_contact" },
+    { label: "Task Completion Rate", value: taskCompletionRate != null ? `${taskCompletionRate}%` : "—", color: "text-[var(--neutral-700)]", relChange: relChangeCompletion, metricKey: "task_completion_rate" },
+    { label: "Average Time for First Contact", value: avgTimeToContact ?? "—", color: "text-[var(--neutral-700)]", relChange: relChangeAvgTime, lowerIsBetter: true, metricKey: "avg_time_to_contact" },
   ];
 
   const activePreset = useCustom ? { key: "custom" } : presets.find((p) => p.key === selectedPresetKey);
@@ -241,7 +242,7 @@ export function BMDashboard({ navigateTo }) {
         {rangeLabel && <span className="text-xs text-[var(--neutral-600)] font-medium">{rangeLabel}</span>}
       </div>
 
-      {/* Rate tiles â€” click to view underlying data and drivers */}
+      {/* Rate tiles — click to view underlying data and drivers */}
       <div data-onboarding="metric-drilldown" className="grid grid-cols-3 gap-2 mb-4">
         {rateTiles.map((tile, i) => (
           <motion.div
@@ -264,7 +265,7 @@ export function BMDashboard({ navigateTo }) {
                     tile.relChange > 0 ? "bg-emerald-400/25 text-emerald-200" : tile.relChange < 0 ? "bg-rose-400/25 text-rose-200" : "bg-white/15 text-white/70"
                   }`}
                 >
-                  {tile.relChange > 0 ? "â†‘" : tile.relChange < 0 ? "â†“" : "â€”"}
+                  {tile.relChange > 0 ? "↑" : tile.relChange < 0 ? "↓" : "—"}
                   {tile.relChange !== 0 ? `${Math.abs(tile.relChange)}%` : ""}
                 </span>
               )}
@@ -272,7 +273,7 @@ export function BMDashboard({ navigateTo }) {
           </motion.div>
         ))}
       </div>
-      {/* Secondary tiles: Open Tasks, Task Completion Rate, Average Time for First Contact â€” click to drill down */}
+      {/* Secondary tiles: Open Tasks, Task Completion Rate, Average Time for First Contact — click to drill down */}
       <div className="grid grid-cols-3 gap-2 mb-4">
         {secondaryTiles.map((tile, i) => (
           <motion.div
@@ -296,8 +297,8 @@ export function BMDashboard({ navigateTo }) {
                   }`}
                 >
                   {tile.lowerIsBetter
-                    ? (tile.relChange > 0 ? "â†“" : tile.relChange < 0 ? "â†‘" : "â€”")
-                    : (tile.relChange > 0 ? "â†‘" : tile.relChange < 0 ? "â†“" : "â€”")}
+                    ? (tile.relChange > 0 ? "↓" : tile.relChange < 0 ? "↑" : "—")
+                    : (tile.relChange > 0 ? "↑" : tile.relChange < 0 ? "↓" : "—")}
                   {tile.relChange !== 0 ? `${Math.abs(tile.relChange)}%` : ""}
                 </span>
               )}
@@ -308,7 +309,7 @@ export function BMDashboard({ navigateTo }) {
 
       </div>
 
-      {/* Work â€” Meeting Prep & Leaderboard modules */}
+      {/* Work — Meeting Prep & Leaderboard modules */}
       <div id="work" className="scroll-mt-4 mb-4">
         <SectionHeader title="Work" subtitle="Prepare for your weekly meeting and see how you rank." />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -405,7 +406,7 @@ export function BMDashboardInbox({ navigateTo }) {
 
   return (
     <>
-      <SectionHeader title="Inbox" subtitle="GM directives tied to specific reservations â€” click a row to review and take action." />
+      <SectionHeader title="Inbox" subtitle="GM directives tied to specific reservations — click a row to review and take action." />
       <div className="border border-[var(--neutral-200)] rounded-lg overflow-hidden shadow-[var(--shadow-md)] max-h-[28rem] overflow-auto">
         <table className="w-full text-sm min-w-[600px]">
           <thead>
@@ -429,7 +430,7 @@ export function BMDashboardInbox({ navigateTo }) {
                       </svg>
                     </div>
                     <p className="text-[var(--hertz-black)] font-bold text-sm mt-1">Inbox zero</p>
-                    <p className="text-sm text-[var(--neutral-600)]">No GM directives right now â€” you're all set.</p>
+                    <p className="text-sm text-[var(--neutral-600)]">No GM directives right now — you're all set.</p>
                   </div>
                 </td>
               </tr>
@@ -459,24 +460,11 @@ export function BMDashboardInbox({ navigateTo }) {
   );
 }
 
-function getGMContextualInsight({ stats, prevStats }) {
+function getGMContextualInsight({ stats }) {
   if (!stats) return null;
-  if ((stats.cancelledUnreviewed ?? 0) === 0 && (stats.unusedOverdue ?? 0) === 0)
-    return "All clear â€” no urgent reviews.";
-  if (stats.total > 0 && prevStats?.total > 0) {
-    const change = stats.total - prevStats.total;
-    if (change > 0) return `${change} new lead${change !== 1 ? "s" : ""} since last period.`;
-  }
-  if (stats.conversionRate > (prevStats?.conversionRate ?? 0) && (prevStats?.conversionRate ?? 0) > 0) {
-    return `Conversion rate is up ${stats.conversionRate - (prevStats?.conversionRate ?? 0)}pp â€” keep it going.`;
-  }
-  if (stats.cancelledUnreviewed > 0 || stats.unusedOverdue > 0) {
-    const parts = [];
-    if (stats.cancelledUnreviewed > 0) parts.push(`${stats.cancelledUnreviewed} cancelled unreviewed`);
-    if (stats.unusedOverdue > 0) parts.push(`${stats.unusedOverdue} unused overdue`);
-    return parts.join(". ") + ".";
-  }
-  return null;
+  const total = (stats.cancelledUnreviewed ?? 0) + (stats.unusedOverdue ?? 0);
+  if (total === 0) return "All clear — no urgent reviews.";
+  return `${total} cancelled and unused unreviewed.`;
 }
 
 export function GMDashboardPage({ navigateTo }) {
@@ -494,9 +482,13 @@ export function GMDashboardPage({ navigateTo }) {
 
   const gmName = useMemo(() => {
     const name = userProfile?.displayName;
-    if (name && (orgMapping ?? []).some((r) => r.gm === name)) return name;
+    if (!name) return resolveGMName(null, userProfile?.id);
+    const nm = normalizeGmName(name);
+    const orgMatch = (orgMapping ?? []).find((r) => r.gm && normalizeGmName(r.gm) === nm);
+    if (orgMatch) return orgMatch.gm;
+    if ((leads ?? []).some((l) => normalizeGmName(l.generalMgr ?? l.general_mgr) === nm)) return name;
     return resolveGMName(name, userProfile?.id);
-  }, [userProfile?.displayName, userProfile?.id, orgMapping]);
+  }, [userProfile?.displayName, userProfile?.id, orgMapping, leads]);
 
   const snapshotGM = gmName ? (snapshot?.gms?.[gmName] ?? null) : null;
   const useSnapshotGM = !!snapshotGM;
@@ -514,7 +506,7 @@ export function GMDashboardPage({ navigateTo }) {
   const gmLeadCount = useMemo(() => (leads ?? []).length, [leads]);
 
   const greeting = getTimeOfDayGreeting();
-  const insight = getGMContextualInsight({ stats, prevStats });
+  const insight = getGMContextualInsight({ stats });
 
   const gmTiles = [
     { label: "Conversion Rate", value: `${stats.conversionRate}%`, relChange: relChange(stats.conversionRate, prevStats?.conversionRate), metricKey: "conversion_rate" },
@@ -557,7 +549,7 @@ export function GMDashboardPage({ navigateTo }) {
           );
         })()}
       </AnimatePresence>
-      {/* Home â€” top of overview page, same greeting and logic as BM */}
+      {/* Home — top of overview page, same greeting and logic as BM */}
       <div id="home" className="scroll-mt-4 mb-4">
         <motion.p
           initial={{ opacity: 0 }}
@@ -598,7 +590,7 @@ export function GMDashboardPage({ navigateTo }) {
           </span>
         </div>
 
-        {/* Metric tiles â€” 2 rows of 3, BM black-tile format */}
+        {/* Metric tiles — 2 rows of 3, BM black-tile format */}
         <div className="grid grid-cols-3 gap-2 mb-2" data-onboarding="gm-metric-drilldown">
           {gmTiles.slice(0, 3).map((tile, i) => (
             <motion.div
@@ -619,7 +611,7 @@ export function GMDashboardPage({ navigateTo }) {
                   <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
                     tile.relChange > 0 ? "bg-emerald-400/25 text-emerald-200" : tile.relChange < 0 ? "bg-rose-400/25 text-rose-200" : "bg-white/15 text-white/70"
                   }`}>
-                    {tile.relChange > 0 ? "â†‘" : tile.relChange < 0 ? "â†“" : "â€”"}
+                    {tile.relChange > 0 ? "↑" : tile.relChange < 0 ? "↓" : "—"}
                     {tile.relChange !== 0 ? `${Math.abs(tile.relChange)}%` : ""}
                   </span>
                 )}
@@ -650,8 +642,8 @@ export function GMDashboardPage({ navigateTo }) {
                       : (tile.relChange > 0 ? "bg-emerald-400/25 text-emerald-200" : "bg-rose-400/25 text-rose-200")
                   }`}>
                     {tile.lowerIsBetter
-                      ? (tile.relChange > 0 ? "â†‘" : "â†“")
-                      : (tile.relChange > 0 ? "â†‘" : "â†“")}
+                      ? (tile.relChange > 0 ? "↑" : "↓")
+                      : (tile.relChange > 0 ? "↑" : "↓")}
                     {`${Math.abs(tile.relChange)}%`}
                   </span>
                 )}
@@ -806,7 +798,7 @@ export function AdminDashboard({ navigateTo }) {
   );
 }
 
-// BM sections in scroll order on Summary page: Work â†’ Summary â†’ My Leads â†’ Open Tasks
+// BM sections in scroll order on Summary page: Work → Summary → My Leads → Open Tasks
 const BM_SECTION_MAP = {
   "bm-work": "work",
   "bm-dashboard": "dashboard",

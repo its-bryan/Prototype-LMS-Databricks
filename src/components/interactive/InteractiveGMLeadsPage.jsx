@@ -2,22 +2,26 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useData } from "../../context/DataContext";
+import { useAuth } from "../../context/AuthContext";
 import BackButton from "../BackButton";
 import {
   getGMLeads,
   getDateRangePresets,
   getInsuranceCompanies,
   getLeadById,
-  getNextComplianceMeetingDate,
+  resolveGMName,
+  normalizeGmName,
 } from "../../selectors/demoSelectors";
+import { formatDateRange } from "../../utils/dashboardHelpers";
 import StatusBadge from "../StatusBadge";
 import ThreeColumnReview from "../ThreeColumnReview";
 import { GMLeadsPageSkeleton, usePageTransition } from "../DashboardSkeleton";
 
-const STATUS_TABS = ["All", "Cancelled", "Unused"];
+const STATUS_TABS = ["All", "Cancelled", "Unused", "Rented"];
 
 export default function InteractiveGMLeadsPage() {
   const { leads, loading, orgMapping, updateLeadDirective, markLeadReviewed, demandLeads, initialDataReady } = useData();
+  const { userProfile } = useAuth();
   const navigate = useNavigate();
   useEffect(() => { demandLeads(); }, [demandLeads]);
   const presets = useMemo(() => getDateRangePresets(), [loading]);
@@ -25,7 +29,6 @@ export default function InteractiveGMLeadsPage() {
   const [selectedPresetKey, setSelectedPresetKey] = useState("this_week");
   const [statusFilter, setStatusFilter] = useState("All");
   const [bmFilter, setBmFilter] = useState("All");
-  const [amFilter, setAmFilter] = useState("All");
   const [branchFilter, setBranchFilter] = useState("All");
   const [insuranceFilter, setInsuranceFilter] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
@@ -37,29 +40,36 @@ export default function InteractiveGMLeadsPage() {
   const currentPreset = presets.find((p) => p.key === selectedPresetKey);
   const dateRange = currentPreset ? { start: currentPreset.start, end: currentPreset.end } : null;
 
-  const bmNames = useMemo(() => [...new Set(orgMapping.map((r) => r.bm))].sort(), [orgMapping]);
-  const branches = useMemo(() => [...new Set(orgMapping.map((r) => r.branch))].sort(), [orgMapping]);
-  const amNames = useMemo(() => [...new Set(orgMapping.map((r) => r.am).filter(Boolean))].sort(), [orgMapping]);
+  const gmName = useMemo(() => {
+    const name = userProfile?.displayName;
+    if (!name) return resolveGMName(null, userProfile?.id);
+    const nm = normalizeGmName(name);
+    const orgMatch = (orgMapping ?? []).find((r) => r.gm && normalizeGmName(r.gm) === nm);
+    if (orgMatch) return orgMatch.gm;
+    if ((leads ?? []).some((l) => normalizeGmName(l.generalMgr ?? l.general_mgr) === nm)) return name;
+    return resolveGMName(name, userProfile?.id);
+  }, [userProfile?.displayName, userProfile?.id, orgMapping, leads]);
+
+  const gmOrgRows = useMemo(() => {
+    if (!gmName) return orgMapping;
+    const nm = normalizeGmName(gmName);
+    return orgMapping.filter((r) => r.gm && normalizeGmName(r.gm) === nm);
+  }, [orgMapping, gmName]);
+
+  const bmNames = useMemo(() => [...new Set(gmOrgRows.map((r) => r.bm).filter(Boolean))].sort(), [gmOrgRows]);
+  const branches = useMemo(() => [...new Set(gmOrgRows.map((r) => r.branch).filter(Boolean))].sort(), [gmOrgRows]);
   const insuranceCompanies = useMemo(() => getInsuranceCompanies(leads), [leads]);
 
-  const amBranches = useMemo(() => {
-    if (amFilter === "All") return null;
-    return orgMapping.filter((r) => r.am === amFilter).map((r) => r.branch);
-  }, [orgMapping, amFilter]);
-
   const filteredLeads = useMemo(() => {
-    let result = getGMLeads(leads, dateRange, {
+    return getGMLeads(leads, dateRange, {
       statusFilter: statusFilter === "All" ? null : statusFilter,
       bmFilter: bmFilter === "All" ? null : bmFilter,
       branchFilter: branchFilter === "All" ? null : branchFilter,
       insuranceFilter: insuranceFilter === "All" ? null : insuranceFilter,
       searchQuery: searchQuery || null,
-    });
-    if (amBranches) result = result.filter((l) => amBranches.includes(l.branch));
-    return result;
-  }, [leads, dateRange, statusFilter, bmFilter, branchFilter, insuranceFilter, searchQuery, amBranches]);
+    }, gmName);
+  }, [leads, dateRange, statusFilter, bmFilter, branchFilter, insuranceFilter, searchQuery, gmName]);
 
-  const { dateStr: meetingDateStr, daysLeft: meetingDaysLeft } = useMemo(() => getNextComplianceMeetingDate(), []);
   const selectedLead = selectedLeadId ? getLeadById(leads, selectedLeadId) : null;
 
   useEffect(() => {
@@ -113,15 +123,6 @@ export default function InteractiveGMLeadsPage() {
         <div className="space-y-4">
           <div>
             <h1 className="text-2xl font-bold text-[var(--hertz-black)]">Leads</h1>
-            <p className="text-sm text-[var(--neutral-600)] mt-0.5">
-              Cancelled and unused leads across all branches — {filteredLeads.length} results.
-              Weekly Compliance Meeting: {meetingDateStr}
-              {meetingDaysLeft >= 0 && (
-                <span className="font-semibold text-[var(--hertz-black)]">
-                  — {meetingDaysLeft === 0 ? "today" : `${meetingDaysLeft} day${meetingDaysLeft !== 1 ? "s" : ""} left`}
-                </span>
-              )}
-            </p>
           </div>
 
           {/* Filters row */}
@@ -140,6 +141,11 @@ export default function InteractiveGMLeadsPage() {
                   {p.label}
                 </button>
               ))}
+              {currentPreset && (
+                <span className="text-xs text-[var(--neutral-400)] px-1">
+                  {formatDateRange(currentPreset)}
+                </span>
+              )}
             </div>
           </div>
 
@@ -160,11 +166,6 @@ export default function InteractiveGMLeadsPage() {
                 </button>
               ))}
             </div>
-
-            <select value={amFilter} onChange={(e) => setAmFilter(e.target.value)} className="px-3 py-1.5 border border-[var(--neutral-200)] rounded-md text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[var(--hertz-primary)]">
-              <option value="All">All AMs</option>
-              {amNames.map((n) => <option key={n} value={n}>{n}</option>)}
-            </select>
 
             <select value={bmFilter} onChange={(e) => setBmFilter(e.target.value)} className="px-3 py-1.5 border border-[var(--neutral-200)] rounded-md text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[var(--hertz-primary)]">
               <option value="All">All BMs</option>
@@ -195,7 +196,7 @@ export default function InteractiveGMLeadsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-[var(--hertz-black)]">
-                  <th className="text-left text-white text-xs font-semibold px-4 py-3">Customer</th>
+                  <th className="text-left text-white text-xs font-semibold px-4 py-3">Customer's last name</th>
                   <th className="text-left text-white text-xs font-semibold px-4 py-3">Status</th>
                   <th className="text-left text-white text-xs font-semibold px-4 py-3">Branch</th>
                   <th className="text-left text-white text-xs font-semibold px-4 py-3">BM</th>
