@@ -108,8 +108,7 @@ export default function InteractiveGMMeetingPrepPage() {
   const { userProfile } = useAuth();
   const reduceMotion = useReducedMotion();
   const presets = useMemo(() => getDateRangePresets(), [loading]);
-
-  const [selectedPresetKey, setSelectedPresetKey] = useState("this_week");
+  const selectedPresetKey = "trailing_4_weeks";
   const [branchComplianceExpanded, setBranchComplianceExpanded] = useState(false);
   const [selectedBranchForDetail, setSelectedBranchForDetail] = useState(null);
   const [tasksExpanded, setTasksExpanded] = useState(false);
@@ -304,29 +303,6 @@ export default function InteractiveGMMeetingPrepPage() {
           </motion.button>
         </div>
       </motion.div>
-
-      {/* Period filter — matches BM meeting prep */}
-      <div className="flex items-center gap-4 mb-6">
-        <label className="text-sm font-medium text-[var(--hertz-black)]">
-          Period
-        </label>
-        <select
-          value={selectedPresetKey}
-          onChange={(e) => setSelectedPresetKey(e.target.value)}
-          className="border border-[var(--neutral-200)] rounded-md px-3 py-2 text-sm bg-white min-w-[180px]"
-        >
-          {presets.map((p) => (
-            <option key={p.key} value={p.key}>
-              {p.label}
-            </option>
-          ))}
-        </select>
-        {selectedPresetKey !== "this_week" && (
-          <span className="px-2 py-1 bg-[var(--neutral-100)] text-[var(--neutral-600)] rounded text-xs font-medium">
-            Read-only (past period)
-          </span>
-        )}
-      </div>
 
       {/* At a glance — metrics for the meeting (top of view) */}
       <motion.div {...cardAnim(0, reduceMotion)} className="mb-6">
