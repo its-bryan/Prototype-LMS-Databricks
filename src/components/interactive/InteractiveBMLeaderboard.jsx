@@ -3,8 +3,8 @@
  * Metrics: Conversion rate, Contacted within 30 min, Comment rate, Branch vs HRD.
  * Time filtering: same presets as Summary view.
  */
-import { useMemo, useState, useRef, useEffect } from "react";
-import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
+import { useMemo, useState, useEffect } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { useAuth } from "../../context/AuthContext";
 import { useData } from "../../context/DataContext";
 import {
@@ -12,8 +12,6 @@ import {
   getDateRangePresets,
   getBMLeaderboardData,
 } from "../../selectors/demoSelectors";
-import { DateRangeCalendar } from "../DateRangeCalendar";
-import { formatDateRange as formatDateRangePST } from "../../utils/dateTime";
 import { BMLeaderboardSkeleton, usePageTransition } from "../DashboardSkeleton";
 
 const easeOut = [0.4, 0, 0.2, 1];
@@ -24,16 +22,6 @@ const METRICS = [
   { key: "commentRate", label: "Comment rate", suffix: "%", higherIsBetter: true },
   { key: "branchHrdPct", label: "Branch vs HRD", suffix: "% Branch", higherIsBetter: true },
 ];
-
-function formatDateRange(preset, customStart, customEnd) {
-  if (preset?.key === "custom" && customStart && customEnd) {
-    return formatDateRangePST(new Date(customStart), new Date(customEnd));
-  }
-  if (preset?.start && preset?.end) {
-    return formatDateRangePST(preset.start, preset.end);
-  }
-  return preset?.label ?? "";
-}
 
 function getMetricValue(row, key) {
   const v = row?.[key];
@@ -58,9 +46,10 @@ function BarRow({ row, metricKey, maxVal, isCurrentBranch, regionBenchmark, metr
         {row.rank ?? "—"}
       </span>
       <span
-        className={`min-w-[140px] text-sm font-medium shrink-0 ${
+        className={`w-[200px] truncate text-sm font-medium shrink-0 ${
           isCurrentBranch ? "text-[var(--hertz-black)]" : "text-[var(--neutral-600)]"
         }`}
+        title={row.branch}
       >
         {row.branch}
         {isCurrentBranch && (
@@ -100,32 +89,17 @@ export default function InteractiveBMLeaderboard() {
   useEffect(() => { demandLeads(); }, [demandLeads]);
 
   const presets = getDateRangePresets();
-  const [selectedPresetKey, setSelectedPresetKey] = useState("this_week");
-  const [useCustom, setUseCustom] = useState(false);
-  const [customStart, setCustomStart] = useState("");
-  const [customEnd, setCustomEnd] = useState("");
-  const [showCustomCalendar, setShowCustomCalendar] = useState(false);
   const [metricKey, setMetricKey] = useState("conversionRate");
-  const customAnchorRef = useRef(null);
 
   const dateRange = useMemo(() => {
-    if (useCustom && customStart && customEnd) {
-      return {
-        start: new Date(customStart + "T00:00:00"),
-        end: new Date(customEnd + "T23:59:59"),
-      };
-    }
-    const preset = presets.find((p) => p.key === selectedPresetKey);
+    const preset = presets.find((p) => p.key === "trailing_4_weeks");
     return preset ? { start: preset.start, end: preset.end } : null;
-  }, [selectedPresetKey, useCustom, customStart, customEnd, presets]);
+  }, [presets]);
 
   const leaderboardData = useMemo(
     () => (dateRange ? getBMLeaderboardData(leads ?? [], branch, dateRange, metricKey) : null),
     [leads, branch, dateRange, metricKey]
   );
-
-  const activePreset = presets.find((p) => p.key === selectedPresetKey);
-  const rangeLabel = formatDateRange(activePreset, customStart, customEnd);
 
   const metric = METRICS.find((m) => m.key === metricKey) ?? METRICS[0];
   const sorted = leaderboardData?.sorted ?? [];
@@ -145,72 +119,6 @@ export default function InteractiveBMLeaderboard() {
       <p className="text-sm text-[var(--neutral-600)] mb-6">
         Compare your performance against peers in your GM cohort and the region benchmark.
       </p>
-
-      {/* Date range — same as Summary */}
-      <div className="flex flex-wrap items-center gap-2 mb-6">
-        <label className="text-sm font-medium text-[var(--hertz-black)]">Period</label>
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {presets.map((p) => {
-            const isActive = !useCustom && selectedPresetKey === p.key;
-            return (
-              <motion.button
-                key={p.key}
-                onClick={() => {
-                  setSelectedPresetKey(p.key);
-                  setUseCustom(false);
-                  setShowCustomCalendar(false);
-                }}
-                whileHover={!reduceMotion ? { scale: 1.03 } : {}}
-                whileTap={!reduceMotion ? { scale: 0.97 } : {}}
-                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer shrink-0 ${
-                  isActive
-                    ? "bg-[var(--hertz-primary)] text-[var(--hertz-black)] shadow-[var(--shadow-md)]"
-                    : "bg-[var(--neutral-50)] text-[var(--neutral-600)] border border-transparent hover:border-[var(--neutral-200)] hover:bg-[var(--neutral-100)]"
-                }`}
-              >
-                {p.label}
-              </motion.button>
-            );
-          })}
-          <span className="text-[var(--neutral-200)] mx-0.5">|</span>
-          <div ref={customAnchorRef} className="relative shrink-0">
-            <motion.button
-              onClick={() => {
-                setUseCustom(true);
-                setShowCustomCalendar(true);
-              }}
-              whileHover={!reduceMotion ? { scale: 1.03 } : {}}
-              whileTap={!reduceMotion ? { scale: 0.97 } : {}}
-              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
-                useCustom
-                  ? "bg-[var(--hertz-primary)] text-[var(--hertz-black)] shadow-[var(--shadow-md)]"
-                  : "bg-[var(--neutral-50)] text-[var(--neutral-600)] border border-transparent hover:border-[var(--neutral-200)] hover:bg-[var(--neutral-100)]"
-              }`}
-            >
-              Custom
-            </motion.button>
-            <AnimatePresence>
-              {showCustomCalendar && (
-                <DateRangeCalendar
-                  start={customStart}
-                  end={customEnd}
-                  onChange={({ start: s, end: e }) => {
-                    setCustomStart(s);
-                    setCustomEnd(e);
-                  }}
-                  onClose={() => setShowCustomCalendar(false)}
-                  anchorRef={customAnchorRef}
-                />
-              )}
-            </AnimatePresence>
-          </div>
-          {rangeLabel && (
-            <span className="text-xs text-[var(--neutral-600)] ml-2 font-medium shrink-0">
-              {rangeLabel}
-            </span>
-          )}
-        </div>
-      </div>
 
       {/* Metric toggle */}
       <div className="mb-6">

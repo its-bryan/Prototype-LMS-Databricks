@@ -215,18 +215,18 @@ export default function Sidebar() {
   const hasSummaryChildren = role === "bm" && summaryChildIds.some((id) => navItems.some((n) => n.id === id));
   const inWorkSection = resolvedActive === "bm-work" || workChildIds.includes(resolvedActive);
   const inSummarySection = resolvedActive === "bm-dashboard" || summaryChildIds.includes(resolvedActive);
-  const workExpanded = inWorkSection;
-  const summaryExpanded = inSummarySection;
+  const workExpanded = true;
+  const summaryExpanded = true;
 
   // GM: Work sub-sections (Meeting Prep, Lead Review); Summary sub-sections (Business Metrics, Team Performance)
-  const gmTodosChildIds = ["gm-meeting-prep", "gm-spot-check"];
+  const gmTodosChildIds = ["gm-meeting-prep", "gm-spot-check", "gm-leads"];
   const gmOverviewChildIds = ["gm-team-performance", "gm-activity-report"];
   const hasGmOverviewChildren = role === "gm" && gmOverviewChildIds.some((id) => navItems.some((n) => n.id === id));
   const hasGmTodosChildren = role === "gm" && gmTodosChildIds.some((id) => navItems.some((n) => n.id === id));
   const inGmOverviewSection = resolvedActive === "gm-overview" || gmOverviewChildIds.includes(resolvedActive);
   const inGmTodosSection = resolvedActive === "gm-todos" || gmTodosChildIds.includes(resolvedActive);
-  const gmTodosExpanded = inGmTodosSection;
-  const gmOverviewExpanded = inGmOverviewSection;
+  const gmTodosExpanded = true;
+  const gmOverviewExpanded = true;
 
   const navScrollRef = useRef(null);
   useEffect(() => {
@@ -367,23 +367,7 @@ export default function Sidebar() {
                   )}
                 </span>
                 {!sidebarCollapsed && (
-                  <>
-                    <span className={`truncate ${hasChevron ? "shrink-0" : ""}`}>{item.label}</span>
-                    {hasChevron && (
-                      <span className="ml-auto shrink-0 pointer-events-none" aria-expanded={chevronExpanded}>
-                        <motion.svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                          animate={{ rotate: chevronExpanded ? 90 : 0 }}
-                          transition={{ duration: 0.2 }}
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </motion.svg>
-                      </span>
-                    )}
-                  </>
+                  <span className="truncate">{item.label}</span>
                 )}
               </motion.button>
             </div>

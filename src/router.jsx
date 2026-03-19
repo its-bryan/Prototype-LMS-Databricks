@@ -21,6 +21,7 @@ const InteractiveGMMeetingPrepPage = lazy(() => import("./components/interactive
 const InteractiveGMSpotCheckPage = lazy(() => import("./components/interactive/InteractiveGMSpotCheckPage"));
 const InteractiveGMActivityReportPage = lazy(() => import("./components/interactive/InteractiveGMActivityReportPage"));
 const InteractiveGMLeaderboardPage = lazy(() => import("./components/interactive/InteractiveGMLeaderboardPage"));
+const InteractiveGMLeadsPage = lazy(() => import("./components/interactive/InteractiveGMLeadsPage"));
 const InteractiveUploads = lazy(() => import("./components/interactive/InteractiveUploads"));
 const InteractiveOrgMapping = lazy(() => import("./components/interactive/InteractiveOrgMapping"));
 const InteractiveLegend = lazy(() => import("./components/interactive/InteractiveLegend"));
@@ -132,6 +133,7 @@ export const router = createBrowserRouter([
       { path: "/gm/spot-check", element: <AppViewRoute role="gm" Component={InteractiveGMSpotCheckPage} /> },
       { path: "/gm/activity-report", element: <AppViewRoute role="gm" Component={InteractiveGMActivityReportPage} /> },
       { path: "/gm/leaderboard", element: <AppViewRoute role="gm" Component={InteractiveGMLeaderboardPage} /> },
+      { path: "/gm/leads", element: <AppViewRoute role="gm" Component={InteractiveGMLeadsPage} /> },
       { path: "/gm/leads/:leadId", element: <GMLeadDetailRoute /> },
       { path: "/gm/tasks/:taskId", element: <GMTaskDetailRoute /> },
       { path: "/admin", element: <AppViewRoute role="admin" Component={AdminDashboardPage} /> },

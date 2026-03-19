@@ -1,0 +1,160 @@
+{
+  "results": [
+    {
+      "page_id": "ADMIN-LOGIN",
+      "page_name": "Login -> Landing (TTI)",
+      "role": "admin",
+      "load_ms": 1717,
+      "category": "OK",
+      "issues": ""
+    },
+    {
+      "page_id": "A1",
+      "page_name": "Dashboard",
+      "role": "admin",
+      "load_ms": 758,
+      "category": "FAST",
+      "issues": ""
+    },
+    {
+      "page_id": "A2",
+      "page_name": "Data Uploads",
+      "role": "admin",
+      "load_ms": 784,
+      "category": "FAST",
+      "issues": ""
+    },
+    {
+      "page_id": "A3",
+      "page_name": "Org Mapping",
+      "role": "admin",
+      "load_ms": 1985,
+      "category": "OK",
+      "issues": ""
+    },
+    {
+      "page_id": "A4",
+      "page_name": "Cancellation Reasons",
+      "role": "admin",
+      "load_ms": 1373,
+      "category": "OK",
+      "issues": ""
+    },
+    {
+      "page_id": "GM-LOGIN",
+      "page_name": "Login -> Landing (TTI)",
+      "role": "gm",
+      "load_ms": 2269,
+      "category": "SLOW",
+      "issues": ""
+    },
+    {
+      "page_id": "G1",
+      "page_name": "Summary",
+      "role": "gm",
+      "load_ms": -1,
+      "category": "SKIP",
+      "issues": "Nav item 'Summary' not found"
+    },
+    {
+      "page_id": "G2",
+      "page_name": "Team Performance",
+      "role": "gm",
+      "load_ms": 2059,
+      "category": "SLOW",
+      "issues": ""
+    },
+    {
+      "page_id": "G3",
+      "page_name": "Activity Report",
+      "role": "gm",
+      "load_ms": 748,
+      "category": "FAST",
+      "issues": ""
+    },
+    {
+      "page_id": "G4",
+      "page_name": "Work",
+      "role": "gm",
+      "load_ms": 814,
+      "category": "FAST",
+      "issues": ""
+    },
+    {
+      "page_id": "G5",
+      "page_name": "Meeting Prep",
+      "role": "gm",
+      "load_ms": 819,
+      "category": "FAST",
+      "issues": ""
+    },
+    {
+      "page_id": "G6",
+      "page_name": "Spot Check",
+      "role": "gm",
+      "load_ms": 811,
+      "category": "FAST",
+      "issues": ""
+    },
+    {
+      "page_id": "BM-LOGIN",
+      "page_name": "Login -> Landing (TTI)",
+      "role": "bm",
+      "load_ms": 1675,
+      "category": "OK",
+      "issues": ""
+    },
+    {
+      "page_id": "B1",
+      "page_name": "My Leads",
+      "role": "bm",
+      "load_ms": 799,
+      "category": "FAST",
+      "issues": ""
+    },
+    {
+      "page_id": "B2",
+      "page_name": "Open Tasks",
+      "role": "bm",
+      "load_ms": 760,
+      "category": "FAST",
+      "issues": ""
+    },
+    {
+      "page_id": "B3",
+      "page_name": "Work",
+      "role": "bm",
+      "load_ms": 824,
+      "category": "FAST",
+      "issues": ""
+    },
+    {
+      "page_id": "B4",
+      "page_name": "Meeting Prep",
+      "role": "bm",
+      "load_ms": 745,
+      "category": "FAST",
+      "issues": ""
+    },
+    {
+      "page_id": "B5",
+      "page_name": "Leaderboard",
+      "role": "bm",
+      "load_ms": 772,
+      "category": "FAST",
+      "issues": ""
+    }
+  ],
+  "console_errors": [
+    {
+      "role": "gm",
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 405 ()"
+    },
+    {
+      "role": "bm",
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 405 ()"
+    }
+  ]
+}

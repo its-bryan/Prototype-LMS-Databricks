@@ -44,6 +44,23 @@ npx eslint src/components/YourChangedFile.jsx
 python -m py_compile routers/your_changed_file.py
 ```
 
+## Automated frontend testing (Playwright)
+Scripts in `scripts/` use Playwright with a persistent Edge profile to test the production app.
+
+**Onboarding tour popup**: After every login, an onboarding tour dialog may appear (with "Skip tour" and "Next" buttons). It overlays the page and blocks interaction. All Playwright test scripts **must dismiss it** immediately after login:
+```python
+try:
+    skip = page.locator("text='Skip tour'").first
+    if skip.is_visible(timeout=2000):
+        skip.click()
+        page.wait_for_timeout(500)
+except Exception:
+    pass
+```
+Currently the tour shows on every login. A future fix will persist dismissal so it only shows once per user (accessible again via the "?" icon in the top bar).
+
+**GM name casing**: The database and snapshot store GM names in ALL CAPS (e.g., `"ADAM FRANKEL"`). When filtering snapshot data by GM, always use `normalizeGmName()` for case-insensitive comparison — never strict `===`.
+
 ## Common gotchas in this project
 - Column names in HLES data have leading `\n` characters
 - Lakebase Postgres uses psycopg3 (not psycopg2) — different API

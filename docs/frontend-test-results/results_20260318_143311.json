@@ -1,0 +1,117 @@
+{
+  "results": [
+    {
+      "page_id": "ADMIN-LOGIN",
+      "page_name": "Login -> Landing (TTI)",
+      "role": "admin",
+      "load_ms": 5635,
+      "category": "SLOW",
+      "issues": ""
+    },
+    {
+      "page_id": "A1",
+      "page_name": "Dashboard",
+      "role": "admin",
+      "load_ms": 707,
+      "category": "FAST",
+      "issues": ""
+    },
+    {
+      "page_id": "A2",
+      "page_name": "Data Uploads",
+      "role": "admin",
+      "load_ms": 742,
+      "category": "FAST",
+      "issues": ""
+    },
+    {
+      "page_id": "A3",
+      "page_name": "Org Mapping",
+      "role": "admin",
+      "load_ms": 2165,
+      "category": "SLOW",
+      "issues": ""
+    },
+    {
+      "page_id": "A4",
+      "page_name": "Cancellation Reasons",
+      "role": "admin",
+      "load_ms": 1239,
+      "category": "OK",
+      "issues": ""
+    },
+    {
+      "page_id": "GM-LOGIN",
+      "page_name": "Login -> Landing (TTI)",
+      "role": "gm",
+      "load_ms": 8848,
+      "category": "SLOW",
+      "issues": ""
+    },
+    {
+      "page_id": "G1",
+      "page_name": "Summary",
+      "role": "gm",
+      "load_ms": 2113,
+      "category": "SLOW",
+      "issues": ""
+    },
+    {
+      "page_id": "G2",
+      "page_name": "Work",
+      "role": "gm",
+      "load_ms": 4884,
+      "category": "SLOW",
+      "issues": ""
+    },
+    {
+      "page_id": "G3",
+      "page_name": "Meeting Prep",
+      "role": "gm",
+      "load_ms": 2679,
+      "category": "SLOW",
+      "issues": ""
+    },
+    {
+      "page_id": "G4",
+      "page_name": "Spot Check",
+      "role": "gm",
+      "load_ms": 15750,
+      "category": "SLOW",
+      "issues": ""
+    },
+    {
+      "page_id": "G5",
+      "page_name": "Business Metrics",
+      "role": "gm",
+      "load_ms": 41578,
+      "category": "SLOW",
+      "issues": ""
+    },
+    {
+      "page_id": "G6",
+      "page_name": "Team Performance",
+      "role": "gm",
+      "load_ms": -1,
+      "category": "SKIP",
+      "issues": "Nav item 'Team Performance' not found"
+    },
+    {
+      "page_id": "G7",
+      "page_name": "Activity Report",
+      "role": "gm",
+      "load_ms": -1,
+      "category": "SKIP",
+      "issues": "Nav item 'Activity Report' not found"
+    },
+    {
+      "page_id": "BM-LOGIN",
+      "page_name": "Login",
+      "role": "bm",
+      "load_ms": 30937,
+      "category": "FAIL",
+      "issues": "Login failed: unknown"
+    }
+  ],
+  "console_errors": []
+}

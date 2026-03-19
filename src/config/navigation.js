@@ -25,6 +25,7 @@ export const viewPaths = {
   "gm-spot-check": "/gm/spot-check",
   "gm-activity-report": "/gm/activity-report",
   "gm-leaderboard": "/gm/leaderboard",
+  "gm-leads": "/gm/leads",
   "gm-lead-detail": "/gm/leads/:leadId",
   "gm-task-detail": "/gm/tasks/:taskId",
   "admin-dashboard": "/admin",
@@ -36,20 +37,21 @@ export const viewPaths = {
 
 export const roleNav = {
   bm: [
+    { id: "bm-dashboard", label: "Summary", icon: "grid", sectionId: "dashboard" },
     { id: "bm-work", label: "Work", icon: "briefcase", sectionId: "work" },
     { id: "bm-meeting-prep", label: "Meeting Prep", icon: "columns", sectionId: "work", parentId: "bm-work" },
     { id: "bm-leaderboard", label: "Leaderboard", icon: "trophy", sectionId: "leaderboard", parentId: "bm-work" },
-    { id: "bm-dashboard", label: "Summary", icon: "grid", sectionId: "dashboard" },
-    { id: "bm-leads", label: "My Leads", icon: "list", sectionId: "lead-pipeline", parentId: "bm-dashboard" },
-    { id: "bm-todo", label: "Open Tasks", icon: "check-circle", sectionId: "open-tasks", parentId: "bm-dashboard" },
+    { id: "bm-leads", label: "My Leads", icon: "list", sectionId: "lead-pipeline", parentId: "bm-work" },
+    { id: "bm-todo", label: "Open Tasks", icon: "check-circle", sectionId: "open-tasks", parentId: "bm-work" },
   ],
   gm: [
-    { id: "gm-todos", label: "Work", icon: "briefcase", sectionId: "todos" },
-    { id: "gm-meeting-prep", label: "Meeting Prep", icon: "columns", parentId: "gm-todos" },
-    { id: "gm-spot-check", label: "Spot Check", icon: "eye", parentId: "gm-todos" },
     { id: "gm-overview", label: "Summary", icon: "grid" },
     { id: "gm-team-performance", label: "Team Performance", icon: "users", sectionId: "team-performance", parentId: "gm-overview" },
     { id: "gm-activity-report", label: "Activity Report", icon: "activity", parentId: "gm-overview" },
+    { id: "gm-todos", label: "Work", icon: "briefcase", sectionId: "todos" },
+    { id: "gm-meeting-prep", label: "Meeting Prep", icon: "columns", parentId: "gm-todos" },
+    { id: "gm-spot-check", label: "Spot Check", icon: "eye", parentId: "gm-todos" },
+    { id: "gm-leads", label: "My Leads", icon: "list", parentId: "gm-todos" },
   ],
   admin: [
     { id: "admin-dashboard", label: "Dashboard", icon: "grid" },

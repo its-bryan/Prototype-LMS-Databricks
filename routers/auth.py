@@ -48,6 +48,7 @@ def _user_profile(row: dict) -> dict:
         "role": row["role"],
         "displayName": row["display_name"],
         "branch": row.get("branch"),
+        "onboardingCompletedAt": row.get("onboarding_completed_at"),
     }
 
 
@@ -69,7 +70,7 @@ async def login(body: dict):
         raise HTTPException(status_code=400, detail="Email and password required")
 
     rows = query(
-        "SELECT id, email, password_hash, role, display_name, branch, is_active FROM auth_users WHERE email = %s",
+        "SELECT id, email, password_hash, role, display_name, branch, is_active, onboarding_completed_at FROM auth_users WHERE email = %s",
         (email,),
     )
     if not rows:
@@ -97,10 +98,32 @@ async def me(creds: HTTPAuthorizationCredentials = Depends(_bearer)):
         raise HTTPException(status_code=401, detail="Invalid token")
 
     rows = query(
-        "SELECT id, email, role, display_name, branch, is_active FROM auth_users WHERE id = %s::uuid",
+        "SELECT id, email, role, display_name, branch, is_active, onboarding_completed_at FROM auth_users WHERE id = %s::uuid",
         (user_id,),
     )
     if not rows or not rows[0].get("is_active", True):
         raise HTTPException(status_code=401, detail="User not found or disabled")
 
     return {"user": _user_profile(rows[0])}
+
+
+@router.post("/auth/onboarding/complete")
+async def complete_onboarding(
+    body: dict,
+    creds: HTTPAuthorizationCredentials = Depends(_bearer),
+):
+    if creds is None:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    payload = _decode_token(creds.credentials)
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    completed_at = body.get("completedAt") or datetime.now(timezone.utc).isoformat()
+
+    query(
+        "UPDATE auth_users SET onboarding_completed_at = %s WHERE id = %s::uuid",
+        (completed_at, user_id),
+    )
+    return {"ok": True}

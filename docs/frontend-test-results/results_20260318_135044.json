@@ -1,0 +1,165 @@
+{
+  "results": [
+    {
+      "page_id": "ADMIN-LOGIN",
+      "page_name": "Login -> Landing (TTI)",
+      "role": "admin",
+      "load_ms": 10209,
+      "category": "SLOW",
+      "issues": ""
+    },
+    {
+      "page_id": "A1",
+      "page_name": "Dashboard",
+      "role": "admin",
+      "load_ms": 683,
+      "category": "FAST",
+      "issues": ""
+    },
+    {
+      "page_id": "A2",
+      "page_name": "Data Uploads",
+      "role": "admin",
+      "load_ms": 705,
+      "category": "FAST",
+      "issues": ""
+    },
+    {
+      "page_id": "A3",
+      "page_name": "Org Mapping",
+      "role": "admin",
+      "load_ms": 2422,
+      "category": "SLOW",
+      "issues": ""
+    },
+    {
+      "page_id": "A4",
+      "page_name": "Cancellation Reasons",
+      "role": "admin",
+      "load_ms": 1440,
+      "category": "OK",
+      "issues": ""
+    },
+    {
+      "page_id": "GM-LOGIN",
+      "page_name": "Login -> Landing (TTI)",
+      "role": "gm",
+      "load_ms": 6411,
+      "category": "SLOW",
+      "issues": ""
+    },
+    {
+      "page_id": "G1",
+      "page_name": "Summary",
+      "role": "gm",
+      "load_ms": 2011,
+      "category": "SLOW",
+      "issues": ""
+    },
+    {
+      "page_id": "G2",
+      "page_name": "Work",
+      "role": "gm",
+      "load_ms": 4272,
+      "category": "SLOW",
+      "issues": ""
+    },
+    {
+      "page_id": "G3",
+      "page_name": "Meeting Prep",
+      "role": "gm",
+      "load_ms": 11625,
+      "category": "SLOW",
+      "issues": ""
+    },
+    {
+      "page_id": "G4",
+      "page_name": "Spot Check",
+      "role": "gm",
+      "load_ms": 12077,
+      "category": "SLOW",
+      "issues": ""
+    },
+    {
+      "page_id": "G5",
+      "page_name": "Business Metrics",
+      "role": "gm",
+      "load_ms": 31956,
+      "category": "SLOW",
+      "issues": ""
+    },
+    {
+      "page_id": "G6",
+      "page_name": "Team Performance",
+      "role": "gm",
+      "load_ms": 10753,
+      "category": "SLOW",
+      "issues": ""
+    },
+    {
+      "page_id": "G7",
+      "page_name": "Activity Report",
+      "role": "gm",
+      "load_ms": 7943,
+      "category": "SLOW",
+      "issues": ""
+    },
+    {
+      "page_id": "BM-LOGIN",
+      "page_name": "Login -> Landing (TTI)",
+      "role": "bm",
+      "load_ms": 6461,
+      "category": "SLOW",
+      "issues": ""
+    },
+    {
+      "page_id": "B1",
+      "page_name": "Summary",
+      "role": "bm",
+      "load_ms": 722,
+      "category": "FAST",
+      "issues": ""
+    },
+    {
+      "page_id": "B2",
+      "page_name": "Work",
+      "role": "bm",
+      "load_ms": 729,
+      "category": "FAST",
+      "issues": ""
+    },
+    {
+      "page_id": "B3",
+      "page_name": "Meeting Prep",
+      "role": "bm",
+      "load_ms": 720,
+      "category": "FAST",
+      "issues": ""
+    },
+    {
+      "page_id": "B4",
+      "page_name": "Leaderboard",
+      "role": "bm",
+      "load_ms": 718,
+      "category": "FAST",
+      "issues": ""
+    },
+    {
+      "page_id": "B5",
+      "page_name": "My Leads",
+      "role": "bm",
+      "load_ms": -1,
+      "category": "SKIP",
+      "issues": "Nav item 'My Leads' not found"
+    },
+    {
+      "page_id": "B6",
+      "page_name": "Open Tasks",
+      "role": "bm",
+      "load_ms": -1,
+      "category": "SKIP",
+      "issues": "Nav item 'Open Tasks' not found"
+    }
+  ],
+  "console_errors": []
+}
