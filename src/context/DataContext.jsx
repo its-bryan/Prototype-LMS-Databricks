@@ -26,6 +26,7 @@ const dataModule = await import("../data/databricksData.js");
 
 const {
   fetchDashboardSnapshot: apiFetchDashboardSnapshot,
+  fetchObservatorySnapshot: apiFetchObservatorySnapshot,
   fetchLeads,
   fetchUploadSummary,
   fetchAllConfig: apiFetchAllConfig,
@@ -97,6 +98,7 @@ const _c = USE_LIVE_API
 const _hasCachedLeads = !!(_c.leads?.length);
 const _hasCachedOrgMapping = !!(_c.orgMapping?.length);
 const _hasCachedSnapshot = !!_c.snapshot;
+const _cachedObsSnapshot = readCache("obsSnapshot");
 
 // Hydrate selector module-level variables from cache so stats compute
 // correctly even before the background refresh finishes.
@@ -163,6 +165,7 @@ export function DataProvider({ children }) {
     USE_LIVE_API ? (_c.orgMapping ?? []) : [...mockOrgMapping],
   );
   const [snapshot, setSnapshot] = useState(USE_LIVE_API ? (_c.snapshot ?? null) : null);
+  const [observatorySnapshot, setObservatorySnapshot] = useState(USE_LIVE_API ? (_cachedObsSnapshot ?? null) : null);
   const [gmTasks, setGmTasks] = useState(() => (USE_LIVE_API ? null : [...mockTasks]));
   const [cancellationReasonCategories, setCancellationReasonCategories] = useState(
     USE_LIVE_API ? (_c.cancellationReasons ?? []) : [...mockCancellationReasonCategories],
@@ -295,6 +298,27 @@ export function DataProvider({ children }) {
     }
   }, []);
 
+  const refetchObservatorySnapshot = useCallback(async ({ poll = false } = {}) => {
+    if (!USE_LIVE_API) return;
+    const maxAttempts = poll ? 8 : 1;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      if (attempt > 0) await new Promise(r => setTimeout(r, 5000));
+      bumpPending(1);
+      try {
+        const data = await apiFetchObservatorySnapshot();
+        if (data) {
+          setObservatorySnapshot(data);
+          writeCache("obsSnapshot", data);
+          return;
+        }
+      } catch (err) {
+        console.error("[DataContext] observatory snapshot fetch error:", err);
+      } finally {
+        bumpPending(-1);
+      }
+    }
+  }, []);
+
   // --- Initial data load ---
   // Snapshot + config load on mount. Leads are deferred (loaded on-demand by
   // drill-down views) because the snapshot already has pre-computed metrics for
@@ -307,6 +331,7 @@ export function DataProvider({ children }) {
     if (!USE_LIVE_API) return;
 
     refetchSnapshot();
+    refetchObservatorySnapshot();
 
     bumpPending(1);
     apiFetchAllConfig()
@@ -615,6 +640,8 @@ export function DataProvider({ children }) {
     error,
     dataAsOfDate,
     snapshot,
+    observatorySnapshot,
+    refetchObservatorySnapshot,
     orgMapping,
     gmTasks,
     refetchLeads,
