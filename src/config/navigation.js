@@ -4,6 +4,36 @@ export const roleDefaults = {
   admin: "admin-dashboard",
 };
 
+export const roleDefaultPaths = {
+  bm: "/bm/summary",
+  gm: "/gm/overview",
+  admin: "/admin",
+};
+
+export const viewPaths = {
+  "bm-dashboard": "/bm/summary",
+  "bm-work": "/bm/work",
+  "bm-leads": "/bm/leads",
+  "bm-lead-detail": "/bm/leads/:leadId",
+  "bm-todo": "/bm/tasks",
+  "bm-task-detail": "/bm/tasks/:taskId",
+  "bm-meeting-prep": "/bm/meeting-prep",
+  "bm-leaderboard": "/bm/leaderboard",
+  "gm-overview": "/gm/overview",
+  "gm-todos": "/gm/work",
+  "gm-meeting-prep": "/gm/meeting-prep",
+  "gm-spot-check": "/gm/spot-check",
+  "gm-activity-report": "/gm/activity-report",
+  "gm-leaderboard": "/gm/leaderboard",
+  "gm-lead-detail": "/gm/leads/:leadId",
+  "gm-task-detail": "/gm/tasks/:taskId",
+  "admin-dashboard": "/admin",
+  "admin-uploads": "/admin/uploads",
+  "admin-org-mapping": "/admin/org-mapping",
+  "admin-legend": "/admin/legend",
+  profile: "/profile",
+};
+
 export const roleNav = {
   bm: [
     { id: "bm-work", label: "Work", icon: "briefcase", sectionId: "work" },
@@ -18,7 +48,6 @@ export const roleNav = {
     { id: "gm-meeting-prep", label: "Meeting Prep", icon: "columns", parentId: "gm-todos" },
     { id: "gm-spot-check", label: "Spot Check", icon: "eye", parentId: "gm-todos" },
     { id: "gm-overview", label: "Summary", icon: "grid" },
-    { id: "gm-business-metrics", label: "Business Metrics", icon: "bar-chart", sectionId: "business-metrics", parentId: "gm-overview" },
     { id: "gm-team-performance", label: "Team Performance", icon: "users", sectionId: "team-performance", parentId: "gm-overview" },
     { id: "gm-activity-report", label: "Activity Report", icon: "activity", parentId: "gm-overview" },
   ],

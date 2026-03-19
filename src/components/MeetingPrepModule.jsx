@@ -27,7 +27,7 @@ export default function MeetingPrepModule({ navigateTo, leads, dateRange, branch
   return (
     <motion.div {...cardAnim(0, reduceMotion)} className="h-full">
       <motion.button
-        onClick={() => navigateTo("bm-meeting-prep")}
+        onClick={() => navigateTo("/bm/meeting-prep")}
         whileHover={!reduceMotion ? { scale: 1.005 } : {}}
         whileTap={!reduceMotion ? { scale: 0.995 } : {}}
         className={`w-full h-full text-left border-2 rounded-xl p-5 transition-all duration-200 cursor-pointer group

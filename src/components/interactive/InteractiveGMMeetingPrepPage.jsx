@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { useData } from "../../context/DataContext";
-import { useApp } from "../../context/AppContext";
 import { useAuth } from "../../context/AuthContext";
 import BackButton from "../BackButton";
 import {
@@ -104,7 +104,7 @@ function formatDueDate(dueStr) {
 export default function InteractiveGMMeetingPrepPage() {
   const { leads, loading, orgMapping, createComplianceTasksForBranch, winsLearnings, updateLeadDirective, markLeadReviewed, gmTasks, fetchGMTasks, demandLeads, initialDataReady } = useData();
   useEffect(() => { demandLeads(); }, [demandLeads]);
-  const { navigateTo, selectTask, selectLead } = useApp();
+  const navigate = useNavigate();
   const { userProfile } = useAuth();
   const reduceMotion = useReducedMotion();
   const presets = useMemo(() => getDateRangePresets(), [loading]);
@@ -217,13 +217,11 @@ export default function InteractiveGMMeetingPrepPage() {
   };
 
   const handleViewTask = (taskId) => {
-    selectTask(taskId);
-    navigateTo("gm-task-detail");
+    navigate(`/gm/tasks/${taskId}`);
   };
 
   const handleViewLead = (leadId) => {
-    selectLead(leadId);
-    navigateTo("gm-lead-detail");
+    navigate(`/gm/leads/${leadId}`);
   };
 
   const pageReady = usePageTransition();
@@ -276,7 +274,7 @@ export default function InteractiveGMMeetingPrepPage() {
       </AnimatePresence>
       {/* Header — GM chase-up framing */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-6">
-        <BackButton onClick={() => navigateTo("gm-todos")} label="Back to Work" />
+        <BackButton onClick={() => navigate("/gm/work")} label="Back to Work" />
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <h1 className="text-2xl font-extrabold text-[var(--hertz-black)] tracking-tight mb-1">
@@ -446,7 +444,7 @@ export default function InteractiveGMMeetingPrepPage() {
                         </table>
                         {leadsToReview.length > 20 && (
                           <button
-                            onClick={() => navigateTo("gm-lead-review")}
+                            onClick={() => navigate("/gm/work")}
                             className="w-full py-3 text-center text-sm font-medium text-[var(--neutral-600)] bg-[var(--neutral-50)] hover:bg-[var(--neutral-100)] transition-colors cursor-pointer border-t border-[var(--neutral-200)]"
                           >
                             View all {leadsToReview.length} leads

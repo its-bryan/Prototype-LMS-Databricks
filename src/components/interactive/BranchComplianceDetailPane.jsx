@@ -4,7 +4,7 @@
  */
 import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useApp } from "../../context/AppContext";
+import { useNavigate } from "react-router-dom";
 import StatusBadge from "../StatusBadge";
 import {
   leadCancelledWithoutBmComment,
@@ -103,7 +103,7 @@ function LeadTable({ leads, onLeadClick }) {
 }
 
 export default function BranchComplianceDetailPane({ branchRow, dateRange, leads, onClose }) {
-  const { navigateTo, selectLead } = useApp();
+  const navigate = useNavigate();
   const { orgMapping } = useData();
   const [activeTab, setActiveTab] = useState("cancelledNoBmComment");
 
@@ -136,9 +136,8 @@ export default function BranchComplianceDetailPane({ branchRow, dateRange, leads
   }, [onClose]);
 
   const handleLeadClick = (lead) => {
-    selectLead(lead.id);
     onClose();
-    navigateTo("gm-lead-detail");
+    navigate(`/gm/leads/${lead.id}`);
   };
 
   if (!branchRow) return null;

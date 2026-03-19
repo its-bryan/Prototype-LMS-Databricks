@@ -186,11 +186,6 @@ export function GMDashboardSkeleton() {
         ))}
       </div>
 
-      {/* Trends chart */}
-      <div className="mb-6">
-        <ChartSkeleton />
-      </div>
-
       {/* Compliance / branch breakdown */}
       <div className="mb-4">
         <SectionHeaderSkeleton />

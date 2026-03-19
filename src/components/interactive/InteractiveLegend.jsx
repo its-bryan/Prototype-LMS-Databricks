@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useApp } from "../../context/AppContext";
+import { useNavigate } from "react-router-dom";
 import BackButton from "../BackButton";
 import { useData } from "../../context/DataContext";
 
 export default function InteractiveLegend() {
-  const { navigateTo } = useApp();
+  const navigate = useNavigate();
   const { cancellationReasonCategories } = useData();
   const [categories, setCategories] = useState(() =>
     cancellationReasonCategories.map((c) => ({ ...c, reasons: [...c.reasons] })),
@@ -84,7 +84,7 @@ export default function InteractiveLegend() {
 
   return (
     <div>
-      <BackButton onClick={() => navigateTo("admin-dashboard")} label="Back to Dashboard" />
+      <BackButton onClick={() => navigate("/admin")} label="Back to Dashboard" />
       <h2 className="text-xl font-semibold text-[#1A1A1A] mb-1">Cancellation Reason Legend</h2>
       <p className="text-sm text-[#6E6E6E] mb-4">
         Configure the categories and reasons that Branch Managers use when commenting on cancelled leads.

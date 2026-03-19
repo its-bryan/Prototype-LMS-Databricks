@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useApp } from "../../context/AppContext";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import BackButton from "../BackButton";
 import { useData } from "../../context/DataContext";
 import { getLeadById } from "../../selectors/demoSelectors";
@@ -10,13 +10,15 @@ import GMDirectiveSection from "../GMDirectiveSection";
 import { LeadDetailSkeleton, usePageTransition } from "../DashboardSkeleton";
 
 export default function InteractiveLeadDetail() {
-  const { selectedLeadId, navigateTo, selectTask, activeView, role } = useApp();
-  const isGMContext = activeView === "gm-lead-detail" || role === "gm";
-  const backView = isGMContext ? "gm-lead-review" : "bm-leads";
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const { leadId } = useParams();
+  const isGMContext = pathname.startsWith("/gm/");
   const backLabel = isGMContext ? "Back to Lead Review" : "Back to leads";
   const { leads, fetchTasksForLead, updateTaskStatus, demandLeads, initialDataReady } = useData();
   useEffect(() => { demandLeads(); }, [demandLeads]);
-  const lead = getLeadById(leads, selectedLeadId);
+  const resolvedLeadId = Number.isNaN(Number(leadId)) ? leadId : Number(leadId);
+  const lead = getLeadById(leads, resolvedLeadId);
   const [leadTasks, setLeadTasks] = useState([]);
 
   const loadTasks = useCallback(async () => {
@@ -41,14 +43,14 @@ export default function InteractiveLeadDetail() {
     return (
       <div className="h-full flex items-center justify-center text-[#6E6E6E]">
         No lead selected.
-        <BackButton onClick={() => navigateTo(backView)} label={backLabel} className="ml-2 mb-0" />
+        <BackButton onClick={() => navigate(-1)} label={backLabel} className="ml-2 mb-0" />
       </div>
     );
   }
 
   return (
     <div>
-      <BackButton onClick={() => navigateTo(backView)} label={backLabel} />
+      <BackButton onClick={() => navigate(-1)} label={backLabel} />
       <LeadDetail
         lead={lead}
         contactSlot={<LeadContactCard lead={lead} />}
@@ -81,8 +83,7 @@ export default function InteractiveLeadDetail() {
                     <li
                       key={task.id}
                         onClick={() => {
-                        selectTask?.(task.id);
-                        navigateTo(isGMContext ? "gm-task-detail" : "bm-task-detail");
+                        navigate(isGMContext ? `/gm/tasks/${task.id}` : `/bm/tasks/${task.id}`);
                         window.dispatchEvent(new CustomEvent("onboarding:action", { detail: { actionType: "open_task" } }));
                       }}
                       className={`flex items-center gap-3 p-2 rounded border border-[var(--neutral-200)] hover:bg-[var(--neutral-50)] cursor-pointer transition-colors ${isDone ? "opacity-75" : ""}`}

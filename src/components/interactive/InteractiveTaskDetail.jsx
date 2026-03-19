@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { useApp } from "../../context/AppContext";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import BackButton from "../BackButton";
 import { useAuth } from "../../context/AuthContext";
 import { useData } from "../../context/DataContext";
@@ -33,7 +33,11 @@ function formatRelativeTime(iso) {
 }
 
 export default function InteractiveTaskDetail() {
-  const { selectedTaskId, navigateTo, selectLead, selectTask, activeView, role } = useApp();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const { taskId } = useParams();
+  const isGMContext = pathname.startsWith("/gm/");
+  const resolvedTaskId = Number.isNaN(Number(taskId)) ? taskId : Number(taskId);
   const { userProfile } = useAuth();
   const { leads, fetchTaskById, updateTaskStatus, appendTaskNote, initialDataReady } = useData();
   const [task, setTask] = useState(null);
@@ -43,10 +47,10 @@ export default function InteractiveTaskDetail() {
   const [notesSaving, setNotesSaving] = useState(false);
 
   const loadTask = useCallback(async () => {
-    if (!selectedTaskId) return;
+    if (!resolvedTaskId) return;
     setLoading(true);
     try {
-      const t = await fetchTaskById(selectedTaskId);
+      const t = await fetchTaskById(resolvedTaskId);
       setTask(t);
     } catch (err) {
       console.error("[InteractiveTaskDetail] Failed to fetch task:", err);
@@ -54,7 +58,7 @@ export default function InteractiveTaskDetail() {
     } finally {
       setLoading(false);
     }
-  }, [selectedTaskId, fetchTaskById]);
+  }, [resolvedTaskId, fetchTaskById]);
 
   useEffect(() => {
     loadTask();
@@ -89,23 +93,19 @@ export default function InteractiveTaskDetail() {
     }
   }, [task, newNoteText, appendTaskNote, userProfile?.displayName]);
 
-  const isGMContext = activeView === "gm-task-detail" || role === "gm";
-  const backView = isGMContext ? "gm-meeting-prep" : "bm-todo";
   const backLabel = isGMContext ? "Back to Meeting Prep" : "Back to Open Tasks";
 
   const handleViewLead = () => {
     if (task?.leadId) {
-      selectLead(task.leadId);
-      selectTask(null);
-      navigateTo(isGMContext ? "gm-lead-detail" : "bm-lead-detail");
+      navigate(isGMContext ? `/gm/leads/${task.leadId}` : `/bm/leads/${task.leadId}`);
     }
   };
 
-  if (!selectedTaskId) {
+  if (!resolvedTaskId) {
     return (
       <div className="h-full flex items-center justify-center text-[var(--neutral-600)]">
         No task selected.
-        <BackButton onClick={() => navigateTo(backView)} label={backLabel} className="ml-2 mb-0" />
+        <BackButton onClick={() => navigate(-1)} label={backLabel} className="ml-2 mb-0" />
       </div>
     );
   }
@@ -119,7 +119,7 @@ export default function InteractiveTaskDetail() {
     return (
       <div className="h-full flex items-center justify-center text-[var(--neutral-600)]">
         Task not found.
-        <BackButton onClick={() => { selectTask(null); navigateTo(backView); }} label={backLabel} className="ml-2 mb-0" />
+        <BackButton onClick={() => navigate(-1)} label={backLabel} className="ml-2 mb-0" />
       </div>
     );
   }
@@ -146,7 +146,7 @@ export default function InteractiveTaskDetail() {
       transition={{ duration: 0.3 }}
       className="max-w-2xl"
     >
-      <BackButton onClick={() => { selectTask(null); navigateTo(backView); }} label={backLabel} />
+      <BackButton onClick={() => navigate(-1)} label={backLabel} />
 
       <div className="space-y-6">
         {/* Title + badges */}

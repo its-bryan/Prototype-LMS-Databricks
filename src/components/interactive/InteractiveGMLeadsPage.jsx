@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { useData } from "../../context/DataContext";
-import { useApp } from "../../context/AppContext";
 import BackButton from "../BackButton";
 import {
   getGMLeads,
@@ -18,7 +18,7 @@ const STATUS_TABS = ["All", "Cancelled", "Unused"];
 
 export default function InteractiveGMLeadsPage() {
   const { leads, loading, orgMapping, updateLeadDirective, markLeadReviewed, demandLeads, initialDataReady } = useData();
-  const { navigateTo } = useApp();
+  const navigate = useNavigate();
   useEffect(() => { demandLeads(); }, [demandLeads]);
   const presets = useMemo(() => getDateRangePresets(), [loading]);
 
@@ -106,7 +106,7 @@ export default function InteractiveGMLeadsPage() {
 
   return (
     <div className="flex flex-col h-full gap-0">
-      <BackButton onClick={() => navigateTo("gm-todos")} label="Back to Work" />
+      <BackButton onClick={() => navigate("/gm/work")} label="Back to Work" />
       <div className="flex flex-1 min-h-0 gap-0">
       {/* Left: Table */}
       <div className={`transition-all duration-300 ${selectedLead ? "w-[45%]" : "w-full"}`}>

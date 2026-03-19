@@ -1,6 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { useApp } from "../../context/AppContext";
 import { useAuth } from "../../context/AuthContext";
 import { useData } from "../../context/DataContext";
 import {
@@ -9,7 +8,6 @@ import {
   getDateRangePresets,
   getComparisonDateRange,
   getInsuranceCompanies,
-  getZones,
   relChange,
   resolveGMName,
   getBranchesForGM,
@@ -31,12 +29,11 @@ function getQuartile(rate, maxRate) {
 }
 
 export default function InteractiveComplianceDashboard() {
-  const { navigateTo } = useApp();
   const { userProfile } = useAuth();
-  const { leads, loading, orgMapping, demandLeads, initialDataReady } = useData();
+  const { leads, orgMapping, demandLeads, initialDataReady } = useData();
   const reduceMotion = useReducedMotion();
   useEffect(() => { demandLeads(); }, [demandLeads]);
-  const presets = useMemo(() => getDateRangePresets(), [loading]);
+  const presets = useMemo(() => getDateRangePresets(), []);
 
   const gmName = useMemo(() => {
     const name = userProfile?.displayName;
@@ -47,56 +44,19 @@ export default function InteractiveComplianceDashboard() {
     return resolveGMName(name, userProfile?.id);
   }, [userProfile?.displayName, userProfile?.id, orgMapping, leads]);
   const gmBranches = useMemo(() => getBranchesForGM(gmName, leads ?? []), [gmName, leads]);
-  const gmZone = useMemo(() => {
-    const row = orgMapping.find((r) => r.gm && normalizeGmName(r.gm) === normalizeGmName(gmName) && r.zone);
-    if (row?.zone) return row.zone;
-    const b = gmBranches[0];
-    const fromLead = b ? (leads ?? []).find((l) => leadBranchMatches(l.branch, b)) : null;
-    return fromLead?.zone ?? null;
-  }, [orgMapping, gmName, gmBranches, leads]);
-
-  const gmBranchesHaveData = useMemo(
-    () => gmBranches.length > 0 && (leads ?? []).some((l) => gmBranches.includes(l.branch)),
-    [leads, gmBranches]
-  );
-
-  const [selectedPresetKey, setSelectedPresetKey] = useState("this_week");
-  const [scope, setScope] = useState("pending");
-  const [zoneFilter, setZoneFilter] = useState("_gm_default_");
+  const selectedPresetKey = "trailing_4_weeks";
+  const scope = "my_branches";
   const [branchFilter, setBranchFilter] = useState("All");
   const [insuranceFilter, setInsuranceFilter] = useState("All");
   const [sortMetric, setSortMetric] = useState("conversionRate");
 
-  useEffect(() => {
-    if (scope !== "pending") return;
-    if (loading) return;
-    setScope(gmBranchesHaveData ? "my_branches" : "all");
-  }, [loading, gmBranchesHaveData, scope]);
-
-  const resolvedScope = scope === "pending" ? "all" : scope;
-  const effectiveZoneFilter = zoneFilter === "_gm_default_" ? (gmZone ?? "All") : zoneFilter;
-
   const currentPreset = presets.find((p) => p.key === selectedPresetKey);
   const dateRange = currentPreset ? { start: currentPreset.start, end: currentPreset.end } : null;
   const insuranceCompanies = useMemo(() => getInsuranceCompanies(leads), [leads]);
-  const zones = useMemo(() => getZones(), [loading]);
-  const branches = useMemo(() => {
-    const scopedRows = resolvedScope === "my_branches"
-      ? orgMapping.filter((r) => gmBranches.includes(r.branch))
-      : effectiveZoneFilter !== "All"
-        ? orgMapping.filter((r) => r.zone === effectiveZoneFilter)
-        : orgMapping;
-    return [...new Set(scopedRows.map((r) => r.branch))].sort();
-  }, [orgMapping, resolvedScope, gmBranches, effectiveZoneFilter]);
+  const branches = useMemo(() => [...new Set(gmBranches)].sort(), [gmBranches]);
 
   const filteredLeads = useMemo(() => {
-    let result = leads ?? [];
-    if (resolvedScope === "my_branches") {
-      result = result.filter((l) => gmBranches.includes(l.branch));
-    } else if (effectiveZoneFilter !== "All") {
-      const zoneBranches = orgMapping.filter((r) => r.zone === effectiveZoneFilter).map((r) => r.branch);
-      result = result.filter((l) => zoneBranches.includes(l.branch));
-    }
+    let result = (leads ?? []).filter((l) => gmBranches.some((b) => leadBranchMatches(l.branch, b)));
     if (branchFilter !== "All") {
       result = result.filter((l) => leadBranchMatches(l.branch, branchFilter));
     }
@@ -104,12 +64,12 @@ export default function InteractiveComplianceDashboard() {
       result = result.filter((l) => l.insuranceCompany === insuranceFilter);
     }
     return result;
-  }, [leads, resolvedScope, gmBranches, effectiveZoneFilter, branchFilter, insuranceFilter, orgMapping]);
+  }, [leads, gmBranches, branchFilter, insuranceFilter]);
 
   const stats = useMemo(() => getGMDashboardStats(filteredLeads, dateRange), [filteredLeads, dateRange]);
   const leaderboard = useMemo(
-    () => getGMBranchLeaderboard(filteredLeads, dateRange, sortMetric, resolvedScope, gmName),
-    [filteredLeads, dateRange, sortMetric, resolvedScope, gmName]
+    () => getGMBranchLeaderboard(filteredLeads, dateRange, sortMetric, scope, gmName),
+    [filteredLeads, dateRange, sortMetric, scope, gmName]
   );
 
   const maxRate = Math.max(...leaderboard.sorted.map((b) => b[sortMetric] ?? 0), 1);
@@ -180,61 +140,19 @@ export default function InteractiveComplianceDashboard() {
         <div className="flex items-center gap-4">
           <h2 className="text-xl font-semibold text-[var(--hertz-black)]">Compliance Dashboard</h2>
           <span className="text-sm text-[var(--neutral-600)]">
-            {gmName}{resolvedScope === "my_branches" ? ` — My Branches` : effectiveZoneFilter !== "All" ? ` — ${effectiveZoneFilter}` : " — All Zones"}
+            {gmName} — My Branches
           </span>
         </div>
       </div>
 
       <div className="flex items-center gap-3 mb-6 flex-wrap">
-        <div className="flex items-center gap-1.5">
-          {presets.map((p) => (
-            <button
-              key={p.key}
-              onClick={() => setSelectedPresetKey(p.key)}
-              className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
-                selectedPresetKey === p.key
-                  ? "bg-[var(--hertz-black)] text-white"
-                  : "bg-[var(--neutral-100)] text-[var(--neutral-600)] hover:bg-[var(--neutral-200)]"
-              }`}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-        <span className="text-[var(--neutral-200)]">|</span>
-        <label className="text-xs text-[var(--neutral-600)] font-medium">Scope</label>
-        <select
-          value={resolvedScope}
-          onChange={(e) => {
-            setScope(e.target.value);
-            setBranchFilter("All");
-            setShowAllBranches(false);
-            if (e.target.value === "my_branches") setZoneFilter("_gm_default_");
-          }}
-          className="px-3 py-1.5 border border-[var(--neutral-200)] rounded-md text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[var(--hertz-primary)]"
-        >
-          <option value="my_branches">My Branches</option>
-          <option value="all">All Branches</option>
-        </select>
-        {resolvedScope !== "my_branches" && (
-          <>
-            <label className="text-xs text-[var(--neutral-600)] font-medium">Zone</label>
-            <select
-              value={effectiveZoneFilter}
-              onChange={(e) => { setZoneFilter(e.target.value); setBranchFilter("All"); setShowAllBranches(false); }}
-              className="px-3 py-1.5 border border-[var(--neutral-200)] rounded-md text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[var(--hertz-primary)]"
-            >
-              <option>All</option>
-              {zones.map((z) => (
-                <option key={z} value={z}>{z}</option>
-              ))}
-            </select>
-          </>
-        )}
         <label className="text-xs text-[var(--neutral-600)] font-medium">Branch</label>
         <select
           value={branchFilter}
-          onChange={(e) => setBranchFilter(e.target.value)}
+          onChange={(e) => {
+            setBranchFilter(e.target.value);
+            setShowAllBranches(false);
+          }}
           className="px-3 py-1.5 border border-[var(--neutral-200)] rounded-md text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[var(--hertz-primary)]"
         >
           <option>All</option>

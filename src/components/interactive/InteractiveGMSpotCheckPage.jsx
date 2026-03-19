@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { useData } from "../../context/DataContext";
-import { useApp } from "../../context/AppContext";
 import { useAuth } from "../../context/AuthContext";
 import BackButton from "../BackButton";
 import StatusBadge from "../StatusBadge";
@@ -57,7 +57,7 @@ function MetricComparison({ label, branchVal, zoneVal, suffix = "%", lowerIsBett
 
 export default function InteractiveGMSpotCheckPage() {
   const { leads, loading, orgMapping, updateLeadDirective, markLeadReviewed, demandLeads, initialDataReady } = useData();
-  const { navigateTo, selectLead } = useApp();
+  const navigate = useNavigate();
   useEffect(() => { demandLeads(); }, [demandLeads]);
   const { userProfile } = useAuth();
   const reduceMotion = useReducedMotion();
@@ -146,8 +146,7 @@ export default function InteractiveGMSpotCheckPage() {
   };
 
   const handleViewLead = (leadId) => {
-    selectLead(leadId);
-    navigateTo("gm-lead-detail");
+    navigate(`/gm/leads/${leadId}`);
   };
 
   const pageReady = usePageTransition();
@@ -172,7 +171,7 @@ export default function InteractiveGMSpotCheckPage() {
         )}
       </AnimatePresence>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-6">
-        <BackButton onClick={() => navigateTo("gm-todos")} label="Back to Work" />
+        <BackButton onClick={() => navigate("/gm/work")} label="Back to Work" />
         <h1 className="text-2xl font-extrabold text-[var(--hertz-black)] tracking-tight mb-1">
           Spot Check
         </h1>

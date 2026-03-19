@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { roleDefaultPaths } from "../config/navigation";
 
 const HERTZ_IMAGES = [
   { src: "/login-images/login-1.png", alt: "Hertz Cadillac race cars" },
@@ -14,6 +16,7 @@ const ROTATE_INTERVAL_MS = 8000;
 const FADE_DURATION = 1.2;
 
 export default function LoginScreen() {
+  const navigate = useNavigate();
   const { signIn, profileError } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -33,7 +36,11 @@ export default function LoginScreen() {
     setError("");
     setSubmitting(true);
     try {
-      await signIn(email.trim(), password);
+      const profile = await signIn(email.trim(), password);
+      const destination = roleDefaultPaths[profile?.role];
+      if (destination) {
+        navigate(destination, { replace: true });
+      }
     } catch (err) {
       setError(err.message || "Invalid email or password");
     } finally {

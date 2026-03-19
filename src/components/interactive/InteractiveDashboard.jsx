@@ -25,8 +25,6 @@ import {
   resolveGMName,
   relChange,
   formatMinutesToDisplay,
-  getBranchesForGM,
-  leadInGmBranchList,
   normalizeBranchKey,
 } from "../../selectors/demoSelectors";
 import { roleMeta, roleUsers, roleDefaults } from "../../config/navigation";
@@ -45,16 +43,15 @@ import MetricDrilldownModal from "../MetricDrilldownModal";
 import GMMetricDrilldownModal from "../GMMetricDrilldownModal";
 import SummaryExportModal from "../SummaryExportModal";
 import { exportLeadsToCSV, exportTasksToCSV } from "../../utils/exportUtils";
-import { formatDateRange as formatDateRangePST, formatDateOnly } from "../../utils/dateTime";
+import {
+  easeOut,
+  cardAnim,
+  getTimeOfDayGreeting,
+  formatDateRange,
+  leadToHlesRow,
+} from "../../utils/dashboardHelpers";
 import CreateTaskModal from "../CreateTaskModal";
 import { BMDashboardSkeleton, GMDashboardSkeleton } from "../DashboardSkeleton";
-
-const easeOut = [0.4, 0, 0.2, 1];
-const cardAnim = (i, reduced = false) => ({
-  initial: reduced ? false : { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0 },
-  transition: { delay: reduced ? 0 : i * 0.06, duration: reduced ? 0.01 : 0.4, ease: easeOut },
-});
 
 // Keeps overlay (line) data labels from colliding with bar-top labels.
 const LABEL_BUFFER_PX = 14; // rough height of the label text
@@ -98,55 +95,7 @@ function SectionHeader({ title, subtitle, action }) {
   );
 }
 
-function getTimeOfDayGreeting() {
-  const h = new Date().getHours();
-  if (h < 12) return "Good morning";
-  if (h < 17) return "Good afternoon";
-  return "Good evening";
-}
-
-function formatDateRange(preset, customStart, customEnd) {
-  if (preset?.key === "custom" && customStart && customEnd) {
-    return formatDateRangePST(new Date(customStart), new Date(customEnd));
-  }
-  if (preset?.start && preset?.end) {
-    return formatDateRangePST(preset.start, preset.end);
-  }
-  return preset?.label ?? "";
-}
-
-function formatDateDisplay(isoStr) {
-  if (!isoStr) return "—";
-  return formatDateOnly(isoStr);
-}
-
-function leadToHlesRow(lead, org) {
-  const rentInd = lead.status === "Rented" ? 1 : 0;
-  const cancelId = lead.status === "Cancelled" ? 1 : 0;
-  const unusedInd = lead.status === "Unused" ? 1 : 0;
-  return {
-    INIT_DT_FINAL: formatDateDisplay(lead.initDtFinal),
-    CONFIRM_NUM: lead.reservationId ?? "—",
-    RENTER_LAST: lead.customer ?? "—",
-    CLAIM: lead.claim ?? "—",
-    CDP: lead.cdp ?? lead.insuranceCompany ?? "—",
-    RENT_LOC: lead.branch ?? "—",
-    RES_ID: lead.reservationId ?? "—",
-    RENT_IND: rentInd,
-    CANCEL_ID: cancelId,
-    UNUSED_IND: unusedInd,
-    STATUS: lead.status,
-    CANCEL_REASON: lead.hlesReason ?? "—",
-    COMMENTS: lead.enrichment?.reason ?? lead.enrichment?.notes ?? "—",
-    AREA_MGR: org?.am ?? "—",
-    GENERAL_MGR: org?.gm ?? "—",
-    DAYS_OPEN: lead.daysOpen ?? "—",
-    DT_FROM_ALPHA1: formatDateDisplay(lead.dtFromAlpha1),
-    TIME_TO_CONTACT: lead.timeToFirstContact ?? "—",
-  };
-}
-
-function BMDashboard({ navigateTo, selectLead, selectTask }) {
+export function BMDashboard({ navigateTo }) {
   const { userProfile } = useAuth();
   const { leads, loading, initialDataReady, snapshot, demandLeads, leadsReady, fetchTasksForBranch, updateLeadEnrichment, updateTaskStatus, insertTask } = useData();
   const reduceMotion = useReducedMotion();
@@ -1657,8 +1606,7 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
                       isClosedRented ? "bg-[var(--neutral-100)] text-[var(--neutral-500)] [&_td]:line-through" : ""
                     }`}
                     onClick={() => {
-                      selectLead(lead.id);
-                      navigateTo("bm-lead-detail");
+                      navigateTo(`/bm/leads/${lead.id}`);
                       window.dispatchEvent(new CustomEvent("onboarding:action", { detail: { actionType: "click_lead" } }));
                     }}
                   >
@@ -1732,8 +1680,7 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
           <LeadsBoardView
             leads={displayLeads}
             onLeadClick={(lead) => {
-              selectLead(lead.id);
-              navigateTo("bm-lead-detail");
+              navigateTo(`/bm/leads/${lead.id}`);
               window.dispatchEvent(new CustomEvent("onboarding:action", { detail: { actionType: "click_lead" } }));
             }}
             getHierarchyForBranch={getHierarchyForBranch}
@@ -1902,7 +1849,7 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: i * 0.03 }}
-                    onClick={() => { selectTask?.(task.id); navigateTo("bm-task-detail"); }}
+                    onClick={() => { navigateTo(`/bm/tasks/${task.id}`); }}
                     className={`border-t border-[var(--neutral-200)] hover:bg-[var(--neutral-50)] transition-colors duration-150 cursor-pointer ${
                       isDone ? "bg-[var(--neutral-100)] text-[var(--neutral-500)] [&_td:nth-child(n+2)]:line-through" : ""
                     }`}
@@ -1973,13 +1920,12 @@ function BMDashboard({ navigateTo, selectLead, selectTask }) {
   );
 }
 
-export function BMDashboardInbox({ navigateTo, selectLead }) {
+export function BMDashboardInbox({ navigateTo }) {
   const { leads } = useData();
   const directiveLeads = getAllLeads(leads).filter((l) => l.gmDirective);
 
   const handleClick = (lead) => {
-    selectLead(lead.id);
-    navigateTo("bm-lead-detail");
+    navigateTo(`/bm/leads/${lead.id}`);
   };
 
   return (
@@ -2038,547 +1984,6 @@ export function BMDashboardInbox({ navigateTo, selectLead }) {
   );
 }
 
-/** GM chart table — same structure as BM Summary table. */
-function GMChartTable({ trendsChartData, isStackedView, trendsGroupByLabel, trendsConfig, trendsValues, trendsLabels, trendsOverlayMetric, overlayConfig, overlayValues, stackedSegmentKeys, getSegmentColor }) {
-  if (isStackedView) {
-    return (
-      <div className="overflow-x-auto rounded-md">
-        <table className="w-full table-fixed text-sm">
-          <thead>
-            <tr className="bg-[var(--hertz-black)] text-xs text-white font-semibold uppercase tracking-wider">
-              <th className="px-4 py-3 text-center rounded-tl-md">Period</th>
-              {stackedSegmentKeys.map((k) => (
-                <th key={k} className="px-4 py-3 text-center">{k}</th>
-              ))}
-              <th className="px-4 py-3 text-center rounded-tr-md">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {trendsChartData.map((row, i) => (
-              <tr key={i} className="border-b border-[var(--neutral-100)] hover:bg-[var(--neutral-50)] transition-colors">
-                <td className="py-2 px-4 text-center text-[var(--hertz-black)] font-medium">{row.period}</td>
-                {stackedSegmentKeys.map((k) => (
-                  <td key={k} className="py-2 px-4 text-center font-medium" style={{ color: getSegmentColor(k) }}>
-                    {(row.segments?.[k] ?? 0)}%
-                  </td>
-                ))}
-                <td className="py-2 px-4 text-center font-semibold text-[var(--hertz-black)]">{row.total}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    );
-  }
-  const hasOverlay = !!trendsOverlayMetric && overlayConfig && overlayValues.length > 0;
-  return (
-    <div className="overflow-x-auto rounded-md">
-      <table className="w-full table-fixed text-sm">
-        <thead>
-          <tr className="bg-[var(--hertz-black)] text-xs text-white font-semibold uppercase tracking-wider">
-            <th className="px-4 py-3 text-center rounded-tl-md">{trendsGroupByLabel}</th>
-            <th className={`px-4 py-3 text-center ${!hasOverlay ? "rounded-tr-md" : ""}`}>{trendsConfig.label}</th>
-            {hasOverlay && (
-              <th className="px-4 py-3 text-center rounded-tr-md" style={{ color: "var(--color-success)" }}>{overlayConfig.label}</th>
-            )}
-          </tr>
-        </thead>
-        <tbody>
-          {trendsChartData.map((d, i) => (
-            <tr key={i} className="border-b border-[var(--neutral-100)] hover:bg-[var(--neutral-50)] transition-colors">
-              <td className="py-2 px-4 text-center text-[var(--hertz-black)] font-medium">{trendsLabels[i]}</td>
-              <td className="py-2 px-4 text-center font-semibold" style={{ color: trendsConfig.color }}>
-                {trendsValues[i]}{trendsConfig.suffix}
-              </td>
-              {hasOverlay && (
-                <td className="py-2 px-4 text-center font-semibold" style={{ color: "var(--color-success)" }}>
-                  {overlayValues[i]}{overlayConfig.suffix}
-                </td>
-              )}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-/** GM chart bar — same logic/design as BM Summary bar chart (stacked + non-stacked, with overlay). */
-function GMChartBar({
-  trendsChartData, isStackedView, trendsConfig, effectiveTrendsMetric, trendsValues, trendsLabels, trendsMax,
-  trendsOverlayMetric, overlayConfig, overlayValues, overlayMax, stackedSegmentKeys,
-  getSegmentColor, getStackedBarLabel, stackedBarTooltip, setStackedBarTooltip,
-  chartOverlayTooltip, setChartOverlayTooltip, chartBarTooltip, setChartBarTooltip, reduceMotion,
-}) {
-  const AXIS_GAP = 12;
-  if (isStackedView) {
-    const stackedHasOverlay = !!trendsOverlayMetric && overlayValues.length > 0;
-    const stackedN = trendsChartData.length;
-    const stackedPadR = stackedHasOverlay ? 40 : 0;
-    const isCountMetric = effectiveTrendsMetric === "leadPipeline" || effectiveTrendsMetric === "openTasks";
-    const stackedMaxTotal = isCountMetric ? Math.max(...trendsChartData.map((d) => d.total ?? 0), 1) : 100;
-    const niceMax = isCountMetric ? (stackedMaxTotal <= 4 ? 4 : stackedMaxTotal <= 8 ? 8 : stackedMaxTotal <= 12 ? 12 : Math.ceil(stackedMaxTotal / 5) * 5) : 100;
-    const yTickCount = 5;
-    const yTicks = Array.from({ length: yTickCount }, (_, i) => Math.round((niceMax * i) / (yTickCount - 1)));
-    const STACKED_CHART_HEIGHT = 260;
-    const STACKED_OVERLAY_INSET = 6;
-    const stackedPlotHeightPx = STACKED_CHART_HEIGHT - STACKED_OVERLAY_INSET * 2;
-    const stackedBarTopPercents = trendsChartData.map((row) =>
-      isCountMetric ? (row.total / niceMax) * 100 : Object.values(row.segments ?? {}).reduce((s, v) => s + v, 0)
-    );
-    const stackedOverlayPercents = stackedHasOverlay ? overlayValues.map((v) => (overlayMax > 0 ? (v / overlayMax) * 100 : 0)) : [];
-    const stackedOverlayLabelOffsets = stackedHasOverlay
-      ? computeOverlayLabelOffsets({
-          overlayPercents: stackedOverlayPercents,
-          barPercents: stackedBarTopPercents,
-          chartHeightPx: stackedPlotHeightPx,
-        })
-      : [];
-    return (
-      <div>
-        <div className="flex items-center pt-1 pb-9">
-          <div className="flex flex-wrap gap-x-2 gap-y-0.5">
-            {stackedSegmentKeys.map((k) => (
-              <div key={k} className="flex items-center gap-1">
-                <div className="w-2.5 h-2.5 shrink-0" style={{ backgroundColor: getSegmentColor(k), borderRadius: 0 }} />
-                <span className="text-xs font-medium text-[var(--neutral-600)]">{k}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="flex" style={{ height: 260, gap: AXIS_GAP }}>
-          <div className="flex flex-col justify-between shrink-0 py-0.5 text-right" style={{ width: 36, paddingRight: AXIS_GAP }}>
-            {[...yTicks].reverse().map((val) => (
-              <span key={val} className="text-xs text-[var(--neutral-500)]" style={{ lineHeight: 1 }}>{val}{isCountMetric ? "" : "%"}</span>
-            ))}
-          </div>
-          <div className="flex flex-1 min-w-0">
-            <div className="flex-1 relative border-l border-[var(--neutral-200)]" style={{ paddingRight: stackedPadR }}>
-              <div className="absolute inset-0 z-0 pointer-events-none">
-                {yTicks.map((val) => (
-                  <div key={val} className="absolute left-0 right-0 border-t border-[var(--neutral-200)]" style={{ top: `${100 - (val / niceMax) * 100}%`, height: 0 }} />
-                ))}
-              </div>
-              <div className="grid absolute inset-0 z-10 h-full" style={{ gridTemplateColumns: `repeat(${stackedN}, 1fr)`, gap: 4, right: stackedPadR, paddingLeft: AXIS_GAP, paddingRight: AXIS_GAP }}>
-                {trendsChartData.map((row, i) => {
-                  const totalBarPct = isCountMetric ? (row.total / niceMax) * 100 : Object.values(row.segments ?? {}).reduce((s, v) => s + v, 0);
-                  return (
-                    <div key={i} className="flex flex-col items-center h-full relative">
-                      <span className="absolute left-1/2 z-10 text-xs font-semibold text-[var(--neutral-700)] whitespace-nowrap pointer-events-none" style={{ bottom: `${totalBarPct}%`, transform: "translateX(-50%)", marginBottom: 2 }}>
-                        {getStackedBarLabel(row)}
-                      </span>
-                      <div className="flex-1 w-full flex flex-col-reverse items-center relative" style={{ width: "70%", maxWidth: 48 }}>
-                        {stackedSegmentKeys.map((k) => {
-                          const count = row.raw?.[k] ?? 0;
-                          const pct = row.segments?.[k] ?? 0;
-                          if (count <= 0 && pct <= 0) return null;
-                          const heightPct = isCountMetric ? (count / niceMax) * 100 : pct;
-                          return (
-                            <motion.div
-                              key={k}
-                              initial={{ height: 0 }}
-                              animate={{ height: `${heightPct}%` }}
-                              transition={{ delay: i * 0.03, duration: reduceMotion ? 0.01 : 0.3, ease: "easeOut" }}
-                              className="w-full min-h-[2px] cursor-default"
-                              style={{ backgroundColor: getSegmentColor(k), borderRadius: 0 }}
-                              onMouseEnter={(e) => {
-                                const rect = e.currentTarget.getBoundingClientRect();
-                                setStackedBarTooltip({ period: trendsLabels[i] ?? row.period ?? "", hoveredSegment: k, raw: row.raw, segments: row.segments, total: row.total, x: rect.left + rect.width / 2, y: rect.top });
-                              }}
-                              onMouseLeave={() => setStackedBarTooltip(null)}
-                            />
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              {stackedHasOverlay && (() => {
-                const OVERLAY_INSET = STACKED_OVERLAY_INSET;
-                const bottomPct = (val) => overlayMax > 0 ? (val / overlayMax) * 100 : 0;
-                return (
-                  <div className="absolute z-20 pointer-events-none" style={{ top: OVERLAY_INSET, bottom: OVERLAY_INSET, left: AXIS_GAP, right: stackedPadR + AXIS_GAP }}>
-                    {stackedN > 1 && (
-                      <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-                        <polyline
-                          fill="none"
-                          stroke="var(--color-success)"
-                          strokeWidth={2}
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          vectorEffect="non-scaling-stroke"
-                          points={overlayValues.map((val, i) => {
-                            const x = ((i + 0.5) / stackedN) * 100;
-                            const y = 100 - bottomPct(val);
-                            return `${x},${y}`;
-                          }).join(" ")}
-                        />
-                      </svg>
-                    )}
-                    {overlayValues.map((v, i) => {
-                      const leftPct = ((i + 0.5) / stackedN) * 100;
-                      const bPct = bottomPct(v);
-                      const label = trendsLabels[i] ?? "";
-                      return (
-                        <div key={i} className="absolute pointer-events-auto cursor-pointer" style={{ left: `${leftPct}%`, bottom: `${bPct}%`, transform: "translate(-50%, 50%)" }}
-                          onMouseEnter={(e) => { const rect = e.currentTarget.getBoundingClientRect(); setChartOverlayTooltip({ period: label, value: v, suffix: overlayConfig?.suffix ?? "", x: rect.left + rect.width / 2, y: rect.top }); }}
-                          onMouseLeave={() => setChartOverlayTooltip(null)}
-                        >
-                          <div className="w-2.5 h-2.5 rounded-full bg-[var(--color-success)] border-2 border-white shadow-sm relative">
-                            <span
-                              className="absolute bottom-full left-1/2 -translate-x-1/2 text-xs font-bold text-[var(--color-success)] whitespace-nowrap pointer-events-none"
-                              style={{ marginBottom: `${4 + (stackedOverlayLabelOffsets[i] ?? 0)}px` }}
-                            >
-                              {v}{overlayConfig?.suffix ?? ""}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
-            </div>
-            {stackedHasOverlay && (
-              <div className="flex flex-col justify-between shrink-0 border-l border-[var(--neutral-200)]" style={{ width: 36, paddingTop: 6, paddingBottom: 6, paddingLeft: AXIS_GAP }}>
-                {[0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(overlayMax * f)).reverse().map((val, idx) => (
-                  <span key={idx} className="text-xs text-[var(--neutral-500)]" style={{ lineHeight: 1 }}>{val}{overlayConfig?.suffix ?? ""}</span>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-        {stackedBarTooltip && (
-          <div className="fixed z-50 px-3 py-2 bg-[var(--hertz-black)] text-white text-xs font-medium rounded shadow-lg pointer-events-none" style={{ left: stackedBarTooltip.x, top: stackedBarTooltip.y - 8, transform: "translate(-50%, -100%)" }}>
-            {stackedBarTooltip.period && <div className="font-semibold mb-1">{stackedBarTooltip.period}</div>}
-            <div className="space-y-0.5">
-              {stackedSegmentKeys.map((k) => {
-                const count = stackedBarTooltip.raw?.[k] ?? 0;
-                const pct = stackedBarTooltip.segments?.[k] ?? 0;
-                if (count <= 0 && pct <= 0) return null;
-                return (
-                  <div key={k} className="flex items-center gap-1.5">
-                    <div className="w-2 h-2 shrink-0" style={{ backgroundColor: getSegmentColor(k) }} />
-                    <span>{k}: {count} ({pct}%)</span>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="mt-1 pt-1 border-t border-white/20 text-xs opacity-70">Total: {stackedBarTooltip.total}</div>
-          </div>
-        )}
-        {chartOverlayTooltip && (
-          <div className="fixed z-50 px-2.5 py-1.5 bg-[var(--hertz-black)] text-white text-xs font-medium rounded shadow-lg pointer-events-none" style={{ left: chartOverlayTooltip.x, top: chartOverlayTooltip.y - 8, transform: "translate(-50%, -100%)" }}>
-            <div className="font-semibold">{chartOverlayTooltip.period}</div>
-            <div className="text-xs opacity-90 text-[var(--color-success)]">{overlayConfig?.label ?? ""}: {chartOverlayTooltip.value}{chartOverlayTooltip.suffix}</div>
-          </div>
-        )}
-        <div className="flex pt-2 mt-1 border-t border-[var(--neutral-200)]" style={{ gap: AXIS_GAP }}>
-          <div style={{ width: 36 }} />
-          <div className="flex flex-1 min-w-0">
-            <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${trendsLabels.length}, 1fr)`, gap: 4, paddingLeft: AXIS_GAP, paddingRight: stackedPadR + AXIS_GAP }}>
-              {trendsLabels.map((l, i) => (
-                <span key={i} className="block w-full text-center text-xs text-[var(--neutral-500)] truncate">{l}</span>
-              ))}
-            </div>
-          </div>
-        </div>
-        {/* Conversion rate row below x-axis labels */}
-        <div className="flex mt-0.5" style={{ gap: AXIS_GAP }}>
-          <div className="flex items-center justify-end" style={{ width: 36 }}>
-            <span className="text-[10px] font-semibold text-[var(--neutral-500)] uppercase tracking-wider whitespace-nowrap">Conv %</span>
-          </div>
-          <div className="flex flex-1 min-w-0">
-            <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${trendsLabels.length}, 1fr)`, gap: 4, paddingLeft: AXIS_GAP, paddingRight: stackedPadR + AXIS_GAP }}>
-              {trendsChartData.map((row, i) => (
-                <span key={i} className="text-center text-xs font-semibold text-[var(--hertz-black)]">
-                  {row.conversionRate != null ? `${row.conversionRate}%` : "—"}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-  const yTickValues = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(trendsMax * f));
-  const hasOverlay = !!trendsOverlayMetric && overlayValues.length > 0;
-  const n = trendsValues.length;
-  const padR = hasOverlay ? 40 : 0;
-  const overlayTickValues = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(overlayMax * f));
-  const NONSTACKED_CHART_HEIGHT = 280;
-  const NONSTACKED_OVERLAY_INSET = 6;
-  const nonStackedPlotHeightPx = NONSTACKED_CHART_HEIGHT - NONSTACKED_OVERLAY_INSET * 2;
-  const nonStackedBarTopPercents = trendsValues.map((v) => (trendsMax > 0 ? Math.min(100, (v / trendsMax) * 100) : 0));
-  const nonStackedOverlayPercents = hasOverlay ? overlayValues.map((v) => (overlayMax > 0 ? (v / overlayMax) * 100 : 0)) : [];
-  const nonStackedOverlayLabelOffsets = hasOverlay
-    ? computeOverlayLabelOffsets({
-        overlayPercents: nonStackedOverlayPercents,
-        barPercents: nonStackedBarTopPercents,
-        chartHeightPx: nonStackedPlotHeightPx,
-      })
-    : [];
-  return (
-    <div>
-      <div className="flex" style={{ height: 280, gap: AXIS_GAP }}>
-        <div className="flex flex-col justify-between shrink-0 py-0.5 text-right" style={{ width: 36, paddingRight: AXIS_GAP }}>
-          {[...yTickValues].reverse().map((val) => (
-            <span key={val} className="text-xs text-[var(--neutral-500)]" style={{ lineHeight: 1 }}>{val}{trendsConfig.suffix}</span>
-          ))}
-        </div>
-        <div className="flex flex-1 min-w-0">
-          <div className="flex-1 relative border-l border-[var(--neutral-200)]" style={{ minHeight: 260, paddingRight: padR }}>
-            <div className="absolute inset-0 grid z-10" style={{ gridTemplateColumns: `repeat(${n}, 1fr)`, gap: 4, right: padR, paddingLeft: AXIS_GAP, paddingRight: AXIS_GAP }}>
-              {trendsValues.map((v, i) => {
-                const barHeightPct = trendsMax > 0 ? Math.min(100, (v / trendsMax) * 100) : 0;
-                return (
-                  <div key={i} className="flex flex-col justify-end items-center h-full cursor-pointer relative"
-                    onMouseEnter={(e) => { const rect = e.currentTarget.getBoundingClientRect(); setChartBarTooltip({ label: trendsLabels[i] ?? "", value: v, suffix: trendsConfig.suffix, x: rect.left + rect.width / 2, y: rect.top }); }}
-                    onMouseLeave={() => setChartBarTooltip(null)}
-                  >
-                    <span className="absolute left-1/2 z-10 text-xs font-semibold text-[var(--neutral-700)] whitespace-nowrap pointer-events-none" style={{ bottom: `${barHeightPct}%`, transform: "translateX(-50%)", marginBottom: 2 }}>{v}{trendsConfig.suffix}</span>
-                    <motion.div initial={{ height: 0 }} animate={{ height: `${barHeightPct}%` }} transition={{ delay: i * 0.05, duration: reduceMotion ? 0.01 : 0.3, ease: "easeOut" }}
-                      className="rounded-none w-[70%] max-w-[48px] self-center" style={{ backgroundColor: trendsConfig.color, opacity: i === trendsValues.length - 1 ? 1 : 0.7, minHeight: 0 }} />
-                  </div>
-                );
-              })}
-            </div>
-            {hasOverlay && (() => {
-              const OVERLAY_INSET = NONSTACKED_OVERLAY_INSET;
-              const bottomPct = (val) => overlayMax > 0 ? (val / overlayMax) * 100 : 0;
-              return (
-                <div className="absolute z-20 pointer-events-none" style={{ top: OVERLAY_INSET, bottom: OVERLAY_INSET, left: AXIS_GAP, right: padR + AXIS_GAP }}>
-                  {n > 1 && (
-                    <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-                      <polyline
-                        fill="none"
-                        stroke="var(--color-success)"
-                        strokeWidth={2}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        vectorEffect="non-scaling-stroke"
-                        points={overlayValues.map((val, i) => {
-                          const x = ((i + 0.5) / n) * 100;
-                          const y = 100 - bottomPct(val);
-                          return `${x},${y}`;
-                        }).join(" ")}
-                      />
-                    </svg>
-                  )}
-                  {overlayValues.map((v, i) => {
-                    const leftPct = ((i + 0.5) / n) * 100;
-                    const bPct = bottomPct(v);
-                    return (
-                      <div key={i} className="absolute pointer-events-auto cursor-pointer" style={{ left: `${leftPct}%`, bottom: `${bPct}%`, transform: "translate(-50%, 50%)" }}
-                        onMouseEnter={(e) => { const rect = e.currentTarget.getBoundingClientRect(); setChartOverlayTooltip({ period: trendsLabels[i] ?? "", value: v, suffix: overlayConfig?.suffix ?? "", x: rect.left + rect.width / 2, y: rect.top }); }}
-                        onMouseLeave={() => setChartOverlayTooltip(null)}
-                      >
-                        <div className="w-2.5 h-2.5 rounded-full bg-[var(--color-success)] border-2 border-white shadow-sm relative">
-                          <span
-                            className="absolute bottom-full left-1/2 -translate-x-1/2 text-xs font-bold text-[var(--color-success)] whitespace-nowrap pointer-events-none"
-                            style={{ marginBottom: `${4 + (nonStackedOverlayLabelOffsets[i] ?? 0)}px` }}
-                          >
-                            {v}{overlayConfig?.suffix ?? ""}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })()}
-          </div>
-          {hasOverlay && (
-            <div className="flex flex-col justify-between shrink-0 border-l border-[var(--neutral-200)]" style={{ width: 36, paddingTop: 6, paddingBottom: 6, paddingLeft: AXIS_GAP }}>
-              {[...overlayTickValues].reverse().map((val) => (
-                <span key={val} className="text-xs text-[var(--neutral-500)]" style={{ lineHeight: 1 }}>{val}{overlayConfig?.suffix ?? ""}</span>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-      <div className="flex pt-2 mt-1 border-t border-[var(--neutral-200)]" style={{ gap: AXIS_GAP }}>
-        <div style={{ width: 36 }} />
-        <div className="flex flex-1 min-w-0">
-          <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${n}, 1fr)`, gap: 4, paddingLeft: AXIS_GAP, paddingRight: padR + AXIS_GAP }}>
-            {trendsLabels.map((l, i) => (
-              <span key={i} className="block w-full text-center text-xs text-[var(--neutral-500)] truncate">{l}</span>
-            ))}
-          </div>
-        </div>
-      </div>
-      {/* Conversion rate row below x-axis labels */}
-      <div className="flex mt-0.5" style={{ gap: AXIS_GAP }}>
-        <div className="flex items-center justify-end" style={{ width: 36 }}>
-          <span className="text-[10px] font-semibold text-[var(--neutral-500)] uppercase tracking-wider whitespace-nowrap">Conv %</span>
-        </div>
-        <div className="flex flex-1 min-w-0">
-          <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${n}, 1fr)`, gap: 4, paddingLeft: AXIS_GAP, paddingRight: padR + AXIS_GAP }}>
-            {trendsChartData.map((row, i) => (
-              <span key={i} className="text-center text-xs font-semibold text-[var(--hertz-black)]">
-                {row.conversionRate != null ? `${row.conversionRate}%` : "—"}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
-      {chartBarTooltip && (
-        <div className="fixed z-50 px-2.5 py-1.5 bg-[var(--hertz-black)] text-white text-xs font-medium rounded shadow-lg pointer-events-none" style={{ left: chartBarTooltip.x, top: chartBarTooltip.y - 8, transform: "translate(-50%, -100%)" }}>
-          <div className="font-semibold">{chartBarTooltip.label}</div>
-          <div className="text-xs opacity-90">{trendsConfig.label}: {chartBarTooltip.value}{chartBarTooltip.suffix}</div>
-        </div>
-      )}
-      {chartOverlayTooltip && (
-        <div className="fixed z-50 px-2.5 py-1.5 bg-[var(--hertz-black)] text-white text-xs font-medium rounded shadow-lg pointer-events-none" style={{ left: chartOverlayTooltip.x, top: chartOverlayTooltip.y - 8, transform: "translate(-50%, -100%)" }}>
-          <div className="font-semibold">{chartOverlayTooltip.period}</div>
-          <div className="text-xs opacity-90 text-[var(--color-success)]">{overlayConfig?.label ?? ""}: {chartOverlayTooltip.value}{chartOverlayTooltip.suffix}</div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** GM chart line — same logic/design as BM Summary line chart. */
-function GMChartLine({ trendsChartData, isStackedView, trendsConfig, trendsValues, trendsLabels, trendsMax, trendsOverlayMetric, overlayConfig, overlayValues, overlayMax, stackedSegmentKeys, getSegmentColor, reduceMotion }) {
-  const svgW = 560, svgH = 300;
-  const pad = { t: 28, r: 25, b: 32, l: 42 };
-  const plotW = svgW - pad.l - pad.r;
-  const plotH = svgH - pad.t - pad.b;
-  const n = trendsChartData.length;
-  if (isStackedView) {
-    const paths = stackedSegmentKeys.map((k, segIdx) => {
-      const pts = trendsChartData.map((row, i) => {
-        const pct = row.segments?.[k] ?? 0;
-        const prevPct = stackedSegmentKeys.slice(0, segIdx).reduce((s, kk) => s + (row.segments?.[kk] ?? 0), 0);
-        const yFromBottom = prevPct + pct;
-        const y = pad.t + plotH - (yFromBottom / 100) * plotH;
-        const x = n > 1 ? pad.l + (i / (n - 1)) * plotW : pad.l + plotW / 2;
-        return { x, y, pct };
-      });
-      const pathD = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ");
-      const areaD = n > 1 ? `${pathD} L${pts[n - 1].x},${pad.t + plotH} L${pts[0].x},${pad.t + plotH} Z` : "";
-      return { pathD, areaD, color: getSegmentColor(k), key: k };
-    });
-    const stackedLineHasOverlay = !!trendsOverlayMetric && overlayValues.length > 0;
-    const stackedLinePadR = stackedLineHasOverlay ? 40 : 0;
-    const overlayPtsStacked = stackedLineHasOverlay ? overlayValues.map((v, i) => ({
-      x: pad.l + (overlayValues.length > 1 ? (i / (overlayValues.length - 1)) * plotW : plotW / 2),
-      y: pad.t + plotH - (overlayMax > 0 ? (v / overlayMax) * plotH : 0),
-      v,
-    })) : [];
-    const overlayPathDStacked = overlayPtsStacked.length > 1 ? overlayPtsStacked.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ") : "";
-    return (
-      <div>
-        <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full overflow-visible" style={{ maxHeight: 320 }}>
-          <line x1={pad.l} y1={pad.t} x2={pad.l} y2={pad.t + plotH} stroke="var(--neutral-300)" strokeWidth={1} />
-          {[0, 25, 50, 75, 100].map((frac) => {
-            const y = pad.t + plotH - (frac / 100) * plotH;
-            return (
-              <g key={frac}>
-                <line x1={pad.l} y1={y} x2={stackedLineHasOverlay ? svgW - pad.r : svgW - pad.r - stackedLinePadR} y2={y} stroke="var(--neutral-200)" strokeWidth={0.5} strokeDasharray="2,2" />
-                <text x={pad.l - 6} y={y + 3} textAnchor="end" fontSize={12} fill="var(--chart-neutral-dark)">{frac}%</text>
-              </g>
-            );
-          })}
-          {stackedLineHasOverlay && [0, 25, 50, 75, 100].map((frac) => {
-            const y = pad.t + plotH * (1 - frac / 100);
-            const val = Math.round(overlayMax * frac / 100);
-            return <text key={`ov-${frac}`} x={svgW - pad.r + 6} y={y + 3} textAnchor="start" fontSize={12} fill="var(--chart-neutral-dark)">{val}{overlayConfig?.suffix ?? ""}</text>;
-          })}
-          {paths.map(({ areaD, pathD, color, key }) => (
-            <g key={key}>
-              {areaD && <path d={areaD} fill={color} opacity={0.6} />}
-              <path d={pathD} fill="none" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
-            </g>
-          ))}
-          {stackedLineHasOverlay && overlayPathDStacked && (
-            <g>
-              <path d={overlayPathDStacked} fill="none" stroke="var(--color-success)" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" strokeDasharray="4 3" />
-              {overlayPtsStacked.map((p, i) => (
-                <g key={i}>
-                  <circle cx={p.x} cy={p.y} r={2} fill="var(--color-success)" stroke="white" strokeWidth={1} />
-                  <text x={p.x} y={Math.max(12, p.y - 8)} textAnchor="middle" fontSize={12} fontWeight={700} fill="var(--color-success)">{p.v}{overlayConfig?.suffix ?? ""}</text>
-                </g>
-              ))}
-            </g>
-          )}
-          {trendsChartData.map((row, i) => {
-            const x = n > 1 ? pad.l + (i / (n - 1)) * plotW : pad.l + plotW / 2;
-            return <text key={i} x={x} y={svgH - 6} textAnchor="middle" fontSize={12} fill="var(--chart-neutral-dark)">{row.period}</text>;
-          })}
-        </svg>
-      </div>
-    );
-  }
-  const hasOverlay = !!trendsOverlayMetric && overlayValues.length > 0;
-  const padR = hasOverlay ? 40 : 0;
-  const pad2 = { ...pad, r: pad.r + padR };
-  const pts = trendsValues.map((v, i) => ({
-    x: pad.l + (trendsValues.length > 1 ? (i / (trendsValues.length - 1)) * plotW : plotW / 2),
-    y: pad.t + plotH - (trendsMax > 0 ? (v / trendsMax) * plotH : 0),
-    v,
-  }));
-  const pathD = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ");
-  const areaD = pts.length > 1 ? `${pathD} L${pts[pts.length - 1].x},${pad.t + plotH} L${pts[0].x},${pad.t + plotH} Z` : "";
-  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((frac) => ({ frac, val: Math.round(trendsMax * frac) }));
-  const overlayPts = hasOverlay ? overlayValues.map((v, i) => ({
-    x: pad.l + (overlayValues.length > 1 ? (i / (overlayValues.length - 1)) * plotW : plotW / 2),
-    y: pad.t + plotH - (overlayMax > 0 ? (v / overlayMax) * plotH : 0),
-    v,
-  })) : [];
-  const overlayPathD = overlayPts.length > 1 ? overlayPts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ") : "";
-  const overlayYTicks = [0, 0.25, 0.5, 0.75, 1].map((frac) => ({ frac, val: Math.round(overlayMax * frac) }));
-  return (
-    <div>
-      <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full overflow-visible" style={{ maxHeight: 320 }}>
-        <line x1={pad.l} y1={pad.t} x2={pad.l} y2={pad.t + plotH} stroke="var(--neutral-300)" strokeWidth={1} />
-        {yTicks.map(({ frac, val }) => {
-          const y = pad.t + plotH * (1 - frac);
-          return (
-            <g key={frac}>
-              <line x1={pad.l} y1={y} x2={hasOverlay ? svgW - 25 : svgW - pad2.r} y2={y} stroke="var(--neutral-200)" strokeWidth={0.5} strokeDasharray="2,2" />
-              <text x={pad.l - 6} y={y + 3} textAnchor="end" fontSize={12} fill="var(--chart-neutral-dark)">{val}{trendsConfig.suffix}</text>
-            </g>
-          );
-        })}
-        {hasOverlay && <line x1={svgW - 25} y1={pad.t} x2={svgW - 25} y2={pad.t + plotH} stroke="var(--neutral-300)" strokeWidth={1} />}
-        {hasOverlay && overlayYTicks.map(({ frac, val }) => {
-          const y = pad.t + plotH * (1 - frac);
-          return <text key={`ov-${frac}`} x={svgW - 25 + 6} y={y + 3} textAnchor="start" fontSize={12} fill="var(--chart-neutral-dark)">{val}{overlayConfig?.suffix ?? ""}</text>;
-        })}
-        {areaD && <path d={areaD} fill={trendsConfig.color} opacity={0.07} />}
-        <path d={pathD} fill="none" stroke={trendsConfig.color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
-        {pts.map((p, i) => (
-          <g key={i}>
-            <circle cx={p.x} cy={p.y} r={3} fill={trendsConfig.color} stroke="white" strokeWidth={1.5} />
-            <text x={p.x} y={Math.max(12, p.y - 10)} textAnchor="middle" fontSize={12} fontWeight={600} fill="var(--chart-black)">{p.v}{trendsConfig.suffix}</text>
-            <text x={p.x} y={svgH - 6} textAnchor="middle" fontSize={12} fill="var(--chart-neutral-dark)">{trendsLabels[i]}</text>
-          </g>
-        ))}
-        {hasOverlay && overlayPathD && (
-          <g>
-            <path d={overlayPathD} fill="none" stroke="var(--color-success)" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" strokeDasharray="4 3" />
-            {overlayPts.map((p, i) => (
-              <g key={i}>
-                <circle cx={p.x} cy={p.y} r={2} fill="var(--color-success)" stroke="white" strokeWidth={1} />
-                <text x={p.x} y={Math.max(12, p.y - 8)} textAnchor="middle" fontSize={12} fontWeight={700} fill="var(--color-success)">{p.v}{overlayConfig?.suffix ?? ""}</text>
-              </g>
-            ))}
-          </g>
-        )}
-      </svg>
-    </div>
-  );
-}
-
-const GM_SUMMARY_TRENDS_METRIC_CONFIG = {
-  leadPipeline: { key: "totalLeads", label: "Total Leads", color: "var(--chart-black)", suffix: "" },
-  conversionRate: { key: "conversionRate", label: "Conversion Rate", color: "var(--chart-success)", suffix: "%" },
-  commentRate: { key: "commentRate", label: "Comment Rate", color: "var(--chart-primary)", suffix: "%" },
-};
-const GM_STACKED_SUPPORTED_METRICS = ["leadPipeline", "conversionRate", "commentRate"];
-
 function getGMContextualInsight({ stats, prevStats }) {
   if (!stats) return null;
   if ((stats.cancelledUnreviewed ?? 0) === 0 && (stats.unusedOverdue ?? 0) === 0)
@@ -2599,39 +2004,18 @@ function getGMContextualInsight({ stats, prevStats }) {
   return null;
 }
 
-function GMDashboardPage({ navigateTo }) {
+export function GMDashboardPage({ navigateTo }) {
   const { userProfile } = useAuth();
-  const { leads, loading, initialDataReady, orgMapping, snapshot, demandLeads, leadsReady } = useData();
+  const { leads, loading, initialDataReady, orgMapping, snapshot } = useData();
   const reduceMotion = useReducedMotion();
   const displayName = userProfile?.displayName ?? roleUsers.gm?.name ?? "there";
   const [drilldownMetric, setDrilldownMetric] = useState(null);
   const presets = useMemo(() => getDateRangePresets(), [loading]);
 
-  const [selectedPresetKey, setSelectedPresetKey] = useState("trailing_4_weeks");
-  const [summaryTrendsMetric, setSummaryTrendsMetric] = useState("leadPipeline");
-  const trendsOverlayMetric = "";
-  const [trendsTimePresetKey, setTrendsTimePresetKey] = useState("trailing_4_weeks");
-  const [trendsGroupBy, setTrendsGroupBy] = useState("status");
-  const [summaryTrendsChartType, setSummaryTrendsChartType] = useState("bar");
-  const [trendsUseCustom, setTrendsUseCustom] = useState(false);
-  const [trendsCustomStart, setTrendsCustomStart] = useState("");
-  const [trendsCustomEnd, setTrendsCustomEnd] = useState("");
-  const [trendsShowCustomCalendar, setTrendsShowCustomCalendar] = useState(false);
-  const trendsCustomAnchorRef = useRef(null);
-  const [stackedBarTooltip, setStackedBarTooltip] = useState(null);
-  const [chartOverlayTooltip, setChartOverlayTooltip] = useState(null);
-  const [chartBarTooltip, setChartBarTooltip] = useState(null);
+  const selectedPresetKey = "trailing_4_weeks";
 
   const currentPreset = presets.find((p) => p.key === selectedPresetKey);
   const dateRange = currentPreset ? { start: currentPreset.start, end: currentPreset.end } : null;
-
-  const chartDateRange = useMemo(() => {
-    if (trendsUseCustom && trendsCustomStart && trendsCustomEnd) {
-      return { start: new Date(trendsCustomStart + "T00:00:00"), end: new Date(trendsCustomEnd + "T23:59:59") };
-    }
-    const preset = presets.find((p) => p.key === trendsTimePresetKey);
-    return preset ? { start: preset.start, end: preset.end } : null;
-  }, [trendsTimePresetKey, trendsUseCustom, trendsCustomStart, trendsCustomEnd, presets]);
 
   const gmName = useMemo(() => {
     const name = userProfile?.displayName;
@@ -2641,13 +2025,6 @@ function GMDashboardPage({ navigateTo }) {
 
   const snapshotGM = gmName ? (snapshot?.gms?.[gmName] ?? null) : null;
   const useSnapshotGM = !!snapshotGM;
-
-  // Demand-load leads only when user picks a non-default time range
-  useEffect(() => {
-    if (selectedPresetKey !== "trailing_4_weeks" && !useSnapshotGM) {
-      demandLeads();
-    }
-  }, [selectedPresetKey, useSnapshotGM, demandLeads]);
 
   const stats = useMemo(() => {
     if (useSnapshotGM && selectedPresetKey === "trailing_4_weeks") return snapshotGM.stats;
@@ -2662,90 +2039,6 @@ function GMDashboardPage({ navigateTo }) {
   const greeting = getTimeOfDayGreeting();
   const insight = getGMContextualInsight({ stats, prevStats });
 
-  const gmLeads = useMemo(() => {
-    if (!gmName) return leads;
-    const myBranches = getBranchesForGM(gmName, leads);
-    return (leads ?? []).filter((l) => leadInGmBranchList(l.branch, myBranches));
-  }, [leads, gmName]);
-
-  const { stats: chartStats, chartData: trendsChartData } = useMemo(() => {
-    if (useSnapshotGM && trendsGroupBy === "period" && !trendsUseCustom && trendsTimePresetKey === "trailing_4_weeks") {
-      const cd = snapshotGM.chartData ?? [];
-      const total = cd.reduce((s, d) => s + (d.totalLeads ?? 0), 0);
-      const rented = cd.reduce((s, d) => s + (d.rented ?? 0), 0);
-      return { stats: { total, rented }, chartData: cd };
-    }
-    if (!chartDateRange) return { stats: null, chartData: [] };
-    return getSummaryDataWithChart(
-      gmLeads,
-      [],
-      chartDateRange,
-      null,
-      trendsUseCustom ? "custom" : trendsTimePresetKey,
-      trendsGroupBy
-    );
-  }, [gmLeads, chartDateRange, trendsTimePresetKey, trendsUseCustom, trendsGroupBy, useSnapshotGM, snapshotGM]);
-
-  const isStackedView = trendsGroupBy !== "period";
-  const effectiveTrendsMetric = isStackedView && !GM_STACKED_SUPPORTED_METRICS.includes(summaryTrendsMetric)
-    ? "leadPipeline"
-    : summaryTrendsMetric;
-  const trendsConfig = GM_SUMMARY_TRENDS_METRIC_CONFIG[effectiveTrendsMetric];
-  const trendsValues = isStackedView ? [] : trendsChartData.map((d) => d[trendsConfig.key] ?? 0);
-  const trendsLabels = isStackedView
-    ? trendsChartData.map((d) => d.period)
-    : trendsChartData.map((d) => d.label);
-  const trendsMax = Math.max(...trendsValues, 1);
-
-  const overlayConfig = trendsOverlayMetric ? GM_SUMMARY_TRENDS_METRIC_CONFIG[trendsOverlayMetric] : null;
-  const overlayValues = overlayConfig ? trendsChartData.map((d) => d[overlayConfig.key] ?? 0) : [];
-  const overlayMax = overlayValues.length > 0 ? Math.max(...overlayValues, 1) : 1;
-
-  const overlayOptions = useMemo(() => {
-    const opts = [{ value: "", label: "None" }];
-    const others = Object.entries(GM_SUMMARY_TRENDS_METRIC_CONFIG).filter(
-      ([k]) => k !== effectiveTrendsMetric && (isStackedView ? GM_STACKED_SUPPORTED_METRICS.includes(k) : true)
-    );
-    others.forEach(([k, c]) => opts.push({ value: k, label: c.label }));
-    return opts;
-  }, [effectiveTrendsMetric, isStackedView]);
-
-  const summaryTrendsMetricOptions = useMemo(() => {
-    const entries = Object.entries(GM_SUMMARY_TRENDS_METRIC_CONFIG);
-    if (isStackedView) {
-      return entries.filter(([k]) => GM_STACKED_SUPPORTED_METRICS.includes(k));
-    }
-    return entries;
-  }, [isStackedView]);
-
-  const SEGMENT_COLORS = { Rented: "var(--chart-primary)", Cancelled: "var(--chart-black)", Unused: "var(--chart-neutral)" };
-  const SEGMENT_ORDER = ["Rented", "Cancelled", "Unused"];
-  const GM_PALETTE = ["var(--chart-primary)", "var(--hertz-primary-light)", "var(--hertz-gold-plus)", "var(--chart-black)", "var(--chart-info)", "var(--chart-accent)", "var(--chart-neutral)", "var(--chart-neutral-dark)"];
-  const stackedSegmentKeys = useMemo(() => {
-    if (!isStackedView) return [];
-    const keys = new Set();
-    if (trendsGroupBy === "status") SEGMENT_ORDER.forEach((s) => keys.add(s));
-    for (const row of trendsChartData) {
-      for (const k of Object.keys(row.segments ?? {})) keys.add(k);
-    }
-    return [...keys].sort((a, b) => {
-      const ai = SEGMENT_ORDER.indexOf(a);
-      const bi = SEGMENT_ORDER.indexOf(b);
-      if (ai >= 0 && bi >= 0) return ai - bi;
-      if (ai >= 0) return -1;
-      if (bi >= 0) return 1;
-      return String(a).localeCompare(String(b));
-    });
-  }, [isStackedView, trendsChartData, trendsGroupBy]);
-
-  const getSegmentColor = (key) => SEGMENT_COLORS[key] ?? GM_PALETTE[Math.abs(key.split("").reduce((a, c) => a + c.charCodeAt(0), 0)) % GM_PALETTE.length];
-
-  useEffect(() => {
-    if (summaryTrendsChartType === "line" && (trendsOverlayMetric || trendsGroupBy !== "period")) {
-      setSummaryTrendsChartType("bar");
-    }
-  }, [summaryTrendsChartType, trendsOverlayMetric, trendsGroupBy]);
-
   const gmTiles = [
     { label: "Conversion Rate", value: `${stats.conversionRate}%`, relChange: relChange(stats.conversionRate, prevStats?.conversionRate), metricKey: "conversion_rate" },
     { label: "Contacted < 30 min", value: `${stats.pctWithin30}%`, relChange: relChange(stats.pctWithin30, prevStats?.pctWithin30), metricKey: "contacted_within_30_min" },
@@ -2754,26 +2047,6 @@ function GMDashboardPage({ navigateTo }) {
     { label: "Cancelled Unreviewed", value: stats.cancelledUnreviewed, relChange: relChange(stats.cancelledUnreviewed, prevStats?.cancelledUnreviewed), isAlert: stats.cancelledUnreviewed > 0, lowerIsBetter: true, metricKey: "cancelled_unreviewed" },
     { label: "Unused Overdue", value: stats.unusedOverdue, relChange: relChange(stats.unusedOverdue, prevStats?.unusedOverdue), isAlert: stats.unusedOverdue > 0, lowerIsBetter: true, metricKey: "unused_overdue" },
   ];
-
-  const trendsGroupByLabel = trendsGroupBy === "period" ? "Period" : trendsGroupBy === "branch" ? "Branch" : trendsGroupBy === "body_shop" ? "Body Shop" : trendsGroupBy === "insurance_company" ? "Insurance" : "Lead Status";
-  const trendsTimePeriodLabel = currentPreset?.sublabel ? `Trailing 4 weeks ${currentPreset.sublabel}` : "Trailing 4 weeks";
-  const trendsMetricLabel = trendsConfig.suffix === "%" ? `${trendsConfig.label} %` : trendsConfig.label;
-  const overallConvRate = chartStats?.total ? Math.round((chartStats.rented / chartStats.total) * 100) : 0;
-  const overallSuffix =
-    effectiveTrendsMetric === "conversionRate" && chartStats?.total > 0
-      ? ` (Overall: ${overallConvRate}%)`
-      : "";
-  const trendsChartTitle =
-    (trendsOverlayMetric
-      ? `${trendsMetricLabel} + ${overlayConfig?.label ?? ""} by ${trendsGroupByLabel} over ${trendsTimePeriodLabel}`
-      : `${trendsMetricLabel} Grouped By ${trendsGroupByLabel} over ${trendsTimePeriodLabel}`) + overallSuffix;
-
-  const getStackedBarLabel = (row) => {
-    if (effectiveTrendsMetric === "leadPipeline") return row.total;
-    if (effectiveTrendsMetric === "conversionRate") return row.conversionRate != null ? `${row.conversionRate}%` : "—";
-    if (effectiveTrendsMetric === "commentRate") return row.commentRate != null ? `${row.commentRate}%` : "—";
-    return row.total;
-  };
 
   if (!initialDataReady && !snapshotGM) return <GMDashboardSkeleton />;
 
@@ -2862,7 +2135,7 @@ function GMDashboardPage({ navigateTo }) {
 
       {/* Section 2: Summary (formerly Business Metrics) */}
       <div id="business-metrics" className="scroll-mt-4 mb-8" data-onboarding="gm-summary">
-        <SectionHeader title="Summary" subtitle="Zone-wide metrics and performance trends." />
+        <SectionHeader title="Summary" subtitle="Zone-wide metrics at a glance." />
 
         {/* Time filter */}
         <div className="flex items-center gap-2 mb-4">
@@ -2932,164 +2205,6 @@ function GMDashboardPage({ navigateTo }) {
             </motion.div>
           ))}
         </div>
-
-        {/* Interactive trend chart — same logic and design as BM Summary */}
-        <motion.div {...cardAnim(3, reduceMotion)} className="mb-4">
-          <div className="border border-[var(--neutral-200)] rounded-lg bg-white shadow-[var(--shadow-md)] overflow-hidden" data-onboarding="gm-trends">
-            <div className="px-5 pt-5 pb-4">
-              <div className="flex flex-wrap items-end gap-2 mb-4">
-                <div className="shrink-0">
-                  <p className="text-xs font-semibold text-[var(--neutral-600)] uppercase tracking-wider mb-1.5">Metric</p>
-                  <select
-                    value={effectiveTrendsMetric}
-                    onChange={(e) => setSummaryTrendsMetric(e.target.value)}
-                    className="w-[10rem] px-2.5 py-1.5 border border-[var(--neutral-200)] rounded-lg text-sm font-medium text-[var(--hertz-black)] bg-white focus:outline-none focus:border-[var(--hertz-primary)] focus:ring-1 focus:ring-[var(--hertz-primary)] cursor-pointer"
-                  >
-                    {summaryTrendsMetricOptions.map(([k, c]) => (
-                      <option key={k} value={k}>{c.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="shrink-0">
-                  <p className="text-xs font-semibold text-[var(--neutral-600)] uppercase tracking-wider mb-1.5">Time filter</p>
-                  <select
-                    value="trailing_4_weeks"
-                    className="w-[10rem] px-2.5 py-1.5 border border-[var(--neutral-200)] rounded-lg text-sm font-medium text-[var(--hertz-black)] bg-white focus:outline-none focus:border-[var(--hertz-primary)] focus:ring-1 focus:ring-[var(--hertz-primary)] cursor-pointer"
-                    readOnly
-                  >
-                    <option value="trailing_4_weeks">Trailing 4 weeks</option>
-                  </select>
-                </div>
-                <div className="shrink-0">
-                  <p className="text-xs font-semibold text-[var(--neutral-600)] uppercase tracking-wider mb-1.5">Group by</p>
-                  <select
-                    value={trendsGroupBy}
-                    onChange={(e) => setTrendsGroupBy(e.target.value)}
-                    className="w-[10rem] px-2.5 py-1.5 border border-[var(--neutral-200)] rounded-lg text-sm font-medium text-[var(--hertz-black)] bg-white focus:outline-none focus:border-[var(--hertz-primary)] focus:ring-1 focus:ring-[var(--hertz-primary)] cursor-pointer"
-                  >
-                    <option value="period">Period</option>
-                    <option value="branch">Branch</option>
-                    <option value="body_shop">Body Shop</option>
-                    <option value="insurance_company">Insurance</option>
-                    <option value="status">Lead Status</option>
-                  </select>
-                </div>
-                <div className="shrink-0 ml-auto">
-                  <p className="text-xs font-semibold text-[var(--neutral-600)] uppercase tracking-wider mb-1.5">Chart type</p>
-                  <div className="flex items-center gap-0.5 rounded-lg border border-[var(--neutral-200)] p-0.5 bg-[var(--neutral-50)]">
-                    <button
-                      onClick={() => setSummaryTrendsChartType("bar")}
-                      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md transition-colors text-xs font-medium cursor-pointer ${
-                        summaryTrendsChartType === "bar" ? "bg-white text-[var(--hertz-black)] shadow-sm" : "text-[var(--neutral-600)] hover:text-[var(--hertz-black)]"
-                      }`}
-                      title="Bar"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-                      Bar
-                    </button>
-                    {!trendsOverlayMetric && trendsGroupBy === "period" && (
-                      <button
-                        onClick={() => setSummaryTrendsChartType("line")}
-                        className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md transition-colors text-xs font-medium cursor-pointer ${
-                          summaryTrendsChartType === "line" ? "bg-white text-[var(--hertz-black)] shadow-sm" : "text-[var(--neutral-600)] hover:text-[var(--hertz-black)]"
-                        }`}
-                        title="Line"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="4,16 8,10 13,13 20,6" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" /><polyline points="17,6 20,6 20,9" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" /></svg>
-                        Line
-                      </button>
-                    )}
-                    <button
-                      onClick={() => setSummaryTrendsChartType("table")}
-                      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md transition-colors text-xs font-medium cursor-pointer ${
-                        summaryTrendsChartType === "table" ? "bg-white text-[var(--hertz-black)] shadow-sm" : "text-[var(--neutral-600)] hover:text-[var(--hertz-black)]"
-                      }`}
-                      title="Table"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18M3 6h18M3 18h18" /></svg>
-                      Table
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <div ref={trendsCustomAnchorRef} className="relative shrink-0">
-                <AnimatePresence>
-                  {trendsUseCustom && trendsShowCustomCalendar && (
-                    <DateRangeCalendar
-                      start={trendsCustomStart}
-                      end={trendsCustomEnd}
-                      onChange={({ start: s, end: e }) => { setTrendsCustomStart(s); setTrendsCustomEnd(e); }}
-                      onClose={() => setTrendsShowCustomCalendar(false)}
-                      anchorRef={trendsCustomAnchorRef}
-                    />
-                  )}
-                </AnimatePresence>
-              </div>
-              <div className="border border-[var(--neutral-200)] rounded-lg p-4 bg-[var(--neutral-50)]/30 overflow-visible min-h-[340px]">
-                <p className="text-xs font-bold text-[var(--neutral-600)] tracking-wider mb-8">{trendsChartTitle}</p>
-                {trendsChartData.length === 0 ? (
-                  <p className="text-sm text-[var(--neutral-600)] py-8 text-center">
-                    {chartDateRange ? "No data for this time range." : "Select a time range to see the trend."}
-                  </p>
-                ) : summaryTrendsChartType === "bar" ? (
-                <GMChartBar
-                  trendsChartData={trendsChartData}
-                  isStackedView={isStackedView}
-                  trendsConfig={trendsConfig}
-                  effectiveTrendsMetric={effectiveTrendsMetric}
-                  trendsValues={trendsValues}
-                  trendsLabels={trendsLabels}
-                  trendsMax={trendsMax}
-                  trendsOverlayMetric={trendsOverlayMetric}
-                  overlayConfig={overlayConfig}
-                  overlayValues={overlayValues}
-                  overlayMax={overlayMax}
-                  stackedSegmentKeys={stackedSegmentKeys}
-                  getSegmentColor={getSegmentColor}
-                  getStackedBarLabel={getStackedBarLabel}
-                  stackedBarTooltip={stackedBarTooltip}
-                  setStackedBarTooltip={setStackedBarTooltip}
-                  chartOverlayTooltip={chartOverlayTooltip}
-                  setChartOverlayTooltip={setChartOverlayTooltip}
-                  chartBarTooltip={chartBarTooltip}
-                  setChartBarTooltip={setChartBarTooltip}
-                  reduceMotion={reduceMotion}
-                />
-              ) : summaryTrendsChartType === "line" ? (
-                <GMChartLine
-                  trendsChartData={trendsChartData}
-                  isStackedView={isStackedView}
-                  trendsConfig={trendsConfig}
-                  trendsValues={trendsValues}
-                  trendsLabels={trendsLabels}
-                  trendsMax={trendsMax}
-                  trendsOverlayMetric={trendsOverlayMetric}
-                  overlayConfig={overlayConfig}
-                  overlayValues={overlayValues}
-                  overlayMax={overlayMax}
-                  stackedSegmentKeys={stackedSegmentKeys}
-                  getSegmentColor={getSegmentColor}
-                  reduceMotion={reduceMotion}
-                />
-              ) : (
-                <GMChartTable
-                  trendsChartData={trendsChartData}
-                  isStackedView={isStackedView}
-                  trendsGroupByLabel={trendsGroupByLabel}
-                  trendsConfig={trendsConfig}
-                  trendsValues={trendsValues}
-                  trendsLabels={trendsLabels}
-                  trendsOverlayMetric={trendsOverlayMetric}
-                  overlayConfig={overlayConfig}
-                  overlayValues={overlayValues}
-                  stackedSegmentKeys={stackedSegmentKeys}
-                  getSegmentColor={getSegmentColor}
-                />
-              )}
-              </div>
-            </div>
-          </div>
-        </motion.div>
       </div>
 
       {/* Section 3: Team Performance */}
@@ -3119,138 +2234,12 @@ function GMDashboardPage({ navigateTo }) {
   );
 }
 
-function GMTrendBarChart({ data, metricConfig, getColor, hasMultipleSeries, reduceMotion }) {
-  const n = data.weekLabels.length;
-  if (n === 0) return <p className="text-sm text-[var(--neutral-500)] py-8 text-center">No data available.</p>;
-
-  const allVals = data.series.flatMap((s) => s.values.filter((v) => v != null));
-  const maxVal = Math.max(...allVals, 1);
-  const isPercent = metricConfig.suffix === "%";
-  const niceMax = isPercent ? 100 : (maxVal <= 4 ? 4 : maxVal <= 10 ? 10 : Math.ceil(maxVal / 5) * 5);
-  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(niceMax * f));
-
-  return (
-    <div>
-      <div className="flex" style={{ height: 260, gap: 12 }}>
-        <div className="flex flex-col justify-between shrink-0 py-0.5 text-right" style={{ width: 36, paddingRight: 12 }}>
-          {[...yTicks].reverse().map((val) => (
-            <span key={val} className="text-xs text-[var(--neutral-500)]" style={{ lineHeight: 1 }}>{val}{isPercent ? "%" : ""}</span>
-          ))}
-        </div>
-        <div className="flex-1 relative border-l border-[var(--neutral-200)]">
-          <div className="absolute inset-0 z-0 pointer-events-none">
-            {yTicks.map((val) => (
-              <div key={val} className="absolute left-0 right-0 border-t border-[var(--neutral-200)]" style={{ top: `${100 - (val / niceMax) * 100}%`, height: 0 }} />
-            ))}
-          </div>
-          <div className="absolute inset-0 grid z-10 h-full" style={{ gridTemplateColumns: `repeat(${n}, 1fr)`, gap: 4, paddingLeft: 12, paddingRight: 12 }}>
-            {data.weekLabels.map((_, wi) => {
-              const seriesCount = hasMultipleSeries ? data.series.length : 1;
-              return (
-                <div key={wi} className="flex items-end justify-center h-full gap-[2px]">
-                  {data.series.map((s, si) => {
-                    const v = s.values[wi];
-                    if (v == null) return <div key={si} style={{ width: `${80 / seriesCount}%` }} />;
-                    const pct = (v / niceMax) * 100;
-                    return (
-                      <motion.div
-                        key={si}
-                        initial={{ height: 0 }}
-                        animate={{ height: `${pct}%` }}
-                        transition={{ delay: wi * 0.03, duration: reduceMotion ? 0.01 : 0.3, ease: "easeOut" }}
-                        className="min-h-[2px] relative group/bar"
-                        style={{ backgroundColor: getColor(si), width: `${80 / seriesCount}%`, maxWidth: 48, opacity: hasMultipleSeries ? 0.85 : (wi === n - 1 ? 1 : 0.7) }}
-                        title={`${s.name}: ${v}${metricConfig.suffix}`}
-                      />
-                    );
-                  })}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-      <div className="flex pt-2 mt-1 border-t border-[var(--neutral-200)]" style={{ gap: 12 }}>
-        <div style={{ width: 36 }} />
-        <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${n}, 1fr)`, gap: 4, paddingLeft: 12, paddingRight: 12 }}>
-          {data.weekLabels.map((l, i) => (
-            <span key={i} className="text-center text-xs text-[var(--neutral-500)] truncate">{l}</span>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function GMTrendLineChart({ data, metricConfig, getColor, hasMultipleSeries }) {
-  const svgW = 560, svgH = 300;
-  const pad = { t: 28, r: 25, b: 32, l: 42 };
-  const plotW = svgW - pad.l - pad.r;
-  const plotH = svgH - pad.t - pad.b;
-  const n = data.weekLabels.length;
-  if (n === 0) return <p className="text-sm text-[var(--neutral-500)] py-8 text-center">No data available.</p>;
-
-  const allVals = data.series.flatMap((s) => s.values.filter((v) => v != null));
-  const maxVal = Math.max(...allVals, 1);
-  const isPercent = metricConfig.suffix === "%";
-  const niceMax = isPercent ? 100 : (maxVal <= 4 ? 4 : maxVal <= 10 ? 10 : Math.ceil(maxVal / 5) * 5);
-  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(niceMax * f));
-
-  return (
-    <div>
-      <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full overflow-visible" style={{ maxHeight: 320 }}>
-        <line x1={pad.l} y1={pad.t} x2={pad.l} y2={pad.t + plotH} stroke="var(--neutral-300)" strokeWidth={1} />
-        {yTicks.map((val) => {
-          const y = pad.t + plotH - (val / niceMax) * plotH;
-          return (
-            <g key={val}>
-              <line x1={pad.l} y1={y} x2={svgW - pad.r} y2={y} stroke="var(--neutral-200)" strokeWidth={0.5} strokeDasharray="2,2" />
-              <text x={pad.l - 6} y={y + 3} textAnchor="end" fontSize={12} fill="var(--chart-neutral-dark)">{val}{isPercent ? "%" : ""}</text>
-            </g>
-          );
-        })}
-        {data.series.map((s, si) => {
-          const pts = s.values.map((v, i) => {
-            if (v == null) return null;
-            return {
-              x: n > 1 ? pad.l + (i / (n - 1)) * plotW : pad.l + plotW / 2,
-              y: pad.t + plotH - (v / niceMax) * plotH,
-              v,
-            };
-          }).filter(Boolean);
-          const pathD = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ");
-          const color = getColor(si);
-          return (
-            <g key={s.name}>
-              <path d={pathD} fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
-              {pts.map((p, i) => (
-                <g key={i}>
-                  <circle cx={p.x} cy={p.y} r={3} fill={color} stroke="white" strokeWidth={1.5} />
-                  {!hasMultipleSeries && (
-                    <text x={p.x} y={Math.max(12, p.y - 10)} textAnchor="middle" fontSize={12} fontWeight={600} fill="var(--chart-black)">
-                      {p.v}{metricConfig.suffix}
-                    </text>
-                  )}
-                </g>
-              ))}
-            </g>
-          );
-        })}
-        {data.weekLabels.map((wl, i) => {
-          const x = n > 1 ? pad.l + (i / (n - 1)) * plotW : pad.l + plotW / 2;
-          return <text key={i} x={x} y={svgH - 6} textAnchor="middle" fontSize={12} fill="var(--chart-neutral-dark)">{wl}</text>;
-        })}
-      </svg>
-    </div>
-  );
-}
-
-function AdminDashboard({ navigateTo }) {
+export function AdminDashboard({ navigateTo }) {
   const cards = [
     {
       label: "Data Uploads",
       desc: "Upload HLES and TRANSLOG CSV files to refresh lead data",
-      view: "admin-uploads",
+      view: "/admin/uploads",
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -3261,7 +2250,7 @@ function AdminDashboard({ navigateTo }) {
     {
       label: "Org Mapping",
       desc: "BM-to-branch assignments and auto-derived hierarchy",
-      view: "admin-org-mapping",
+      view: "/admin/org-mapping",
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -3272,7 +2261,7 @@ function AdminDashboard({ navigateTo }) {
     {
       label: "Cancellation Reasons",
       desc: "Configure the reason categories BMs use for cancelled leads",
-      view: "admin-legend",
+      view: "/admin/legend",
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
@@ -3323,7 +2312,6 @@ const BM_SECTION_MAP = {
 const GM_SECTION_MAP = {
   "gm-overview": "home",
   "gm-todos": "todos",
-  "gm-business-metrics": "business-metrics",
   "gm-team-performance": "team-performance",
 };
 

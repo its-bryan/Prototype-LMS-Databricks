@@ -1,9 +1,10 @@
 import { useState, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useApp } from "../context/AppContext";
 import BackButton from "./BackButton";
-import { roleMeta, roleDefaults } from "../config/navigation";
+import { roleMeta, roleDefaultPaths } from "../config/navigation";
 import { getHierarchyForBranch } from "../selectors/demoSelectors";
 
 function getInitials(displayName) {
@@ -16,8 +17,9 @@ function getInitials(displayName) {
 }
 
 export default function ProfileView() {
+  const navigate = useNavigate();
   const { userProfile, updateProfile } = useAuth();
-  const { role, navigateTo } = useApp();
+  const { role } = useApp();
   const [displayName, setDisplayName] = useState(userProfile?.displayName ?? "");
   const [editingName, setEditingName] = useState(false);
 
@@ -69,7 +71,7 @@ export default function ProfileView() {
       className="max-w-xl"
     >
       <BackButton
-        onClick={() => navigateTo(role ? roleDefaults[role] : "bm-dashboard")}
+        onClick={() => navigate(role ? roleDefaultPaths[role] : "/bm/summary")}
         label="Back"
         className="mb-6"
       />

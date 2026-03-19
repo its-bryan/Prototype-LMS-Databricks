@@ -1,17 +1,16 @@
 import { motion } from "framer-motion";
-import { useApp } from "../../context/AppContext";
+import { useNavigate } from "react-router-dom";
 import { useData } from "../../context/DataContext";
 import { getAllLeads } from "../../selectors/demoSelectors";
 import StatusBadge from "../StatusBadge";
 
 export default function InteractiveInbox() {
-  const { navigateTo, selectLead } = useApp();
+  const navigate = useNavigate();
   const { leads } = useData();
   const directiveLeads = getAllLeads(leads).filter((l) => l.gmDirective);
 
   const handleClick = (lead) => {
-    selectLead(lead.id);
-    navigateTo("bm-lead-detail");
+    navigate(`/bm/leads/${lead.id}`);
   };
 
   return (

@@ -7,8 +7,9 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { useApp } from "../context/AppContext";
+import { useLocation, useNavigate } from "react-router-dom";
 import { BM_ONBOARDING_STEPS } from "../config/onboardingSteps";
+import { viewPaths } from "../config/navigation";
 
 const OVERLAY_OPACITY = 0.55;
 const SPOTLIGHT_PADDING = 8;
@@ -278,7 +279,8 @@ export default function OnboardingTour({
   isReplay = false,
   steps = BM_ONBOARDING_STEPS,
 }) {
-  const { navigateTo, activeView } = useApp();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
   const reducedMotion = useReducedMotion();
   const [stepIndex, setStepIndex] = useState(0);
   const [targetRect, setTargetRect] = useState(null);
@@ -333,9 +335,11 @@ export default function OnboardingTour({
 
   // Navigate to required view when step changes
   useEffect(() => {
-    if (!open || !step || activeView === step.requiredView) return;
-    navigateTo(step.requiredView);
-  }, [open, step?.requiredView, activeView, navigateTo]);
+    if (!open || !step?.requiredView) return;
+    const requiredPath = viewPaths[step.requiredView];
+    if (!requiredPath || pathname === requiredPath) return;
+    navigate(requiredPath);
+  }, [open, step?.requiredView, pathname, navigate]);
 
   // Auto-scroll target into view when step changes so spotlight isn't cut off
   useEffect(() => {

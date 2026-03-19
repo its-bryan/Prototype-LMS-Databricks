@@ -1,11 +1,11 @@
 import { useEffect } from "react";
-import { useApp } from "../../context/AppContext";
+import { useNavigate } from "react-router-dom";
 import { useData } from "../../context/DataContext";
 import { getCancelledLeads, getUnusedLeads } from "../../selectors/demoSelectors";
 import LeadQueue from "../LeadQueue";
 
 export default function InteractiveToDo() {
-  const { navigateTo, selectLead } = useApp();
+  const navigate = useNavigate();
   const { leads, demandLeads } = useData();
   useEffect(() => { demandLeads(); }, [demandLeads]);
 
@@ -14,8 +14,7 @@ export default function InteractiveToDo() {
   const todoLeads = [...unenrichedCancelled, ...unenrichedUnused];
 
   const handleLeadClick = (lead) => {
-    selectLead(lead.id);
-    navigateTo("bm-lead-detail");
+    navigate(`/bm/leads/${lead.id}`);
   };
 
   return (

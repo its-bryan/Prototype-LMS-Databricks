@@ -5,15 +5,15 @@
  */
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import LeadDetail from "../LeadDetail";
 import LeadContactCard from "../LeadContactCard";
 import InteractiveEnrichmentForm from "./InteractiveEnrichmentForm";
-import { useApp } from "../../context/AppContext";
 import { useData } from "../../context/DataContext";
 import { getLeadById, getTasksForLead } from "../../selectors/demoSelectors";
 
 export default function MeetingPrepLeadPanel({ lead, isReadOnly, onClose }) {
-  const { navigateTo, selectTask } = useApp();
+  const navigate = useNavigate();
   const { leads, fetchTasksForLead } = useData();
 
   // Use live lead from context so updates reflect; fallback to prop
@@ -121,8 +121,7 @@ export default function MeetingPrepLeadPanel({ lead, isReadOnly, onClose }) {
                         <li
                           key={task.id}
                           onClick={() => {
-                            selectTask?.(task.id);
-                            navigateTo("bm-task-detail");
+                            navigate(`/bm/tasks/${task.id}`);
                           }}
                           className="flex items-center justify-between p-2 rounded border border-[var(--neutral-200)] hover:bg-[var(--neutral-50)] cursor-pointer transition-colors"
                         >

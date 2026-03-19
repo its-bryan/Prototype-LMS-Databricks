@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useApp } from "../../context/AppContext";
+import { useNavigate } from "react-router-dom";
 import { useData } from "../../context/DataContext";
 import { getAllLeads, getUnresolvedLeads, getInsuranceCompanies } from "../../selectors/demoSelectors";
 import { getLastTranslogTime } from "../LeadQueue";
@@ -50,7 +50,7 @@ const selectClass =
   "px-3 py-1.5 border border-[#E6E6E6] rounded text-xs text-[#1A1A1A] bg-white focus:outline-none focus:border-[#FFD100]";
 
 export default function InteractiveLeadQueue() {
-  const { navigateTo, selectLead } = useApp();
+  const navigate = useNavigate();
   const { leads } = useData();
   const allLeads = getAllLeads(leads);
   const unresolved = getUnresolvedLeads(leads);
@@ -114,8 +114,7 @@ export default function InteractiveLeadQueue() {
   }, [allLeads, selectedPreset, useCustom, customStart, customEnd, resTypeFilter, cdpFilter, statusFilter, insuranceFilter]);
 
   const handleLeadClick = (lead) => {
-    selectLead(lead.id);
-    navigateTo("bm-lead-detail");
+    navigate(`/bm/leads/${lead.id}`);
   };
 
   const mismatchCount = useMemo(

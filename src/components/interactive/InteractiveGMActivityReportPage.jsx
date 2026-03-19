@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { useData } from "../../context/DataContext";
-import { useApp } from "../../context/AppContext";
 import BackButton from "../BackButton";
 import { getActivityReportData } from "../../selectors/demoSelectors";
 import { formatDateShort } from "../../utils/dateTime";
@@ -43,7 +43,7 @@ function formatTime(iso) {
 
 export default function InteractiveGMActivityReportPage() {
   const { leads, demandLeads, initialDataReady } = useData();
-  const { navigateTo } = useApp();
+  const navigate = useNavigate();
   useEffect(() => { demandLeads(); }, [demandLeads]);
   const [activeTab, setActiveTab] = useState("all");
 
@@ -64,7 +64,7 @@ export default function InteractiveGMActivityReportPage() {
 
   return (
     <div className="space-y-6">
-      <BackButton onClick={() => navigateTo("gm-team-performance")} label="Back to Team Performance" />
+      <BackButton onClick={() => navigate("/gm/overview")} label="Back to Team Performance" />
 
       <div className="flex items-end justify-between">
         <div>

@@ -34,7 +34,7 @@ export default function GMLeaderboardModule({ navigateTo, leads, dateRange, redu
   return (
     <motion.div {...cardAnim(0, reduceMotion)} className="h-full">
       <motion.button
-        onClick={() => navigateTo("gm-leaderboard")}
+        onClick={() => navigateTo("/gm/leaderboard")}
         whileHover={!reduceMotion ? { scale: 1.005 } : {}}
         whileTap={!reduceMotion ? { scale: 0.995 } : {}}
         className="w-full h-full text-left border-2 rounded-xl p-5 transition-all duration-200 cursor-pointer group

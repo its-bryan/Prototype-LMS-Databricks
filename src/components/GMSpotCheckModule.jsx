@@ -35,7 +35,7 @@ export default function GMSpotCheckModule({ navigateTo, leads, dateRange, reduce
   return (
     <motion.div {...cardAnim(1, reduceMotion)} className="h-full">
       <motion.button
-        onClick={() => navigateTo("gm-spot-check")}
+        onClick={() => navigateTo("/gm/spot-check")}
         whileHover={!reduceMotion ? { scale: 1.005 } : {}}
         whileTap={!reduceMotion ? { scale: 0.995 } : {}}
         className={`w-full h-full text-left border-2 rounded-xl p-5 transition-all duration-200 cursor-pointer group

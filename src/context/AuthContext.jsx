@@ -7,6 +7,8 @@ const TOKEN_KEY = "leo_token";
 const defaultAuthValue = {
   signIn: async () => {},
   signOut: async () => {},
+  updateProfile: async () => {},
+  completeOnboarding: async () => {},
   loading: true,
   userProfile: null,
   profileError: null,
@@ -42,7 +44,7 @@ function profileFromApi(u) {
     branch: u.branch ?? null,
     email: u.email ?? null,
     phone: null,
-    onboardingCompletedAt: new Date().toISOString(),
+    onboardingCompletedAt: u.onboardingCompletedAt ?? u.onboarding_completed_at ?? null,
     avatarUrl: null,
     title: null,
   };
@@ -102,9 +104,11 @@ export function AuthProvider({ children }) {
       const profile = profileFromApi(data.user);
       setUserProfile(profile);
       setRole(profile.role);
+      return profile;
     } catch (e) {
-      setSigningIn(false);
       throw e;
+    } finally {
+      setSigningIn(false);
     }
   }, [setRole]);
 
@@ -115,8 +119,84 @@ export function AuthProvider({ children }) {
     setRole(null);
   }, [setRole]);
 
+  const updateProfile = useCallback(async (fields) => {
+    const token = getStoredToken();
+    const nextDisplayName = fields?.display_name ?? fields?.displayName;
+    let updatedProfile = null;
+
+    if (token) {
+      try {
+        const res = await fetch(`${API_BASE}/auth/profile`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(fields ?? {}),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.user) {
+            updatedProfile = profileFromApi(data.user);
+          }
+        }
+      } catch {
+        // Fall back to optimistic local profile update.
+      }
+    }
+
+    if (!updatedProfile) {
+      setUserProfile((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          ...(nextDisplayName ? { displayName: nextDisplayName } : {}),
+        };
+      });
+      return null;
+    }
+
+    setUserProfile(updatedProfile);
+    return updatedProfile;
+  }, []);
+
+  const completeOnboarding = useCallback(async () => {
+    const completedAt = new Date().toISOString();
+    setUserProfile((prev) => {
+      if (!prev) return prev;
+      return { ...prev, onboardingCompletedAt: completedAt };
+    });
+
+    const token = getStoredToken();
+    if (!token) return;
+
+    try {
+      await fetch(`${API_BASE}/auth/onboarding/complete`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ completedAt }),
+      });
+    } catch {
+      // Local completion marker is enough for demo flow.
+    }
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ signIn, signOut, loading, signingIn, userProfile, profileError }}>
+    <AuthContext.Provider
+      value={{
+        signIn,
+        signOut,
+        updateProfile,
+        completeOnboarding,
+        loading,
+        signingIn,
+        userProfile,
+        profileError,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

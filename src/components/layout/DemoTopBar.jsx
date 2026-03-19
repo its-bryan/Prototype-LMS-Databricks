@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect, lazy, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { useApp } from "../../context/AppContext";
 import { useAuth } from "../../context/AuthContext";
 import { useData } from "../../context/DataContext";
+import { roleDefaultPaths, viewPaths } from "../../config/navigation";
 import { getAllLeads } from "../../selectors/demoSelectors";
 
 const BMDashboardInbox = lazy(() =>
@@ -10,7 +12,8 @@ const BMDashboardInbox = lazy(() =>
 );
 
 export default function DemoTopBar({ onHelpClick }) {
-  const { role, navigateTo, selectLead, selectTask } = useApp();
+  const navigate = useNavigate();
+  const { role } = useApp();
   const { userProfile, signOut } = useAuth();
   const { leads } = useData();
   const [inboxOpen, setInboxOpen] = useState(false);
@@ -31,12 +34,16 @@ export default function DemoTopBar({ onHelpClick }) {
   }, [inboxOpen]);
 
   const handleNavigate = (viewId) => {
-    navigateTo(viewId);
+    if (typeof viewId === "string" && viewId.startsWith("/")) {
+      navigate(viewId);
+      setInboxOpen(false);
+      return;
+    }
+    const path = viewPaths[viewId];
+    if (path && !path.includes(":")) {
+      navigate(path);
+    }
     setInboxOpen(false);
-  };
-
-  const handleSelectLead = (leadId) => {
-    selectLead(leadId);
   };
 
   return (
@@ -45,9 +52,7 @@ export default function DemoTopBar({ onHelpClick }) {
         <button
           onClick={() => {
             if (role) {
-              navigateTo(`${role}-dashboard`);
-              selectLead(null);
-              selectTask(null);
+              navigate(roleDefaultPaths[role] ?? "/login");
             }
           }}
           className="flex items-center hover:opacity-90 transition-opacity cursor-pointer"
@@ -107,7 +112,7 @@ export default function DemoTopBar({ onHelpClick }) {
                   >
                     <div className="p-5">
                       <Suspense fallback={<div className="py-8 text-center text-sm text-neutral-500">Loading inbox…</div>}>
-                        <BMDashboardInbox navigateTo={handleNavigate} selectLead={handleSelectLead} />
+                        <BMDashboardInbox navigateTo={handleNavigate} />
                       </Suspense>
                     </div>
                   </motion.div>

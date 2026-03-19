@@ -1,9 +1,11 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import { RouterProvider } from 'react-router-dom'
 import { AppProvider } from './context/AppContext'
 import { AuthProvider } from './context/AuthContext'
-import App from './App'
+import { DataProvider } from './context/DataContext'
 import ErrorBoundary from './components/ErrorBoundary'
+import { router } from './router'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -11,7 +13,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <ErrorBoundary>
       <AppProvider>
         <AuthProvider>
-          <App />
+          <DataProvider>
+            <RouterProvider router={router} />
+          </DataProvider>
         </AuthProvider>
       </AppProvider>
     </ErrorBoundary>

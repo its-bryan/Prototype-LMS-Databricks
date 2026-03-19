@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { useData } from "../../context/DataContext";
-import { useApp } from "../../context/AppContext";
 import BackButton from "../BackButton";
 import {
   getGMBranchLeaderboard,
@@ -40,7 +40,7 @@ const SCOPE_TABS = [
 
 export default function InteractiveGMLeaderboardPage() {
   const { leads, loading, demandLeads, initialDataReady } = useData();
-  const { navigateTo } = useApp();
+  const navigate = useNavigate();
   useEffect(() => { demandLeads(); }, [demandLeads]);
   const presets = useMemo(() => getDateRangePresets(), [loading]);
 
@@ -65,7 +65,7 @@ export default function InteractiveGMLeaderboardPage() {
 
   return (
     <div className="space-y-6">
-      <BackButton onClick={() => navigateTo("gm-todos")} label="Back to Work" />
+      <BackButton onClick={() => navigate("/gm/work")} label="Back to Work" />
       <div className="flex items-end justify-between">
         <div>
           <h1 className="text-2xl font-bold text-[var(--hertz-black)]">Leaderboard</h1>

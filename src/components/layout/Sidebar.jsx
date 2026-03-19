@@ -3,7 +3,8 @@ import { motion, useReducedMotion } from "framer-motion";
 import { useApp } from "../../context/AppContext";
 import { useAuth } from "../../context/AuthContext";
 import { useData } from "../../context/DataContext";
-import { roleNav, roleMeta, roleUsers, drillDownViews } from "../../config/navigation";
+import { useLocation, useNavigate } from "react-router-dom";
+import { roleNav, roleUsers, viewPaths } from "../../config/navigation";
 import {
   getDateRangePresets,
   getMeetingPrepOutstandingCount,
@@ -100,11 +101,6 @@ const iconMap = {
   ),
 };
 
-const SECTION_VIEW_IDS = {
-  bm: ["bm-home", "bm-dashboard", "bm-leads", "bm-todo", "bm-work", "bm-meeting-prep", "bm-leaderboard"],
-  gm: ["gm-todos", "gm-meeting-prep", "gm-spot-check", "gm-overview", "gm-business-metrics", "gm-team-performance", "gm-activity-report", "gm-leaderboard"],
-};
-
 /** Derives initials from display name (e.g. "Sarah Chen" → "SC"). */
 function getInitials(displayName) {
   if (!displayName || typeof displayName !== "string") return "?";
@@ -115,13 +111,28 @@ function getInitials(displayName) {
   return displayName.slice(0, 2).toUpperCase();
 }
 
+function normalizePath(path) {
+  if (!path) return "/";
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  return normalized.length > 1 ? normalized.replace(/\/+$/, "") : normalized;
+}
+
+function staticPathForView(viewId) {
+  const routePath = viewPaths[viewId];
+  if (!routePath) return null;
+  return normalizePath(routePath.replace(/\/:[^/]+/g, ""));
+}
+
 export default function Sidebar() {
-  const { role, activeView, scrollActiveView, scrollDirection, sidebarCollapsed, navigateTo, toggleSidebar } = useApp();
-  const isProfileActive = activeView === "profile";
+  const { role, sidebarCollapsed, toggleSidebar } = useApp();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const currentPath = useMemo(() => normalizePath(pathname), [pathname]);
   const reduceMotion = useReducedMotion();
   const { signOut, userProfile } = useAuth();
   const { leads, gmTasks, orgMapping } = useData();
   const navItems = role ? roleNav[role] || [] : [];
+  const isProfileActive = currentPath === staticPathForView("profile");
 
   // Outstanding actions for Meeting Prep (this week only) — leads needing comments + data mismatches
   const meetingPrepOutstanding = useMemo(() => {
@@ -175,19 +186,27 @@ export default function Sidebar() {
     return getGMLeadsToReviewCount(leads ?? [], dateRange);
   }, [role, leads]);
 
-  const BM_SCROLL_VIEWS = ["bm-home", "bm-dashboard", "bm-leads", "bm-todo"];
-  const GM_SCROLL_VIEWS = ["gm-overview", "gm-business-metrics", "gm-team-performance", "gm-todos"];
-  const isOnScrollPage = BM_SCROLL_VIEWS.includes(activeView) || GM_SCROLL_VIEWS.includes(activeView);
-  const isSectionView = role && SECTION_VIEW_IDS[role]?.includes(activeView);
-  const resolvedActive = isOnScrollPage && scrollActiveView
-    ? scrollActiveView
-    : drillDownViews.includes(activeView)
-      ? activeView === "bm-task-detail"
-        ? "bm-todo"
-        : activeView === "gm-lead-detail"
-          ? "gm-spot-check"
-          : activeView.replace(/-detail$/, "").replace("bm-lead", "bm-leads")
-      : activeView;
+  const resolvedActive = useMemo(() => {
+    const entries = Object.entries(viewPaths)
+      .map(([viewId]) => {
+        const staticPath = staticPathForView(viewId);
+        if (!staticPath) return null;
+        const isMatch = currentPath === staticPath || currentPath.startsWith(`${staticPath}/`);
+        if (!isMatch) return null;
+        return { viewId, staticPath };
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.staticPath.length - a.staticPath.length);
+
+    const matchedView = entries[0]?.viewId;
+    if (!matchedView) return null;
+
+    if (matchedView === "bm-task-detail") return "bm-todo";
+    if (matchedView === "bm-lead-detail") return "bm-leads";
+    if (matchedView === "gm-lead-detail") return "gm-spot-check";
+    if (matchedView === "gm-task-detail") return "gm-todos";
+    return matchedView;
+  }, [currentPath]);
 
   // BM: Work sub-sections (Meeting Prep, Leaderboard)
   const workChildIds = ["bm-meeting-prep", "bm-leaderboard"];
@@ -196,22 +215,18 @@ export default function Sidebar() {
   const hasSummaryChildren = role === "bm" && summaryChildIds.some((id) => navItems.some((n) => n.id === id));
   const inWorkSection = resolvedActive === "bm-work" || workChildIds.includes(resolvedActive);
   const inSummarySection = resolvedActive === "bm-dashboard" || summaryChildIds.includes(resolvedActive);
-  const workExpanded =
-    inWorkSection || (inSummarySection && scrollDirection === "down");
-  const summaryExpanded =
-    inSummarySection || (inWorkSection && scrollDirection === "down");
+  const workExpanded = inWorkSection;
+  const summaryExpanded = inSummarySection;
 
   // GM: Work sub-sections (Meeting Prep, Lead Review); Summary sub-sections (Business Metrics, Team Performance)
   const gmTodosChildIds = ["gm-meeting-prep", "gm-spot-check"];
-  const gmOverviewChildIds = ["gm-business-metrics", "gm-team-performance", "gm-activity-report"];
+  const gmOverviewChildIds = ["gm-team-performance", "gm-activity-report"];
   const hasGmOverviewChildren = role === "gm" && gmOverviewChildIds.some((id) => navItems.some((n) => n.id === id));
   const hasGmTodosChildren = role === "gm" && gmTodosChildIds.some((id) => navItems.some((n) => n.id === id));
   const inGmOverviewSection = resolvedActive === "gm-overview" || gmOverviewChildIds.includes(resolvedActive);
   const inGmTodosSection = resolvedActive === "gm-todos" || gmTodosChildIds.includes(resolvedActive);
-  const gmTodosExpanded =
-    inGmTodosSection || (inGmOverviewSection && scrollDirection === "down");
-  const gmOverviewExpanded =
-    inGmOverviewSection || (inGmTodosSection && scrollDirection === "down");
+  const gmTodosExpanded = inGmTodosSection;
+  const gmOverviewExpanded = inGmOverviewSection;
 
   const navScrollRef = useRef(null);
   useEffect(() => {
@@ -319,13 +334,16 @@ export default function Sidebar() {
           if (item.id === "bm-work") navTarget = "bm-meeting-prep";
           if (item.id === "gm-overview") navTarget = "gm-overview";
           if (item.id === "gm-todos") navTarget = "gm-todos";
+          const targetPath = viewPaths[navTarget];
 
           return (
             <div key={item.id} data-nav-id={item.id} className="flex items-center min-w-0">
               <motion.button
                 layout={!reduceMotion}
                 initial={false}
-                onClick={() => navigateTo(navTarget)}
+                onClick={() => {
+                  if (targetPath) navigate(targetPath);
+                }}
                 whileHover={!reduceMotion ? { x: 2, transition: { duration: 0.15 } } : {}}
                 whileTap={!reduceMotion ? { scale: 0.98 } : {}}
                 className={`flex-1 flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm transition-colors cursor-pointer min-w-0 ${
@@ -378,7 +396,7 @@ export default function Sidebar() {
       <div className={`flex flex-col px-2 py-3 space-y-0.5 ${sidebarCollapsed ? "items-center" : ""}`}>
         {role && (
           <button
-            onClick={() => navigateTo("profile")}
+            onClick={() => navigate(viewPaths.profile)}
             className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-left transition-colors cursor-pointer ${
               isProfileActive ? "bg-[var(--hertz-primary)]/15 ring-1 ring-[var(--hertz-primary)]/40" : "hover:bg-white/80"
             } ${sidebarCollapsed ? "justify-center px-0" : ""}`}
