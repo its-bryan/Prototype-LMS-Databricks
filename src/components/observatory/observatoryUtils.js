@@ -81,10 +81,16 @@ export function buildTrendPoints({
   if (metricMode === "conversion") {
     return points.map((p) => {
       const value = safeDivide(p.rented, p.total);
+      const unusedPct = safeDivide(p.unused, p.total);
       return {
         label: p.label,
+        rawLabel: p.rawLabel,
         value: Number(value.toFixed(1)),
-        tooltip: `${p.label}: ${value.toFixed(1)}% conversion (${p.rented}/${p.total || 0})`,
+        unusedPct: Number(unusedPct.toFixed(1)),
+        rented: p.rented,
+        unused: p.unused,
+        total: p.total,
+        tooltip: `${p.label}: ${value.toFixed(1)}% conversion, ${unusedPct.toFixed(1)}% unused (${p.rented}R / ${p.unused}U / ${p.total || 0}T)`,
       };
     });
   }
@@ -233,4 +239,25 @@ export function metricLabel(metricKey) {
   if (metricKey === "branchContact") return "Branch Contact %";
   if (metricKey === "within30") return "% < 30min First Contact";
   return "Metric";
+}
+
+function toIsoDate(d) {
+  return d.toISOString().slice(0, 10);
+}
+
+export function periodToDateRange(rawLabel, granularity) {
+  if (!rawLabel) return null;
+  if (granularity === "month") {
+    const [year, month] = String(rawLabel).split("-").map(Number);
+    if (!year || !month) return null;
+    const start = new Date(year, month - 1, 1);
+    const end = new Date(year, month, 0);
+    return { start: toIsoDate(start), end: toIsoDate(end) };
+  }
+
+  const start = parseDate(rawLabel);
+  if (!start) return null;
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  return { start: toIsoDate(start), end: toIsoDate(end) };
 }

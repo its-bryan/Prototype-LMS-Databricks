@@ -193,7 +193,7 @@ export function relChange(current, previous) {
 }
 
 /** Check if a lead falls within a date range. Uses week_of or init_dt_final (lead received date) to align with Leads table semantics — not lastActivity. */
-function leadInDateRange(lead, start, end) {
+export function leadInDateRange(lead, start, end) {
   const initDt = lead.initDtFinal ?? lead.init_dt_final;
   const weekOf = lead.weekOf ?? lead.week_of;
   let t = null;

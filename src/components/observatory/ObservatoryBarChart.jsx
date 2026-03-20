@@ -12,6 +12,7 @@ export default function ObservatoryBarChart({
   yAxis = "count",
   title,
   subtitle,
+  onBarClick,
 }) {
   const reduceMotion = useReducedMotion();
 
@@ -19,6 +20,7 @@ export default function ObservatoryBarChart({
     1,
     ...points.map((p) => {
       if (mode === "stacked") return p.total ?? 0;
+      if (mode === "cluster") return Math.max(p.value ?? 0, p.unusedPct ?? 0);
       return p.value ?? 0;
     })
   );
@@ -54,10 +56,12 @@ export default function ObservatoryBarChart({
                 <div className="relative h-[320px] flex items-end gap-2 px-2">
                   {points.map((p, idx) => {
                     const singleHeight = ((p.value ?? 0) / maxValue) * CHART_HEIGHT;
+                    const unusedPercentHeight = ((p.unusedPct ?? 0) / maxValue) * CHART_HEIGHT;
                     const rentedHeight = ((p.rented ?? 0) / maxValue) * CHART_HEIGHT;
                     const cancelledHeight = ((p.cancelled ?? 0) / maxValue) * CHART_HEIGHT;
                     const unusedHeight = ((p.unused ?? 0) / maxValue) * CHART_HEIGHT;
                     const percentLabel = `${Math.round(p.value ?? 0)}%`;
+                    const unusedPercentLabel = `${Math.round(p.unusedPct ?? 0)}%`;
 
                     return (
                       <div key={p.label} className="flex-1 min-w-[34px] h-full flex flex-col items-center justify-end">
@@ -78,6 +82,45 @@ export default function ObservatoryBarChart({
                                 transition={{ duration: 0.45, delay: idx * 0.02 }}
                                 className="w-full rounded-t-md bg-[var(--hertz-primary)]"
                               />
+                            </div>
+                          ) : mode === "cluster" ? (
+                            <div className="relative w-full flex items-end justify-center gap-1">
+                              <div className="relative h-full flex-1 flex items-end justify-center">
+                                {yAxis === "percent" && (
+                                  <span
+                                    className="absolute text-[10px] font-semibold text-[var(--neutral-700)]"
+                                    style={{ bottom: `${Math.min(singleHeight + 6, CHART_HEIGHT + 6)}px` }}
+                                  >
+                                    {percentLabel}
+                                  </span>
+                                )}
+                                <motion.button
+                                  type="button"
+                                  initial={reduceMotion ? false : { height: 0 }}
+                                  animate={{ height: singleHeight }}
+                                  transition={{ duration: 0.45, delay: idx * 0.02 }}
+                                  onClick={() => onBarClick?.(p, "conversion")}
+                                  className="w-full rounded-t-md bg-[var(--hertz-primary)]"
+                                />
+                              </div>
+                              <div className="relative h-full flex-1 flex items-end justify-center">
+                                {yAxis === "percent" && (
+                                  <span
+                                    className="absolute text-[10px] font-semibold text-[var(--neutral-700)]"
+                                    style={{ bottom: `${Math.min(unusedPercentHeight + 6, CHART_HEIGHT + 6)}px` }}
+                                  >
+                                    {unusedPercentLabel}
+                                  </span>
+                                )}
+                                <motion.button
+                                  type="button"
+                                  initial={reduceMotion ? false : { height: 0 }}
+                                  animate={{ height: unusedPercentHeight }}
+                                  transition={{ duration: 0.45, delay: idx * 0.02 + 0.03 }}
+                                  onClick={() => onBarClick?.(p, "unused")}
+                                  className="w-full cursor-pointer rounded-t-md bg-[var(--neutral-300)]"
+                                />
+                              </div>
                             </div>
                           ) : (
                             <div className="w-full rounded-t-md overflow-hidden border border-[var(--neutral-200)] border-b-0 bg-[var(--neutral-50)]">
@@ -121,6 +164,12 @@ export default function ObservatoryBarChart({
                 <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[var(--chart-primary)]" />Rented</span>
                 <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[var(--chart-black)]" />Cancelled</span>
                 <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[var(--chart-neutral)]" />Unused</span>
+              </div>
+            )}
+            {mode === "cluster" && (
+              <div className="mt-3 flex flex-wrap gap-3 text-xs text-[var(--neutral-600)]">
+                <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[var(--hertz-primary)]" />Conversion %</span>
+                <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[var(--neutral-300)]" />Unused %</span>
               </div>
             )}
           </div>
