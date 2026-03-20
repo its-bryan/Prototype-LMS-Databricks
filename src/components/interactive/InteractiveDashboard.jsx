@@ -651,7 +651,7 @@ export function GMDashboardPage({ navigateTo }) {
       {/* Section 2: Work (formerly To Dos) */}
       <div id="todos" className="scroll-mt-4 mb-8" data-onboarding="gm-work">
         <SectionHeader title="Work" subtitle="Meeting prep and branch health checks at a glance." />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div data-onboarding="gm-meeting-prep">
             <GMMeetingPrepModule
               navigateTo={navigateTo}
@@ -668,8 +668,6 @@ export function GMDashboardPage({ navigateTo }) {
               reduceMotion={reduceMotion}
             />
           </div>
-        </div>
-        <div className="mt-4">
           <motion.div {...cardAnim(2, reduceMotion)} className="h-full">
             <motion.button
               onClick={() => navigateTo("/gm/leads")}

@@ -7,12 +7,14 @@ import { useAuth } from "../../context/AuthContext";
 import { useApp } from "../../context/AppContext";
 import { BM_ONBOARDING_STEPS, GM_ONBOARDING_STEPS } from "../../config/onboardingSteps";
 
+const ONBOARDING_DONE_PREFIX = "leo_onboarding_done:";
+
 export default function AppLayout({ children }) {
   const { userProfile, completeOnboarding } = useAuth();
   const { role } = useApp();
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [onboardingReplay, setOnboardingReplay] = useState(false);
-  const hasCheckedFirstLogin = useRef(false);
+  const lastCheckedUserId = useRef(null);
   const mainRef = useRef(null);
 
   const onboardingSteps = useMemo(
@@ -35,15 +37,25 @@ export default function AppLayout({ children }) {
     return () => clearTimeout(t);
   }, []);
 
-  // Conditional launch: BM/GM first login when onboarding_completed_at is null
+  // Conditional launch: BM/GM first login when onboarding completion is absent.
+  // Local marker is a fallback if backend completion write fails transiently.
   useEffect(() => {
-    if ((role !== "bm" && role !== "gm") || !userProfile || hasCheckedFirstLogin.current) return;
-    hasCheckedFirstLogin.current = true;
-    if (userProfile.onboardingCompletedAt == null) {
+    if ((role !== "bm" && role !== "gm") || !userProfile?.id) return;
+    if (lastCheckedUserId.current === userProfile.id) return;
+    lastCheckedUserId.current = userProfile.id;
+
+    let localCompletedAt = null;
+    try {
+      localCompletedAt = localStorage.getItem(`${ONBOARDING_DONE_PREFIX}${userProfile.id}`);
+    } catch {
+      localCompletedAt = null;
+    }
+
+    if (userProfile.onboardingCompletedAt == null && localCompletedAt == null) {
       setOnboardingReplay(false);
       setOnboardingOpen(true);
     }
-  }, [role, userProfile]);
+  }, [role, userProfile?.id, userProfile?.onboardingCompletedAt]);
 
   const handleOnboardingClose = () => setOnboardingOpen(false);
   const handleOnboardingComplete = async () => {

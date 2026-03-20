@@ -29,6 +29,7 @@ const ProfileView = lazy(() => import("./components/ProfileView"));
 const ObservatoryConversionPage = lazy(() => import("./components/interactive/ObservatoryConversionPage"));
 const ObservatoryLeadsPage = lazy(() => import("./components/interactive/ObservatoryLeadsPage"));
 const ObservatoryLeaderboardPage = lazy(() => import("./components/interactive/ObservatoryLeaderboardPage"));
+const ObservatoryLandingPage = lazy(() => import("./components/interactive/ObservatoryLandingPage"));
 
 const roleHomePaths = {
   bm: "/bm/summary",
@@ -144,6 +145,7 @@ export const router = createBrowserRouter([
       { path: "/admin/org-mapping", element: <AppViewRoute role="admin" Component={InteractiveOrgMapping} /> },
       { path: "/admin/legend", element: <AppViewRoute role="admin" Component={InteractiveLegend} /> },
       { path: "/profile", element: <AppViewRoute Component={ProfileView} /> },
+      { path: "/observatory", element: <AppViewRoute Component={ObservatoryLandingPage} /> },
       { path: "/observatory/conversion", element: <AppViewRoute Component={ObservatoryConversionPage} /> },
       { path: "/observatory/leads", element: <AppViewRoute Component={ObservatoryLeadsPage} /> },
       { path: "/observatory/leaderboard", element: <AppViewRoute Component={ObservatoryLeaderboardPage} /> },

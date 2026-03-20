@@ -27,10 +27,19 @@ export function listFilters(snapshot) {
     zones: snapshot?.filters?.zones ?? [],
     gms: snapshot?.filters?.gms ?? [],
     ams: snapshot?.filters?.ams ?? [],
+    htzRegions: snapshot?.filters?.htzRegions ?? [],
   };
 }
 
-export function buildTrendPoints({ snapshot, granularity, metricMode, selectedZones, selectedGms, selectedAms }) {
+export function buildTrendPoints({
+  snapshot,
+  granularity,
+  metricMode,
+  selectedZones,
+  selectedGms,
+  selectedAms,
+  selectedHertzZones,
+}) {
   if (!snapshot?.branches) return [];
 
   const labels = granularity === "month" ? (snapshot.months ?? []) : (snapshot.weeks ?? []);
@@ -46,14 +55,17 @@ export function buildTrendPoints({ snapshot, granularity, metricMode, selectedZo
   const zoneSet = new Set(selectedZones);
   const gmSet = new Set(selectedGms);
   const amSet = new Set(selectedAms);
+  const hertzZoneSet = new Set(selectedHertzZones);
   const zoneFiltered = zoneSet.size > 0;
   const gmFiltered = gmSet.size > 0;
   const amFiltered = amSet.size > 0;
+  const hertzZoneFiltered = hertzZoneSet.size > 0;
 
   for (const branchData of Object.values(snapshot.branches)) {
     if (zoneFiltered && !zoneSet.has(branchData.zone)) continue;
     if (gmFiltered && !gmSet.has(branchData.gm)) continue;
     if (amFiltered && !amSet.has(branchData.am)) continue;
+    if (hertzZoneFiltered && !hertzZoneSet.has(branchData.hertzZone || "—")) continue;
 
     const series = granularity === "month" ? (branchData.monthly ?? []) : (branchData.weekly ?? []);
     for (let i = 0; i < points.length; i++) {
@@ -135,7 +147,14 @@ function metricValue(metricKey, stats) {
   return 0;
 }
 
-export function buildGMLeaderboard({ snapshot, start, end, metricKey, excludeBelow20 }) {
+export function buildGMLeaderboard({
+  snapshot,
+  start,
+  end,
+  metricKey,
+  excludeBelow20,
+  selectedHertzZones = [],
+}) {
   if (!snapshot?.branches || !Array.isArray(snapshot.weeks)) return { best: [], improved: [] };
 
   const currentIndices = getWeekIndicesInRange(snapshot.weeks, start, end);
@@ -144,6 +163,8 @@ export function buildGMLeaderboard({ snapshot, start, end, metricKey, excludeBel
   const span = currentIndices.length;
   const first = currentIndices[0];
   const comparisonIndices = [];
+  const hertzZoneSet = new Set(selectedHertzZones);
+  const hertzZoneFiltered = hertzZoneSet.size > 0;
   for (let i = first - span; i < first; i++) {
     if (i >= 0) comparisonIndices.push(i);
   }
@@ -151,6 +172,7 @@ export function buildGMLeaderboard({ snapshot, start, end, metricKey, excludeBel
   const byGM = new Map();
 
   for (const branchData of Object.values(snapshot.branches)) {
+    if (hertzZoneFiltered && !hertzZoneSet.has(branchData.hertzZone || "—")) continue;
     const gm = branchData.gm && branchData.gm !== "—" ? branchData.gm : "Unassigned";
     if (!byGM.has(gm)) {
       byGM.set(gm, {

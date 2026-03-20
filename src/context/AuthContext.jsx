@@ -3,6 +3,7 @@ import { useApp } from "./AppContext";
 
 const API_BASE = "/api";
 const TOKEN_KEY = "leo_token";
+const ONBOARDING_DONE_PREFIX = "leo_onboarding_done:";
 
 const defaultAuthValue = {
   signIn: async () => {},
@@ -34,6 +35,15 @@ function clearToken() {
   try {
     sessionStorage.removeItem(TOKEN_KEY);
   } catch { /* ok */ }
+}
+
+function setLocalOnboardingDone(userId, completedAt) {
+  if (!userId) return;
+  try {
+    localStorage.setItem(`${ONBOARDING_DONE_PREFIX}${userId}`, completedAt || new Date().toISOString());
+  } catch {
+    // Local fallback is best-effort.
+  }
 }
 
 function profileFromApi(u) {
@@ -104,6 +114,9 @@ export function AuthProvider({ children }) {
       const profile = profileFromApi(data.user);
       setUserProfile(profile);
       setRole(profile.role);
+      if (profile?.id && profile?.onboardingCompletedAt) {
+        setLocalOnboardingDone(profile.id, profile.onboardingCompletedAt);
+      }
       return profile;
     } catch (e) {
       throw e;
@@ -162,10 +175,12 @@ export function AuthProvider({ children }) {
 
   const completeOnboarding = useCallback(async () => {
     const completedAt = new Date().toISOString();
+    const userId = userProfile?.id;
     setUserProfile((prev) => {
       if (!prev) return prev;
       return { ...prev, onboardingCompletedAt: completedAt };
     });
+    setLocalOnboardingDone(userId, completedAt);
 
     const token = getStoredToken();
     if (!token) return;
@@ -182,7 +197,7 @@ export function AuthProvider({ children }) {
     } catch {
       // Local completion marker is enough for demo flow.
     }
-  }, []);
+  }, [userProfile?.id]);
 
   return (
     <AuthContext.Provider

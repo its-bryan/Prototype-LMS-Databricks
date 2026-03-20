@@ -12,6 +12,7 @@ export default function ObservatoryConversionPage() {
   const [selectedZones, setSelectedZones] = useState([]);
   const [selectedGms, setSelectedGms] = useState([]);
   const [selectedAms, setSelectedAms] = useState([]);
+  const [selectedHertzZones, setSelectedHertzZones] = useState([]);
 
   const filters = useMemo(() => listFilters(observatorySnapshot), [observatorySnapshot]);
 
@@ -24,8 +25,9 @@ export default function ObservatoryConversionPage() {
         selectedZones,
         selectedGms,
         selectedAms,
+        selectedHertzZones,
       }),
-    [observatorySnapshot, granularity, metricMode, selectedZones, selectedGms, selectedAms]
+    [observatorySnapshot, granularity, metricMode, selectedZones, selectedGms, selectedAms, selectedHertzZones]
   );
 
   const title = metricMode === "conversion" ? "Conversion %" : "Total Leads";
@@ -39,10 +41,10 @@ export default function ObservatoryConversionPage() {
       </div>
 
       <div className="rounded-xl border border-[var(--neutral-200)] bg-white p-4 space-y-3">
-        <div className="flex flex-wrap items-end gap-4">
-          <div>
+        <div className="flex flex-wrap items-end gap-6">
+          <div className="flex items-center gap-3">
             <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--neutral-600)]">Timeline</span>
-            <div className="mt-1 inline-flex rounded-md border border-[var(--neutral-200)] bg-[var(--neutral-50)] p-0.5">
+            <div className="inline-flex rounded-md border border-[var(--neutral-200)] bg-[var(--neutral-50)] p-0.5">
               <button
                 type="button"
                 onClick={() => setGranularity("month")}
@@ -60,9 +62,9 @@ export default function ObservatoryConversionPage() {
             </div>
           </div>
 
-          <div>
+          <div className="flex items-center gap-3">
             <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--neutral-600)]">View</span>
-            <div className="mt-1 inline-flex rounded-md border border-[var(--neutral-200)] bg-[var(--neutral-50)] p-0.5">
+            <div className="inline-flex rounded-md border border-[var(--neutral-200)] bg-[var(--neutral-50)] p-0.5">
               <button
                 type="button"
                 onClick={() => setMetricMode("conversion")}
@@ -83,6 +85,12 @@ export default function ObservatoryConversionPage() {
 
         <div className="flex flex-wrap gap-3">
           <MultiSelectFilter label="Zone" options={filters.zones} selected={selectedZones} onChange={setSelectedZones} />
+          <MultiSelectFilter
+            label="Hertz Zone"
+            options={filters.htzRegions}
+            selected={selectedHertzZones}
+            onChange={setSelectedHertzZones}
+          />
           <MultiSelectFilter label="GM" options={filters.gms} selected={selectedGms} onChange={setSelectedGms} />
           <MultiSelectFilter label="AM" options={filters.ams} selected={selectedAms} onChange={setSelectedAms} />
         </div>
