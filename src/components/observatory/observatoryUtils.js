@@ -165,7 +165,7 @@ export function buildGMLeaderboard({
   const comparisonIndices = [];
   const hertzZoneSet = new Set(selectedHertzZones);
   const hertzZoneFiltered = hertzZoneSet.size > 0;
-  for (let i = first - span; i < first; i++) {
+  for (let i = first - 1; i < first - 1 + span; i++) {
     if (i >= 0) comparisonIndices.push(i);
   }
 

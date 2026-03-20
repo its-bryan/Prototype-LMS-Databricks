@@ -62,8 +62,8 @@ export default function InteractiveGMLeaderboardPage() {
   // Comparison period for "Change" column header: the 4 weeks before the current trailing_4_weeks
   const comparisonDateRange = useMemo(() => {
     if (!trailing4wPreset) return null;
-    const end = new Date(trailing4wPreset.start);
-    end.setDate(end.getDate() - 1);
+    const end = new Date(trailing4wPreset.end);
+    end.setDate(end.getDate() - 7);
     end.setHours(23, 59, 59, 999);
     const start = new Date(end);
     start.setDate(end.getDate() - 27);

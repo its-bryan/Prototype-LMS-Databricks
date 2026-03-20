@@ -137,6 +137,7 @@ export function getDateRangePresets() {
     { key: "trailing_4_weeks", label: "Trailing 4 weeks", sublabel: `ending ${endLabel}`, start: trailing4WeeksStart, end: trailing4WeeksEnd },
     { key: "this_month", label: "This month", start: thisMonthStart, end: new Date(NOW) },
     { key: "this_year", label: "This Year", start: thisYearStart, end: new Date(NOW) },
+    { key: "all_time", label: "All Time", start: null, end: null },
   ];
 }
 
@@ -154,9 +155,8 @@ export function getComparisonDateRange(selectedPresetKey, customStart, customEnd
   if (selectedPresetKey === "trailing_4_weeks") {
     const end = preset?.end;
     if (!end) return null;
-    const spanMs = 28 * 86400000;
-    const priorEnd = new Date(end.getTime() - 86400000);
-    const priorStart = new Date(priorEnd.getTime() - spanMs);
+    const priorEnd = new Date(end.getTime() - 7 * 86400000);
+    const priorStart = new Date(priorEnd.getTime() - 27 * 86400000);
     return { start: priorStart, end: priorEnd };
   }
   if (selectedPresetKey === "this_month") {
@@ -1228,13 +1228,17 @@ export function getConversionBreakdown(leads, opts = {}) {
 
 /** Parse time string like "2h 15m", "45m", "5d 2h" to minutes. Returns null if unparseable. */
 export function parseTimeToMinutes(str) {
-  if (!str || typeof str !== "string") return null;
+  if (str == null) return null;
+  if (typeof str === "number") return str > 0 ? str : null;
+  if (typeof str !== "string") return null;
   const s = str.trim();
   if (!s || s === "—") return null;
+  const asNum = Number(s);
+  if (!isNaN(asNum) && asNum > 0) return asNum;
   let total = 0;
-  const d = s.match(/(\d+)\s*d/);
-  const h = s.match(/(\d+)\s*h/);
-  const m = s.match(/(\d+)\s*m/);
+  const d = s.match(/(\d+(?:\.\d+)?)\s*d/);
+  const h = s.match(/(\d+(?:\.\d+)?)\s*h/);
+  const m = s.match(/(\d+(?:\.\d+)?)\s*m/);
   if (d) total += Number(d[1]) * 24 * 60;
   if (h) total += Number(h[1]) * 60;
   if (m) total += Number(m[1]);
@@ -1754,6 +1758,7 @@ export function getGMDashboardStats(leads, dateRange = null, gmName = null) {
 
   const cancelledUnreviewed = filtered.filter((l) => l.status === "Cancelled" && !l.archived && !l.gmDirective).length;
   const unusedOverdue = filtered.filter(isUnusedOpenOverFiveDays).length;
+  const noContactAttempt = getUnreachableLeads(leads, dateRange, gmName).length;
 
   return {
     total,
@@ -1767,6 +1772,7 @@ export function getGMDashboardStats(leads, dateRange = null, gmName = null) {
     commentCompliance,
     cancelledUnreviewed,
     unusedOverdue,
+    noContactAttempt,
   };
 }
 
@@ -2002,8 +2008,9 @@ export function getGMBranchLeaderboard(leads, dateRange, sortMetric = "conversio
 
   // Compute per-metric improvement delta (current - previous period) for each branch
   if (dateRange) {
-    const duration = dateRange.end - dateRange.start;
-    const prevRange = { start: new Date(dateRange.start - duration), end: new Date(dateRange.start) };
+    const prevEnd = new Date(dateRange.end.getTime() - 7 * 86400000);
+    const prevStart = new Date(prevEnd.getTime() - 27 * 86400000);
+    const prevRange = { start: prevStart, end: prevEnd };
     for (const row of branchData) {
       const prevLeads = getLeadsForBranchInRange(leads ?? [], prevRange, row.branch);
       const prevTotal = prevLeads.length;
@@ -2089,13 +2096,6 @@ export function getGMLeads(leads, dateRange = null, filters = {}, gmName = null)
   if (dateRange?.start || dateRange?.end) {
     filtered = filtered.filter((l) => leadInDateRange(l, dateRange.start, dateRange.end));
   }
-  // When statusFilter is explicitly "Rented", include all statuses so the statusFilter below can work.
-  // Otherwise, restrict to actionable statuses (Cancelled + Unused).
-  if (!statusFilter || statusFilter === "All" || statusFilter === "Cancelled" || statusFilter === "Unused") {
-    filtered = filtered.filter((l) => l.status === "Cancelled" || l.status === "Unused");
-  }
-  // If statusFilter is "Rented", don't pre-filter — let the statusFilter block below narrow to Rented.
-
   if (statusFilter && statusFilter !== "All") {
     filtered = filtered.filter((l) => l.status === statusFilter);
   }

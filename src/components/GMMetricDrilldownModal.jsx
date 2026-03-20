@@ -275,7 +275,7 @@ export default function GMMetricDrilldownModal({
   selectedPresetKey,
   gmName,
 }) {
-  const [branchSort, setBranchSort] = useState("mostImproved");
+  const [branchSort, setBranchSort] = useState("highToLow");
 
   const config = GM_METRIC_CONFIG[metricKey];
   if (!config) return null;

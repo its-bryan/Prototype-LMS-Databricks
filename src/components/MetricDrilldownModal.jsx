@@ -382,7 +382,6 @@ export default function MetricDrilldownModal({ metricKey, onClose, leads, branch
   const [groupByPrimary, setGroupByPrimary] = useState(null);
   const [groupBySecondary, setGroupBySecondary] = useState(null);
   const [showBenchmarks, setShowBenchmarks] = useState(false);
-  const [includeReviewed, setIncludeReviewed] = useState(false);
 
   const config = METRIC_CONFIG[metricKey];
   if (!config) return null;
@@ -435,7 +434,6 @@ export default function MetricDrilldownModal({ metricKey, onClose, leads, branch
             branch,
             groupByPrimary: groupByPrimary || undefined,
             groupBySecondary: groupBySecondary || undefined,
-            includeReviewed,
           })
         : { rows: [], zoneBenchmark: null },
     [
@@ -447,7 +445,6 @@ export default function MetricDrilldownModal({ metricKey, onClose, leads, branch
       branch,
       groupByPrimary,
       groupBySecondary,
-      includeReviewed,
     ],
   );
 
@@ -514,15 +511,6 @@ export default function MetricDrilldownModal({ metricKey, onClose, leads, branch
                     className="rounded border-[var(--neutral-300)]"
                   />
                   Show zone benchmarks
-                </label>
-                <label className="flex items-center gap-2 text-sm text-[var(--neutral-600)]">
-                  <input
-                    type="checkbox"
-                    checked={includeReviewed}
-                    onChange={(e) => setIncludeReviewed(e.target.checked)}
-                    className="rounded border-[var(--neutral-300)]"
-                  />
-                  Include Reviewed
                 </label>
               </div>
               <ConversionBreakdownTable

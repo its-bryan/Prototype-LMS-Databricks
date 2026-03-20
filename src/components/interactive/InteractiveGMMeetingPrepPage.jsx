@@ -17,14 +17,13 @@ import {
   getLeadsWithOutstandingItemsForBranch,
   getUnreachableLeadsStats,
   getWinsLearningsForGM,
-  relChange,
   resolveGMName,
   getBranchesForGM,
   leadInGmBranchList,
   normalizeGmName,
 } from "../../selectors/demoSelectors";
 import StatusBadge from "../StatusBadge";
-import GMMetricDrilldownModal from "../GMMetricDrilldownModal";
+
 import { formatDateShort } from "../../utils/dateTime";
 import ThreeColumnReview from "../ThreeColumnReview";
 import BranchComplianceDetailPane from "./BranchComplianceDetailPane";
@@ -46,47 +45,6 @@ const cardAnim = (i, reduced = false) => ({
   transition: { delay: reduced ? 0 : i * 0.06, duration: reduced ? 0.01 : 0.4, ease: easeOut },
 });
 
-/** Metric card — BM-style design: white bg, border, shadow. Matches InteractiveMeetingPrep. */
-function MetricCard({ label, value, subtext, onClick, relChange: relChangeVal, showChangeTag }) {
-  const isClickable = !!onClick;
-  const reduceMotion = useReducedMotion();
-  const Wrapper = isClickable ? motion.div : "div";
-  return (
-    <Wrapper
-      role={isClickable ? "button" : undefined}
-      tabIndex={isClickable ? 0 : undefined}
-      onClick={isClickable ? onClick : undefined}
-      onKeyDown={isClickable ? (e) => (e.key === "Enter" || e.key === " ") && onClick(e) : undefined}
-      initial={reduceMotion ? false : { opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: easeOut }}
-      whileHover={isClickable && !reduceMotion ? { y: -3, boxShadow: "0 12px 28px rgba(39,36,37,0.12), 0 4px 10px rgba(39,36,37,0.06)", transition: { duration: 0.25, ease: easeOut } } : undefined}
-      className={`border rounded-lg p-5 bg-white shadow-[var(--shadow-sm)] border-[var(--neutral-200)] ${isClickable ? "cursor-pointer group transition-all duration-200 hover:ring-2 hover:ring-[var(--hertz-primary)]/50" : ""}`}
-      title={isClickable ? "Click to view underlying data and what's driving changes" : undefined}
-    >
-      <div className="flex items-center justify-between gap-2 mb-2">
-        <p className="text-xs font-bold uppercase tracking-wide text-[var(--neutral-600)]">{label}</p>
-        {isClickable && (
-          <svg className="w-3.5 h-3.5 text-[var(--neutral-400)] opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-        )}
-      </div>
-      <div className="flex items-center gap-2 flex-wrap">
-        <p className="text-2xl font-bold text-[var(--hertz-black)]">{value}</p>
-        {showChangeTag && relChangeVal != null && (
-          <span
-            className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
-              relChangeVal > 0 ? "bg-[#2E7D32]/15 text-[#2E7D32]" : relChangeVal < 0 ? "bg-[#C62828]/15 text-[#C62828]" : "bg-[var(--neutral-100)] text-[var(--neutral-600)]"
-            }`}
-          >
-            {relChangeVal > 0 ? "↑" : relChangeVal < 0 ? "↓" : "—"}
-            {relChangeVal !== 0 ? `${Math.abs(relChangeVal)}%` : ""}
-          </span>
-        )}
-      </div>
-      {subtext && <p className="text-xs text-[var(--neutral-600)] mt-1">{subtext}</p>}
-    </Wrapper>
-  );
-}
 
 function formatDueDate(dueStr) {
   if (!dueStr) return "—";
@@ -115,7 +73,7 @@ export default function InteractiveGMMeetingPrepPage() {
   const [leadsExpanded, setLeadsExpanded] = useState(false);
   const [unreachableExpanded, setUnreachableExpanded] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState(null);
-  const [drilldownMetric, setDrilldownMetric] = useState(null);
+
   const [directive, setDirective] = useState("");
   const [directiveSaved, setDirectiveSaved] = useState(false);
   const [showPresentation, setShowPresentation] = useState(false);
@@ -238,39 +196,7 @@ export default function InteractiveGMMeetingPrepPage() {
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {drilldownMetric && (() => {
-          const metricValueMap = {
-            conversion_rate: stats.conversionRate,
-            contacted_within_30_min: stats.pctWithin30,
-            comment_rate: stats.commentCompliance,
-            branch_vs_hrd_split: stats.branchPct,
-            cancelled_unreviewed: stats.cancelledUnreviewed,
-            unused_overdue: stats.unusedOverdue,
-          };
-          const prevMetricValueMap = {
-            conversion_rate: prevStats?.conversionRate,
-            contacted_within_30_min: prevStats?.pctWithin30,
-            comment_rate: prevStats?.commentCompliance,
-            branch_vs_hrd_split: prevStats?.branchPct,
-            cancelled_unreviewed: prevStats?.cancelledUnreviewed,
-            unused_overdue: prevStats?.unusedOverdue,
-          };
-          return (
-            <GMMetricDrilldownModal
-              metricKey={drilldownMetric}
-              onClose={() => setDrilldownMetric(null)}
-              leads={gmFilteredLeads}
-              dateRange={dateRange}
-              comparisonRange={comparisonRange}
-              currentValue={metricValueMap[drilldownMetric]}
-              previousValue={prevMetricValueMap[drilldownMetric]}
-              selectedPresetKey={selectedPresetKey}
-              gmName={gmName}
-            />
-          );
-        })()}
-      </AnimatePresence>
+
       {/* Header — GM chase-up framing */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-6">
         <BackButton onClick={() => navigate("/gm/work")} label="Back to Work" />
@@ -301,27 +227,6 @@ export default function InteractiveGMMeetingPrepPage() {
             </svg>
             Present
           </motion.button>
-        </div>
-      </motion.div>
-
-      {/* At a glance — metrics for the meeting (top of view) */}
-      <motion.div {...cardAnim(0, reduceMotion)} className="mb-6">
-        <p className="text-xs font-bold text-[var(--neutral-600)] uppercase tracking-wide mb-3">
-          At a Glance for the Meeting
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <MetricCard label="Conversion Rate" value={`${stats.conversionRate}%`} onClick={() => setDrilldownMetric("conversion_rate")} relChange={comparisonRange ? relChange(stats.conversionRate, prevStats?.conversionRate) : null} showChangeTag={!!comparisonRange} />
-          <MetricCard label="Contacted < 30 min" value={`${stats.pctWithin30}%`} onClick={() => setDrilldownMetric("contacted_within_30_min")} relChange={comparisonRange ? relChange(stats.pctWithin30, prevStats?.pctWithin30) : null} showChangeTag={!!comparisonRange} />
-          <MetricCard label="Comment Compliance" value={`${stats.commentCompliance}%`} onClick={() => setDrilldownMetric("comment_rate")} relChange={comparisonRange ? relChange(stats.commentCompliance, prevStats?.commentCompliance) : null} showChangeTag={!!comparisonRange} />
-          <MetricCard label="Branch Contact %" value={`${stats.branchPct}%`} onClick={() => setDrilldownMetric("branch_vs_hrd_split")} relChange={comparisonRange ? relChange(stats.branchPct, prevStats?.branchPct) : null} showChangeTag={!!comparisonRange} />
-          {/* Unreachable leads tile — no contact attempt at all; high-urgency signal */}
-          <MetricCard
-            label="No Contact Attempt"
-            value={unreachableStats.count}
-            subtext={unreachableStats.total > 0 ? `${unreachableStats.pct}% of cancelled/unused` : "No cancelled or unused leads"}
-            relChange={comparisonRange && prevUnreachable != null ? relChange(unreachableStats.count, prevUnreachable.count) : null}
-            showChangeTag={!!comparisonRange}
-          />
         </div>
       </motion.div>
 
@@ -422,7 +327,7 @@ export default function InteractiveGMMeetingPrepPage() {
                         </table>
                         {leadsToReview.length > 20 && (
                           <button
-                            onClick={() => navigate("/gm/work")}
+                            onClick={() => navigate("/gm/leads")}
                             className="w-full py-3 text-center text-sm font-medium text-[var(--neutral-600)] bg-[var(--neutral-50)] hover:bg-[var(--neutral-100)] transition-colors cursor-pointer border-t border-[var(--neutral-200)]"
                           >
                             View all {leadsToReview.length} leads
@@ -581,7 +486,19 @@ export default function InteractiveGMMeetingPrepPage() {
                       <th className="px-4 py-3 text-left">BM</th>
                       <th className="px-4 py-3 text-center">Outstanding</th>
                       <th className="px-4 py-3 text-center">Status</th>
-                      <th className="px-4 py-3 text-center">Actions</th>
+                      <th className="px-4 py-3 text-center">
+                        <span className="inline-flex items-center justify-center gap-1">
+                          Actions
+                          <span className="relative group/tip cursor-help">
+                            <svg className="w-3.5 h-3.5 opacity-60" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                            </svg>
+                            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 px-3 py-2 text-xs font-normal normal-case tracking-normal text-white bg-[var(--hertz-black)] rounded-lg opacity-0 group-hover/tip:opacity-100 transition-opacity pointer-events-none z-10 shadow-lg">
+                              When you click &quot;Create Tasks&quot;, it will send a task/reminder for all leads that need a comment to the branch manager
+                            </span>
+                          </span>
+                        </span>
+                      </th>
                     </tr>
                   </thead>
                   <tbody>

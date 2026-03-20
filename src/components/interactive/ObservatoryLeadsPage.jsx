@@ -7,7 +7,7 @@ import { buildTrendPoints, listFilters } from "../observatory/observatoryUtils";
 export default function ObservatoryLeadsPage() {
   const { observatorySnapshot } = useData();
 
-  const [granularity, setGranularity] = useState("month");
+  const [granularity, setGranularity] = useState("week");
   const [selectedZones, setSelectedZones] = useState([]);
   const [selectedGms, setSelectedGms] = useState([]);
   const [selectedAms, setSelectedAms] = useState([]);

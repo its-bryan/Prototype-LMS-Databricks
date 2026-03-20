@@ -512,7 +512,7 @@ export function GMDashboardPage({ navigateTo }) {
     { label: "Comment Compliance", value: `${stats.commentCompliance}%`, relChange: relChange(stats.commentCompliance, prevStats?.commentCompliance), metricKey: "comment_rate" },
     { label: "Branch Contact %", value: `${stats.branchPct}%`, relChange: relChange(stats.branchPct, prevStats?.branchPct), metricKey: "branch_vs_hrd_split" },
     { label: "Cancelled Unreviewed", value: stats.cancelledUnreviewed, relChange: relChange(stats.cancelledUnreviewed, prevStats?.cancelledUnreviewed), isAlert: stats.cancelledUnreviewed > 0, lowerIsBetter: true, metricKey: "cancelled_unreviewed" },
-    { label: "Unused Overdue", value: stats.unusedOverdue, relChange: relChange(stats.unusedOverdue, prevStats?.unusedOverdue), isAlert: stats.unusedOverdue > 0, lowerIsBetter: true, metricKey: "unused_overdue" },
+    { label: "No Contact Attempt", value: stats.noContactAttempt, relChange: relChange(stats.noContactAttempt, prevStats?.noContactAttempt), isAlert: stats.noContactAttempt > 0, lowerIsBetter: true, metricKey: "no_contact_attempt" },
   ];
 
   if (!initialDataReady && !snapshotGM) return <GMDashboardSkeleton />;
@@ -530,7 +530,7 @@ export function GMDashboardPage({ navigateTo }) {
             comment_rate: prevStats?.commentCompliance,
             branch_vs_hrd_split: prevStats?.branchPct,
             cancelled_unreviewed: prevStats?.cancelledUnreviewed,
-            unused_overdue: prevStats?.unusedOverdue,
+            no_contact_attempt: prevStats?.noContactAttempt,
           };
           return (
             <GMMetricDrilldownModal
@@ -680,7 +680,7 @@ export function GMDashboardPage({ navigateTo }) {
             >
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-4 min-w-0 flex-1">
-                  <div className="shrink-0 w-12 h-12 rounded-lg bg-[var(--neutral-100)] group-hover:bg-[var(--hertz-primary)] flex items-center justify-center text-[var(--neutral-600)] group-hover:text-[var(--hertz-black)] transition-colors">
+                  <div className="shrink-0 w-12 h-12 rounded-lg bg-[var(--hertz-primary)] flex items-center justify-center text-[var(--hertz-black)] transition-colors">
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                     </svg>

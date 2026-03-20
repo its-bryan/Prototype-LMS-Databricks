@@ -15,6 +15,12 @@ const cardAnim = (i, reduced = false) => ({
   transition: { delay: reduced ? 0 : i * 0.06, duration: reduced ? 0.01 : 0.4, ease: [0.4, 0, 0.2, 1] },
 });
 
+const ordinal = (n) => {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+};
+
 export default function LeaderboardModule({ navigateTo, leads, branch, dateRange, reduceMotion, snapshotLeaderboard, loading }) {
   const leaderboardData = useMemo(() => {
     if (!dateRange && !snapshotLeaderboard) return null;
@@ -86,10 +92,11 @@ export default function LeaderboardModule({ navigateTo, leads, branch, dateRange
               <p className="text-sm text-[var(--neutral-600)] mt-0.5 line-clamp-2">
                 {leaderboardData?.myBranch ? (
                   <>
-                    You&apos;re ranked <strong className="text-[var(--hertz-black)]">#{leaderboardData.myBranch.rank} of {leaderboardData.sorted?.length ?? 0}</strong>
+                    You are ranked <strong className="text-[var(--hertz-primary)]">{ordinal(leaderboardData.myBranch.rank)}</strong> in conversion this period
                     {leaderboardData.cohortLabel && (
-                      <span> in your {leaderboardData.cohortLabel}.</span>
+                      <span> in your {leaderboardData.cohortLabel}</span>
                     )}
+                    !
                   </>
                 ) : (
                   "Compare your performance against peers by conversion, contact speed, and more."

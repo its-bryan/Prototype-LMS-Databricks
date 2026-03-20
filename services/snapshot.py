@@ -64,11 +64,11 @@ def _trailing_4_weeks(now: date):
     """Return (current_range, comparison_range) for the trailing-4-week preset.
 
     current:    (now - 27 days) .. now  (28-day span)
-    comparison: (current.start - 28 days) .. (current.start - 1 day)
+    comparison: (now - 7 days - 27 days) .. (now - 7 days)  (shifted back 1 week)
     """
     current_end = now
     current_start = now - timedelta(days=27)
-    comp_end = current_start - timedelta(days=1)
+    comp_end = current_end - timedelta(days=7)
     comp_start = comp_end - timedelta(days=27)
     return (
         {"start": current_start, "end": current_end},
@@ -246,6 +246,9 @@ def _gm_stats(filtered: list[dict]) -> dict:
         1 for l in filtered
         if l.get("status") == "Unused" and (l.get("days_open") or 0) > 5
     )
+    no_contact = sum(1 for l in filtered if
+        (l.get("contact_range") or "") == "NO CONTACT" or
+        (l.get("first_contact_by") == "none" and not l.get("time_to_first_contact")))
 
     return {
         "total": total,
@@ -259,6 +262,7 @@ def _gm_stats(filtered: list[dict]) -> dict:
         "commentCompliance": comment_compliance,
         "cancelledUnreviewed": cancelled_unreviewed,
         "unusedOverdue": unused_overdue,
+        "noContactAttempt": no_contact,
     }
 
 

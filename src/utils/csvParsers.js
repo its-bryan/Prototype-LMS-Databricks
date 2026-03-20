@@ -65,15 +65,12 @@ function deriveFirstContactBy(row) {
 // Time-to-first-contact from DT_FROM_ALPHA1 or DAY_DIF/HRS_DIF/MIN_DIF
 // ---------------------------------------------------------------------------
 function deriveTimeToContact(row) {
-  const days = parseFloat(row.DAY_DIF) || 0;
-  const hrs = parseFloat(row.HRS_DIF) || 0;
-  const mins = parseFloat(row.MIN_DIF) || 0;
+  const totalMins = parseFloat(col(row, "MIN_DIF")) || 0;
 
-  if (days === 0 && hrs === 0 && mins === 0) {
+  if (totalMins === 0) {
     return row.DT_FROM_ALPHA1 ? null : "No contact";
   }
 
-  const totalMins = days * 1440 + hrs * 60 + mins;
   if (totalMins < 60) return `${Math.round(totalMins)} min`;
   if (totalMins < 1440) return `${Math.round(totalMins / 60 * 10) / 10} hrs`;
   return `${Math.round(totalMins / 1440 * 10) / 10} days`;

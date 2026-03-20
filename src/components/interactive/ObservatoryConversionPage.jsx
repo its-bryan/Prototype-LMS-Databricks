@@ -7,8 +7,7 @@ import { buildTrendPoints, listFilters } from "../observatory/observatoryUtils";
 export default function ObservatoryConversionPage() {
   const { observatorySnapshot } = useData();
 
-  const [granularity, setGranularity] = useState("month");
-  const [metricMode, setMetricMode] = useState("conversion");
+  const [granularity, setGranularity] = useState("week");
   const [selectedZones, setSelectedZones] = useState([]);
   const [selectedGms, setSelectedGms] = useState([]);
   const [selectedAms, setSelectedAms] = useState([]);
@@ -21,16 +20,16 @@ export default function ObservatoryConversionPage() {
       buildTrendPoints({
         snapshot: observatorySnapshot,
         granularity,
-        metricMode: metricMode === "conversion" ? "conversion" : "totalLeadsSingle",
+        metricMode: "conversion",
         selectedZones,
         selectedGms,
         selectedAms,
         selectedHertzZones,
       }),
-    [observatorySnapshot, granularity, metricMode, selectedZones, selectedGms, selectedAms, selectedHertzZones]
+    [observatorySnapshot, granularity, selectedZones, selectedGms, selectedAms, selectedHertzZones]
   );
 
-  const title = metricMode === "conversion" ? "Conversion %" : "Total Leads";
+  const title = "Conversion %";
   const subtitle = granularity === "month" ? "Last 12 months" : "Last 24 weeks";
 
   return (
@@ -41,45 +40,23 @@ export default function ObservatoryConversionPage() {
       </div>
 
       <div className="rounded-xl border border-[var(--neutral-200)] bg-white p-4 space-y-3">
-        <div className="flex flex-wrap items-end gap-6">
-          <div className="flex items-center gap-3">
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--neutral-600)]">Timeline</span>
-            <div className="inline-flex rounded-md border border-[var(--neutral-200)] bg-[var(--neutral-50)] p-0.5">
-              <button
-                type="button"
-                onClick={() => setGranularity("month")}
-                className={`px-3 py-1.5 text-xs font-semibold rounded ${granularity === "month" ? "bg-white text-[var(--hertz-black)] shadow-sm" : "text-[var(--neutral-600)]"}`}
-              >
-                Month by month
-              </button>
-              <button
-                type="button"
-                onClick={() => setGranularity("week")}
-                className={`px-3 py-1.5 text-xs font-semibold rounded ${granularity === "week" ? "bg-white text-[var(--hertz-black)] shadow-sm" : "text-[var(--neutral-600)]"}`}
-              >
-                Week by week
-              </button>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--neutral-600)]">View</span>
-            <div className="inline-flex rounded-md border border-[var(--neutral-200)] bg-[var(--neutral-50)] p-0.5">
-              <button
-                type="button"
-                onClick={() => setMetricMode("conversion")}
-                className={`px-3 py-1.5 text-xs font-semibold rounded ${metricMode === "conversion" ? "bg-white text-[var(--hertz-black)] shadow-sm" : "text-[var(--neutral-600)]"}`}
-              >
-                Conversion %
-              </button>
-              <button
-                type="button"
-                onClick={() => setMetricMode("leads")}
-                className={`px-3 py-1.5 text-xs font-semibold rounded ${metricMode === "leads" ? "bg-white text-[var(--hertz-black)] shadow-sm" : "text-[var(--neutral-600)]"}`}
-              >
-                Total leads
-              </button>
-            </div>
+        <div className="flex items-center gap-3">
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--neutral-600)]">Timeline</span>
+          <div className="inline-flex rounded-md border border-[var(--neutral-200)] bg-[var(--neutral-50)] p-0.5">
+            <button
+              type="button"
+              onClick={() => setGranularity("month")}
+              className={`px-3 py-1.5 text-xs font-semibold rounded ${granularity === "month" ? "bg-white text-[var(--hertz-black)] shadow-sm" : "text-[var(--neutral-600)]"}`}
+            >
+              Month by month
+            </button>
+            <button
+              type="button"
+              onClick={() => setGranularity("week")}
+              className={`px-3 py-1.5 text-xs font-semibold rounded ${granularity === "week" ? "bg-white text-[var(--hertz-black)] shadow-sm" : "text-[var(--neutral-600)]"}`}
+            >
+              Week by week
+            </button>
           </div>
         </div>
 
@@ -108,7 +85,7 @@ export default function ObservatoryConversionPage() {
         <ObservatoryBarChart
           points={points}
           mode="single"
-          yAxis={metricMode === "conversion" ? "percent" : "count"}
+          yAxis="percent"
           title={title}
           subtitle={subtitle}
         />

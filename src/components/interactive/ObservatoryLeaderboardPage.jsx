@@ -107,8 +107,8 @@ function LeaderboardTable({ title, rows, metricKey, showChangeColumn = false }) 
                 <td colSpan={columnCount} className="px-3 py-8 text-center text-[var(--neutral-600)]">No rows for selected timeline.</td>
               </tr>
             ) : (
-              rows.map((row) => (
-                <tr key={`${title}-${row.gm}`} className="border-t border-[var(--neutral-100)] hover:bg-[var(--neutral-50)]">
+              rows.map((row, idx) => (
+                <tr key={`${title}-${row.gm}`} className={`border-t border-[var(--neutral-100)] hover:bg-[var(--neutral-100)] ${idx % 2 === 1 ? "bg-[var(--neutral-50)]" : ""}`}>
                   <td className="px-3 py-2 font-semibold">
                     <span className="inline-flex items-center gap-1">
                       <span>{row.rank}</span>

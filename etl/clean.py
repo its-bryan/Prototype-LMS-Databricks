@@ -41,8 +41,12 @@ def clean_hles_data(df: pd.DataFrame, org_lookup: dict | None = None) -> pd.Data
         'contact_range': 'contact_range',
         'body_shop': 'body_shop',
         'knum': 'knum',
+        'min_dif': 'time_to_first_contact',
     }
     df = df.rename(columns={k: v for k, v in col_map.items() if k in df.columns})
+
+    if 'time_to_first_contact' in df.columns:
+        df['time_to_first_contact'] = pd.to_numeric(df['time_to_first_contact'], errors='coerce')
 
     if 'customer' not in df.columns:
         df['customer'] = ''

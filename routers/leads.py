@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query, Request
 import json
 import re
+from datetime import datetime
 from db import query, execute
 
 router = APIRouter()
@@ -190,6 +191,38 @@ async def update_directive(lead_id: int, body: dict):
     rows = query("SELECT * FROM leads WHERE id = %s", (lead_id,))
     if not rows:
         raise HTTPException(status_code=404, detail="Lead not found")
+    directive_text = body.get("gm_directive")
+    if directive_text:
+        existing = query(
+            "SELECT id, notes_log FROM tasks WHERE lead_id = %s AND source = 'gm_assigned' AND status IN ('Open', 'In Progress') ORDER BY created_at DESC LIMIT 1",
+            (lead_id,),
+        )
+        if existing:
+            task = existing[0]
+            log = json.loads(task.get("notes_log") or "[]") if isinstance(task.get("notes_log"), str) else (task.get("notes_log") or [])
+            log.append({
+                "text": directive_text,
+                "by": body.get("created_by_name", "GM"),
+                "at": datetime.utcnow().isoformat(),
+            })
+            execute(
+                "UPDATE tasks SET notes = %s, notes_log = %s::jsonb, updated_at = now() WHERE id = %s",
+                (directive_text, json.dumps(log), task["id"]),
+            )
+        else:
+            lead = rows[0]
+            customer = lead.get("customer", "Unknown")
+            execute(
+                """INSERT INTO tasks (title, description, lead_id, assigned_to_name, created_by_name, source, priority, status)
+                VALUES (%s, %s, %s, %s, %s, 'gm_assigned', 'Normal', 'Open')""",
+                (
+                    f"GM Directive: {customer}",
+                    directive_text,
+                    lead_id,
+                    lead.get("bm_name", ""),
+                    body.get("created_by_name", "GM"),
+                ),
+            )
     return rows[0]
 
 @router.put("/leads/{lead_id}/contact")
