@@ -3,14 +3,14 @@
  * Metrics: Conversion rate, Contacted within 30 min, Comment rate, Branch vs HRD.
  * Time filtering: same presets as Summary view.
  */
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { useAuth } from "../../context/AuthContext";
 import { useData } from "../../context/DataContext";
 import {
   getDefaultBranchForDemo,
   getDateRangePresets,
-  getBMLeaderboardData,
+  normalizeGmName,
 } from "../../selectors/demoSelectors";
 import { BMLeaderboardSkeleton, usePageTransition } from "../DashboardSkeleton";
 
@@ -99,10 +99,9 @@ function BarRow({ row, metricKey, maxVal, isCurrentBranch, regionBenchmark, metr
 
 export default function InteractiveBMLeaderboard() {
   const { userProfile } = useAuth();
-  const { leads, demandLeads, initialDataReady } = useData();
+  const { initialDataReady, snapshot } = useData();
   const branch = (userProfile?.branch?.trim() || getDefaultBranchForDemo());
   const reduceMotion = useReducedMotion();
-  useEffect(() => { demandLeads(); }, [demandLeads]);
 
   const presets = getDateRangePresets();
   const [metricKey, setMetricKey] = useState("conversionRate");
@@ -112,10 +111,37 @@ export default function InteractiveBMLeaderboard() {
     return preset ? { start: preset.start, end: preset.end } : null;
   }, [presets]);
 
-  const leaderboardData = useMemo(
-    () => (dateRange ? getBMLeaderboardData(leads ?? [], branch, dateRange, metricKey) : null),
-    [leads, branch, dateRange, metricKey]
-  );
+  const leaderboardData = useMemo(() => {
+    if (!snapshot?.leaderboard?.length || !dateRange) return null;
+    const lb = snapshot.leaderboard;
+    const myRow = lb.find((r) => r.branch === branch);
+    const myGmNorm = myRow?.gm ? normalizeGmName(myRow.gm) : null;
+    const peers = myGmNorm
+      ? lb.filter((r) => r.gm && normalizeGmName(r.gm) === myGmNorm)
+      : lb;
+    const sorted = [...peers]
+      .sort((a, b) => (b[metricKey] ?? -1) - (a[metricKey] ?? -1))
+      .map((r, i) => ({ ...r, rank: i + 1, isCurrentBranch: r.branch === branch }));
+    const myBranch = sorted.find((r) => r.isCurrentBranch);
+
+    const allWithData = lb.filter((r) => r.total > 0);
+    const totalLeads = allWithData.reduce((s, r) => s + (r.total ?? 0), 0);
+    const totalRented = allWithData.reduce((s, r) => s + (r.rented ?? 0), 0);
+    const regionBenchmark = {
+      conversionRate: totalLeads > 0 ? Math.round((totalRented / totalLeads) * 100) : null,
+      pctWithin30: null,
+      commentRate: null,
+      branchHrdPct: null,
+    };
+
+    return {
+      sorted,
+      myBranch,
+      peers: sorted,
+      cohortLabel: myGmNorm ? `GM: ${myRow?.gm}` : "All Branches",
+      regionBenchmark,
+    };
+  }, [snapshot, branch, dateRange, metricKey]);
 
   const metric = METRICS.find((m) => m.key === metricKey) ?? METRICS[0];
   const sorted = leaderboardData?.sorted ?? [];

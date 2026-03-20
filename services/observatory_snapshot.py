@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time as _time
 from calendar import monthrange
 from datetime import date, datetime, timedelta, timezone
 
@@ -205,27 +206,25 @@ def _index_leads_by_branch(leads: list[dict]) -> dict[str, list[dict]]:
 
 
 def compute_observatory_snapshot() -> None:
-    import time as _time
-
     t0 = _time.monotonic()
+    earliest_date = (datetime.utcnow() - timedelta(weeks=56)).strftime("%Y-%m-%d")
     print("[observatory] compute_observatory_snapshot started", flush=True)
 
     try:
-        leads = query("SELECT * FROM leads WHERE archived = false")
+        leads = query(
+            "SELECT * FROM leads WHERE archived = false AND COALESCE(init_dt_final, week_of) >= %s",
+            (earliest_date,),
+        )
+        print(f"[observatory] loaded {len(leads)} leads in {_time.monotonic() - t0:.2f}s", flush=True)
         org_rows = query("SELECT * FROM org_mapping")
     except Exception:
         print("[observatory] ERROR reading data from DB", flush=True)
         logger.exception("Failed to read data for observatory snapshot")
         return
 
-    t_load = _time.monotonic()
-    print(
-        f"[observatory] loaded {len(leads)} leads, {len(org_rows)} org rows in {t_load - t0:.1f}s",
-        flush=True,
-    )
-
     if not leads:
         print("[observatory] no leads found — skipping", flush=True)
+        print(f"[observatory] compute complete in {_time.monotonic() - t0:.2f}s", flush=True)
         return
 
     now = _get_now(leads)
@@ -331,6 +330,7 @@ def compute_observatory_snapshot() -> None:
             f"{len(branches_out)} branches, json={len(payload)} chars, total={t_done - t0:.1f}s",
             flush=True,
         )
+        print(f"[observatory] compute complete in {_time.monotonic() - t0:.2f}s", flush=True)
     except Exception as exc:
         print(f"[observatory] ERROR storing snapshot: {exc}", flush=True)
         logger.exception("Failed to store observatory snapshot")

@@ -566,7 +566,7 @@ function OrphanActionSelector({ orphanedLeads, orphanAction, onOrphanAction }) {
 // ---------------------------------------------------------------------------
 export default function InteractiveUploads() {
   const navigate = useNavigate();
-  const { leads: contextLeads, refetchLeads, refetchOrgMapping, refetchDataAsOfDate, refetchSnapshot } = useData();
+  const { leads: contextLeads, refetchOrgMapping, refetchDataAsOfDate, refetchSnapshot } = useData();
   const { userProfile } = useAuth();
 
   const [step, setStep] = useState("select");
@@ -708,7 +708,6 @@ export default function InteractiveUploads() {
           translog: null,
           orgMapping: null,
         });
-        refetchLeads?.();
         refetchOrgMapping?.();
         refetchDataAsOfDate?.();
         setStep("summary");
@@ -722,7 +721,7 @@ export default function InteractiveUploads() {
     }
     setCommitting(false);
     setStep("summary");
-  }, [hlesReconciliation, conflictResolutions, orphanAction, hlesFile, refetchLeads, refetchOrgMapping, refetchDataAsOfDate, refetchSnapshot, userProfile?.displayName, loadUploadHistory]);
+  }, [hlesReconciliation, conflictResolutions, orphanAction, hlesFile, refetchOrgMapping, refetchDataAsOfDate, userProfile?.displayName, loadUploadHistory]);
 
   const handleResolveConflict = useCallback((idx, resolution) => {
     setConflictResolutions((prev) => ({ ...prev, [idx]: resolution }));

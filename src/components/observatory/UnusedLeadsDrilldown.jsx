@@ -1,6 +1,14 @@
 import { motion } from "framer-motion";
 
-export default function UnusedLeadsDrilldown({ periodLabel, leads, onClose }) {
+export default function UnusedLeadsDrilldown({
+  periodLabel,
+  leads,
+  onClose,
+  totalCount = null,
+  loading = false,
+  footer = null,
+}) {
+  const displayTotal = totalCount != null ? totalCount : leads.length;
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -11,7 +19,9 @@ export default function UnusedLeadsDrilldown({ periodLabel, leads, onClose }) {
       <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--neutral-100)]">
         <div>
           <h3 className="text-base font-semibold text-[var(--hertz-black)]">Unused Leads - {periodLabel}</h3>
-          <p className="text-xs text-[var(--neutral-600)] mt-1">{leads.length} lead{leads.length === 1 ? "" : "s"} in selected period</p>
+          <p className="text-xs text-[var(--neutral-600)] mt-1">
+            {loading ? "Loading…" : `${displayTotal} lead${displayTotal === 1 ? "" : "s"} in selected period`}
+          </p>
         </div>
         <button
           type="button"
@@ -55,6 +65,7 @@ export default function UnusedLeadsDrilldown({ periodLabel, leads, onClose }) {
           </tbody>
         </table>
       </div>
+      {footer}
     </motion.div>
   );
 }

@@ -9,21 +9,20 @@ import { useAuth } from "../../context/AuthContext";
 import { useData } from "../../context/DataContext";
 import {
   getDefaultBranchForDemo,
-  getLeadsForBranchInRange,
   getDateRangePresets,
   getComparisonDateRange,
   getMeetingPrepQueueLeads,
-  getZoneConversionRate,
-  getBranchTrailing4WeekConversionRate,
   getPctContactedWithin30Min,
   getBranchVsHrdSplit,
-  getMismatchLeadsInRange,
   getMismatchReason,
   getTasksForBranch,
   getNextComplianceMeetingDate,
   relChange,
   leadBranchMatches,
 } from "../../selectors/demoSelectors";
+
+const METRIC_SAMPLE_LIMIT = 200;
+const QUEUE_PAGE_SIZE = 20;
 import MeetingPrepLeadQueue from "../MeetingPrepLeadQueue";
 import MeetingPrepLeadPanel from "./MeetingPrepLeadPanel";
 import MetricDrilldownModal from "../MetricDrilldownModal";
@@ -107,16 +106,31 @@ function MetricCard({ label, value, subtext, children, className = "", variant =
 
 export default function InteractiveMeetingPrep() {
   const { userProfile } = useAuth();
-  const { leads, refetchLeads, demandLeads, leadsReady, winsLearnings, submitWinsLearning, orgMapping, fetchTasksForBranch, initialDataReady } = useData();
+  const { fetchLeadsPage, winsLearnings, submitWinsLearning, orgMapping, fetchTasksForBranch, initialDataReady } = useData();
   const branch = (userProfile?.branch?.trim() || getDefaultBranchForDemo());
-  useEffect(() => { demandLeads(); }, [demandLeads]);
+
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [totalLeads, setTotalLeads] = useState(0);
+  const [rentedCount, setRentedCount] = useState(0);
+  const [prevTotalLeads, setPrevTotalLeads] = useState(0);
+  const [prevRentedCount, setPrevRentedCount] = useState(0);
+  const [actionableTotal, setActionableTotal] = useState(0);
+  const [actionableEnrichedTotal, setActionableEnrichedTotal] = useState(0);
+  const [prevActionableTotal, setPrevActionableTotal] = useState(0);
+  const [prevActionableEnrichedTotal, setPrevActionableEnrichedTotal] = useState(0);
+  const [contactLeads, setContactLeads] = useState([]);
+  const [prevContactLeads, setPrevContactLeads] = useState([]);
+  const [queueOffset, setQueueOffset] = useState(0);
+  const [queuePageItems, setQueuePageItems] = useState([]);
+  const [queueTotal, setQueueTotal] = useState(0);
+  const [queueLoading, setQueueLoading] = useState(false);
+  const [needsUpdateLeads, setNeedsUpdateLeads] = useState([]);
 
   const [includeRented, setIncludeRented] = useState(false);
   const [panelLead, setPanelLead] = useState(null);
   const [completionExpanded, setCompletionExpanded] = useState(false);
   const [mismatchExpanded, setMismatchExpanded] = useState(false);
   const [drilldownMetric, setDrilldownMetric] = useState(null);
-  const [leadsExpanded, setLeadsExpanded] = useState(false);
   const [wlText, setWlText] = useState("");
   const [wlSubmitting, setWlSubmitting] = useState(false);
   const [wlSubmitted, setWlSubmitted] = useState(false);
@@ -164,105 +178,240 @@ export default function InteractiveMeetingPrep() {
     return preset ? { start: preset.start, end: preset.end } : null;
   }, [selectedPresetKey, presets]);
 
-  const periodLeads = useMemo(
-    () => getLeadsForBranchInRange(leads ?? [], dateRange, branch),
-    [leads, dateRange, branch],
-  );
   const comparisonRange = useMemo(
     () => getComparisonDateRange(selectedPresetKey, null, null),
     [selectedPresetKey],
   );
-  const comparisonLeads = useMemo(
-    () => (comparisonRange ? getLeadsForBranchInRange(leads ?? [], comparisonRange, branch) : []),
-    [leads, comparisonRange, branch],
-  );
   const isReadOnly = selectedPresetKey !== "this_week";
 
-  const queueLeads = useMemo(
-    () => getMeetingPrepQueueLeads(periodLeads, { includeRented }),
-    [periodLeads, includeRented],
-  );
+  const drilldownLeads = useMemo(() => {
+    const map = new Map();
+    for (const l of contactLeads) map.set(l.id, l);
+    for (const l of prevContactLeads) map.set(l.id, l);
+    return [...map.values()];
+  }, [contactLeads, prevContactLeads]);
 
-  const DISPLAY_LIMIT = 5;
-  const displayLeads = useMemo(
-    () => (leadsExpanded ? queueLeads : queueLeads.slice(0, DISPLAY_LIMIT)),
-    [queueLeads, leadsExpanded],
-  );
-  const hasMoreLeads = queueLeads.length > DISPLAY_LIMIT;
+  useEffect(() => {
+    setQueueOffset(0);
+  }, [branch, dateRange?.start, dateRange?.end, selectedPresetKey, includeRented]);
 
-  // Leads that need comments (Cancelled + Unused without reason/notes)
-  const actionableLeads = useMemo(
-    () =>
-      (periodLeads ?? []).filter(
-        (l) => l.status === "Cancelled" || l.status === "Unused",
-      ),
-    [periodLeads],
-  );
-  const leadsWithComments = useMemo(
-    () =>
-      actionableLeads.filter((l) => l.enrichment?.reason || l.enrichment?.notes),
-    [actionableLeads],
-  );
-  const leadsNeedingUpdates = useMemo(
-    () =>
-      actionableLeads.filter(
-        (l) => !(l.enrichment?.reason || l.enrichment?.notes),
-      ),
-    [actionableLeads],
-  );
-  const totalActionable = actionableLeads.length;
-  const missingCount = leadsNeedingUpdates.length;
+  useEffect(() => {
+    if (!branch || !dateRange) {
+      return;
+    }
+    let cancelled = false;
+    const base = {
+      branch,
+      startDate: dateRange.start ?? null,
+      endDate: dateRange.end ?? null,
+      limit: 1,
+      offset: 0,
+    };
+    const prevBase = comparisonRange
+      ? {
+          branch,
+          startDate: comparisonRange.start ?? null,
+          endDate: comparisonRange.end ?? null,
+          limit: 1,
+          offset: 0,
+        }
+      : null;
+    const promises = [
+      fetchLeadsPage(base),
+      fetchLeadsPage({ ...base, status: "Rented" }),
+      fetchLeadsPage({ ...base, status: "Cancelled,Unused" }),
+      fetchLeadsPage({ ...base, status: "Cancelled,Unused", enrichmentComplete: true }),
+    ];
+    if (prevBase) {
+      promises.push(
+        fetchLeadsPage(prevBase),
+        fetchLeadsPage({ ...prevBase, status: "Rented" }),
+        fetchLeadsPage({ ...prevBase, status: "Cancelled,Unused" }),
+        fetchLeadsPage({ ...prevBase, status: "Cancelled,Unused", enrichmentComplete: true }),
+      );
+    }
+    Promise.all(promises)
+      .then((results) => {
+        if (cancelled) return;
+        setTotalLeads(results[0]?.total ?? 0);
+        setRentedCount(results[1]?.total ?? 0);
+        setActionableTotal(results[2]?.total ?? 0);
+        setActionableEnrichedTotal(results[3]?.total ?? 0);
+        if (prevBase) {
+          setPrevTotalLeads(results[4]?.total ?? 0);
+          setPrevRentedCount(results[5]?.total ?? 0);
+          setPrevActionableTotal(results[6]?.total ?? 0);
+          setPrevActionableEnrichedTotal(results[7]?.total ?? 0);
+        } else {
+          setPrevTotalLeads(0);
+          setPrevRentedCount(0);
+          setPrevActionableTotal(0);
+          setPrevActionableEnrichedTotal(0);
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setTotalLeads(0);
+        setRentedCount(0);
+        setActionableTotal(0);
+        setActionableEnrichedTotal(0);
+        setPrevTotalLeads(0);
+        setPrevRentedCount(0);
+        setPrevActionableTotal(0);
+        setPrevActionableEnrichedTotal(0);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [branch, dateRange, comparisonRange, fetchLeadsPage, refreshKey]);
+
+  useEffect(() => {
+    if (!branch) return;
+    let cancelled = false;
+    fetchLeadsPage({
+      branch,
+      startDate: dateRange?.start ?? null,
+      endDate: dateRange?.end ?? null,
+      limit: METRIC_SAMPLE_LIMIT,
+      offset: 0,
+    })
+      .then((res) => {
+        if (!cancelled) setContactLeads(res?.items ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setContactLeads([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [branch, dateRange?.start, dateRange?.end, fetchLeadsPage, refreshKey]);
+
+  useEffect(() => {
+    if (!branch || !comparisonRange) {
+      setPrevContactLeads([]);
+      return;
+    }
+    let cancelled = false;
+    fetchLeadsPage({
+      branch,
+      startDate: comparisonRange.start ?? null,
+      endDate: comparisonRange.end ?? null,
+      limit: METRIC_SAMPLE_LIMIT,
+      offset: 0,
+    })
+      .then((res) => {
+        if (!cancelled) setPrevContactLeads(res?.items ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setPrevContactLeads([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [branch, comparisonRange?.start, comparisonRange?.end, fetchLeadsPage, refreshKey]);
+
+  useEffect(() => {
+    if (!branch) return;
+    let cancelled = false;
+    fetchLeadsPage({
+      branch,
+      startDate: dateRange?.start ?? null,
+      endDate: dateRange?.end ?? null,
+      status: "Cancelled,Unused",
+      enrichmentComplete: false,
+      limit: 100,
+      offset: 0,
+    })
+      .then((res) => {
+        if (!cancelled) setNeedsUpdateLeads(res?.items ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setNeedsUpdateLeads([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [branch, dateRange?.start, dateRange?.end, fetchLeadsPage, refreshKey]);
+
+  useEffect(() => {
+    if (!branch) return;
+    let cancelled = false;
+    setQueueLoading(true);
+    const params = {
+      branch,
+      startDate: dateRange?.start ?? null,
+      endDate: dateRange?.end ?? null,
+      limit: QUEUE_PAGE_SIZE,
+      offset: queueOffset,
+    };
+    if (!includeRented) params.status = "Cancelled,Unused";
+    fetchLeadsPage(params)
+      .then((res) => {
+        if (cancelled) return;
+        const items = res?.items ?? [];
+        const sorted = getMeetingPrepQueueLeads(items, { includeRented });
+        setQueuePageItems(sorted);
+        setQueueTotal(res?.total ?? 0);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setQueuePageItems([]);
+        setQueueTotal(0);
+      })
+      .finally(() => {
+        if (!cancelled) setQueueLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [branch, dateRange?.start, dateRange?.end, includeRented, queueOffset, fetchLeadsPage, refreshKey]);
+
+  const queueLeads = queuePageItems;
+  const leadsNeedingUpdates = needsUpdateLeads;
+  const totalActionable = actionableTotal;
+  const leadsWithCommentsCount = actionableEnrichedTotal;
+  const missingCount = Math.max(0, totalActionable - leadsWithCommentsCount);
   const completionPct =
     totalActionable > 0
-      ? Math.round((leadsWithComments.length / totalActionable) * 100)
+      ? Math.round((leadsWithCommentsCount / totalActionable) * 100)
       : 100;
 
-  // Data mismatches — HLES/TRANSLOG/BM comments don't align; GM will ask about these
   const mismatchLeads = useMemo(
-    () => getMismatchLeadsInRange(leads ?? [], dateRange, branch),
-    [leads, dateRange, branch],
+    () => (contactLeads ?? []).filter((l) => l.mismatch),
+    [contactLeads],
   );
   const mismatchCount = mismatchLeads.length;
 
-  // Output metrics
-  const totalLeads = periodLeads.length;
-  const rentedCount = periodLeads.filter((l) => l.status === "Rented").length;
   const conversionThisPeriod = totalLeads
     ? Math.round((rentedCount / totalLeads) * 100)
     : null;
-  const prevConversion = comparisonLeads.length
-    ? Math.round(
-        (comparisonLeads.filter((l) => l.status === "Rented").length /
-          comparisonLeads.length) *
-          100,
-      )
+  const prevConversion = prevTotalLeads
+    ? Math.round((prevRentedCount / prevTotalLeads) * 100)
     : null;
-  const trailing4Week = getBranchTrailing4WeekConversionRate(leads ?? [], branch);
-  const zoneRate = getZoneConversionRate(leads ?? [], branch);
+  const trailing4Week = null;
+  const zoneRate = null;
 
-  // Input metrics
-  const pctWithin30 = getPctContactedWithin30Min(periodLeads);
-  const prevPctWithin30 = getPctContactedWithin30Min(comparisonLeads);
+  const pctWithin30 = getPctContactedWithin30Min(contactLeads);
+  const prevPctWithin30 = getPctContactedWithin30Min(prevContactLeads);
   const { branch: branchContact, hrd: hrdContact } =
-    getBranchVsHrdSplit(periodLeads);
+    getBranchVsHrdSplit(contactLeads);
   const branchHrdTotal = branchContact + hrdContact;
   const branchHrdPct = branchHrdTotal
     ? Math.round((branchContact / branchHrdTotal) * 100)
     : null;
-  const prevBranchSplit = getBranchVsHrdSplit(comparisonLeads);
+  const prevBranchSplit = getBranchVsHrdSplit(prevContactLeads);
   const prevBranchHrdTotal = prevBranchSplit.branch + prevBranchSplit.hrd;
   const prevBranchHrdPct = prevBranchHrdTotal
     ? Math.round((prevBranchSplit.branch / prevBranchHrdTotal) * 100)
     : null;
   const commentRate =
     totalActionable > 0
-      ? Math.round((leadsWithComments.length / totalActionable) * 100)
+      ? Math.round((leadsWithCommentsCount / totalActionable) * 100)
       : null;
-  const comparisonActionable = comparisonLeads.filter((l) => l.status === "Cancelled" || l.status === "Unused");
-  const comparisonWithComments = comparisonActionable.filter((l) => l.enrichment?.reason || l.enrichment?.notes);
-  const prevCommentRate = comparisonActionable.length > 0
-    ? Math.round((comparisonWithComments.length / comparisonActionable.length) * 100)
-    : null;
+  const prevCommentRate =
+    prevActionableTotal > 0
+      ? Math.round((prevActionableEnrichedTotal / prevActionableTotal) * 100)
+      : null;
 
   const handleLeadClick = (lead) => {
     setPanelLead(lead);
@@ -272,13 +421,10 @@ export default function InteractiveMeetingPrep() {
 
   const closePanel = () => {
     setPanelLead(null);
-    refetchLeads?.();
+    setRefreshKey((k) => k + 1);
   };
 
   const pageReady = usePageTransition();
-  // #region agent log
-  console.log('[DEBUG-2ecb09] MeetingPrep render', { initialDataReady, pageReady, leadsCount: (leads??[]).length, ts: Date.now() });
-  // #endregion
   if (!initialDataReady || !pageReady) return <MeetingPrepSkeleton />;
 
   return (
@@ -288,7 +434,7 @@ export default function InteractiveMeetingPrep() {
           <MetricDrilldownModal
             metricKey={drilldownMetric}
             onClose={() => setDrilldownMetric(null)}
-            leads={leads}
+            leads={drilldownLeads}
             branchTasks={branchTasks}
             dateRange={dateRange}
             comparisonRange={comparisonRange}
@@ -362,7 +508,7 @@ export default function InteractiveMeetingPrep() {
               value={totalLeads}
               subtext="Leads in this period"
               onClick={() => setDrilldownMetric("total_leads")}
-              relChange={relChange(totalLeads, comparisonLeads.length)}
+              relChange={relChange(totalLeads, prevTotalLeads)}
               showChangeTag={!!comparisonRange}
             />
           </motion.div>
@@ -378,7 +524,7 @@ export default function InteractiveMeetingPrep() {
               value={rentedCount}
               subtext="Converted this period"
               onClick={() => setDrilldownMetric("conversion_rate")}
-              relChange={relChange(rentedCount, comparisonLeads.filter((l) => l.status === "Rented").length)}
+              relChange={relChange(rentedCount, prevRentedCount)}
               showChangeTag={!!comparisonRange}
             />
           </motion.div>
@@ -413,7 +559,7 @@ export default function InteractiveMeetingPrep() {
                 value={commentRate != null ? `${commentRate}%` : "—"}
                 subtext={
                   totalActionable > 0
-                    ? `${leadsWithComments.length} of ${totalActionable} Cancelled/Unused with comments`
+                    ? `${leadsWithCommentsCount} of ${totalActionable} Cancelled/Unused with comments`
                     : "No Cancelled or Unused leads"
                 }
                 onClick={() => setDrilldownMetric("meeting_prep_comment_rate")}
@@ -722,36 +868,52 @@ export default function InteractiveMeetingPrep() {
             Include Rented
           </label>
         </div>
-        {queueLeads.length === 0 ? (
+        {!queueLoading && queueTotal === 0 ? (
           <div className="border border-[var(--neutral-200)] rounded-lg p-8 text-center bg-white">
             <p className="text-[var(--hertz-black)] font-semibold">No leads</p>
             <p className="text-sm text-[var(--neutral-600)] mt-1">
-              {periodLeads.length === 0
+              {totalLeads === 0
                 ? "No leads for your branch."
                 : "No Cancelled or Unused leads. Try including Rented."}
             </p>
           </div>
         ) : (
           <div className="border border-[var(--neutral-200)] rounded-lg overflow-hidden bg-white">
+            <div className="px-4 py-2 border-b border-[var(--neutral-200)] flex items-center justify-between text-xs text-[var(--neutral-600)]">
+              <span>
+                {queueLoading
+                  ? "Loading…"
+                  : queueTotal === 0
+                    ? "0 results"
+                    : `Showing ${queueOffset + 1}-${Math.min(queueOffset + QUEUE_PAGE_SIZE, queueTotal)} of ${queueTotal}`}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setQueueOffset((o) => Math.max(0, o - QUEUE_PAGE_SIZE))}
+                  disabled={queueOffset === 0 || queueLoading}
+                  className="px-2.5 py-1 rounded border border-[var(--neutral-200)] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--neutral-50)]"
+                >
+                  Prev
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQueueOffset((o) => o + QUEUE_PAGE_SIZE)}
+                  disabled={queueLoading || queueOffset + QUEUE_PAGE_SIZE >= queueTotal}
+                  className="px-2.5 py-1 rounded border border-[var(--neutral-200)] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--neutral-50)]"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
             <div className="overflow-x-auto">
               <MeetingPrepLeadQueue
-                leads={displayLeads}
+                leads={queueLeads}
                 onLeadClick={handleLeadClick}
                 isReadOnly={isReadOnly}
                 embedded
               />
             </div>
-            {(hasMoreLeads || leadsExpanded) && (
-              <motion.button
-                type="button"
-                whileHover={!reduceMotion ? { scale: 1.01 } : {}}
-                whileTap={!reduceMotion ? { scale: 0.99 } : {}}
-                onClick={() => setLeadsExpanded(!leadsExpanded)}
-                className="w-full py-3 text-sm font-medium text-[var(--hertz-black)] bg-[var(--neutral-100)] hover:bg-[var(--neutral-200)] transition-colors border-t border-[var(--neutral-200)] flex-shrink-0"
-              >
-                {leadsExpanded ? "Show less" : `View all (${queueLeads.length} leads)`}
-              </motion.button>
-            )}
           </div>
         )}
       </div>

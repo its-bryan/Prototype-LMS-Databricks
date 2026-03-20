@@ -4,19 +4,13 @@ import { useApp } from "../../context/AppContext";
 import { useAuth } from "../../context/AuthContext";
 import { useData } from "../../context/DataContext";
 import {
-  getBMStats,
   getDateRangePresets,
   getComparisonDateRange,
-  getSummaryDataWithChart,
   getTasksForBranch,
   getDefaultBranchForDemo,
-  getAllLeads,
   getOpenTasksCount,
   getTaskCompletionRate,
-  getAverageTimeToContact,
-  getAverageTimeToContactMinutes,
   tasksInDateRange,
-  getGMDashboardStats,
   resolveGMName,
   normalizeGmName,
   relChange,
@@ -42,6 +36,23 @@ import {
 import { formatDateShort } from "../../utils/dateTime";
 import { BMDashboardSkeleton, GMDashboardSkeleton } from "../DashboardSkeleton";
 
+const EMPTY_BM_DASHBOARD_STATS = {
+  total: 0,
+  rented: 0,
+  cancelled: 0,
+  unused: 0,
+  enrichmentRate: 0,
+  conversionRate: 0,
+};
+const EMPTY_GM_DASHBOARD_STATS = {
+  conversionRate: 0,
+  pctWithin30: 0,
+  commentCompliance: 0,
+  branchPct: 0,
+  cancelledUnreviewed: 0,
+  unusedOverdue: 0,
+  noContactAttempt: 0,
+};
 
 function SectionHeader({ title, subtitle, action }) {
   return (
@@ -72,7 +83,7 @@ function SectionHeader({ title, subtitle, action }) {
 
 export function BMDashboard({ navigateTo }) {
   const { userProfile } = useAuth();
-  const { leads, loading, initialDataReady, snapshot, demandLeads, leadsReady, fetchTasksForBranch, updateLeadEnrichment, updateTaskStatus, insertTask } = useData();
+  const { loading, initialDataReady, snapshot, fetchLeadsPage, fetchTasksForBranch, updateLeadEnrichment, updateTaskStatus, insertTask } = useData();
   const reduceMotion = useReducedMotion();
   const branch = (userProfile?.branch?.trim() || getDefaultBranchForDemo());
   const snapshotBranch = useMemo(() => {
@@ -116,20 +127,12 @@ export function BMDashboard({ navigateTo }) {
     return preset ? { start: preset.start, end: preset.end } : null;
   }, [selectedPresetKey, useCustom, customStart, customEnd, presets]);
 
-  // Demand-load leads when user picks a custom date range (snapshot only covers trailing 4 weeks)
-  useEffect(() => {
-    if (useCustom || (selectedPresetKey !== "trailing_4_weeks" && !useSnapshotData)) {
-      demandLeads();
-    }
-  }, [useCustom, selectedPresetKey, useSnapshotData, demandLeads]);
-
   const { stats } = useMemo(() => {
     if (useSnapshotData && selectedPresetKey === "trailing_4_weeks" && !useCustom) {
       return { stats: snapshotBranch.stats };
     }
-    if (!dateRange) return { stats: getBMStats(leads, dateRange, branch) };
-    return getSummaryDataWithChart(leads, branchTasks, dateRange, branch, "trailing_4_weeks", "period");
-  }, [dateRange, leads, branch, branchTasks, useSnapshotData, snapshotBranch, selectedPresetKey, useCustom]);
+    return { stats: EMPTY_BM_DASHBOARD_STATS };
+  }, [useSnapshotData, snapshotBranch, selectedPresetKey, useCustom]);
 
   const presetKey = useCustom ? "custom" : selectedPresetKey;
   const comparisonRange = useCustom
@@ -137,7 +140,7 @@ export function BMDashboard({ navigateTo }) {
     : getComparisonDateRange(selectedPresetKey);
   const comparisonStats = (useSnapshotData && snapshotBranch?.comparison)
     ? snapshotBranch.comparison
-    : getBMStats(leads, comparisonRange, branch);
+    : EMPTY_BM_DASHBOARD_STATS;
 
   const convRate = stats.conversionRate ?? (stats.total ? Math.round((stats.rented / stats.total) * 100) : 0);
   const prevConvRate = comparisonStats.conversionRate ?? (comparisonStats.total ? Math.round((comparisonStats.rented / comparisonStats.total) * 100) : 0);
@@ -199,7 +202,7 @@ export function BMDashboard({ navigateTo }) {
           <MetricDrilldownModal
             metricKey={drilldownMetric}
             onClose={() => setDrilldownMetric(null)}
-            leads={leads}
+            leads={[]}
             branchTasks={branchTasks}
             dateRange={dateRange}
             comparisonRange={comparisonRange}
@@ -211,7 +214,7 @@ export function BMDashboard({ navigateTo }) {
         {showSummaryExport && (
           <SummaryExportModal
             onClose={() => setShowSummaryExport(false)}
-            leads={leads}
+            leads={[]}
             branchTasks={branchTasks}
             branch={branch}
           />
@@ -320,7 +323,7 @@ export function BMDashboard({ navigateTo }) {
           />
           <LeaderboardModule
             navigateTo={navigateTo}
-            leads={leads}
+            leads={[]}
             branch={branch}
             dateRange={dateRange}
             reduceMotion={reduceMotion}
@@ -395,12 +398,41 @@ export function BMDashboard({ navigateTo }) {
 }
 
 export function BMDashboardInbox({ navigateTo }) {
-  const { leads } = useData();
-  const directiveLeads = getAllLeads(leads).filter((l) => l.gmDirective);
+  const { fetchLeadsPage } = useData();
+  const [directiveLeads, setDirectiveLeads] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchLeadsPage({ hasDirective: true, limit: 20 })
+      .then((result) => {
+        if (!cancelled) setDirectiveLeads(result.items);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchLeadsPage]);
 
   const handleClick = (lead) => {
     navigateTo(`/bm/leads/${lead.id}`);
   };
+
+  if (loading) {
+    return (
+      <>
+        <SectionHeader title="Inbox" subtitle="GM directives tied to specific reservations — click a row to review and take action." />
+        <div className="space-y-3">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-14 rounded-lg bg-[var(--neutral-100)] animate-pulse" />
+          ))}
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -469,7 +501,7 @@ function getGMContextualInsight({ stats }) {
 
 export function GMDashboardPage({ navigateTo }) {
   const { userProfile } = useAuth();
-  const { leads, loading, initialDataReady, orgMapping, snapshot } = useData();
+  const { loading, initialDataReady, orgMapping, snapshot } = useData();
   const reduceMotion = useReducedMotion();
   const displayName = userProfile?.displayName ?? roleUsers.gm?.name ?? "there";
   const [drilldownMetric, setDrilldownMetric] = useState(null);
@@ -486,22 +518,20 @@ export function GMDashboardPage({ navigateTo }) {
     const nm = normalizeGmName(name);
     const orgMatch = (orgMapping ?? []).find((r) => r.gm && normalizeGmName(r.gm) === nm);
     if (orgMatch) return orgMatch.gm;
-    if ((leads ?? []).some((l) => normalizeGmName(l.generalMgr ?? l.general_mgr) === nm)) return name;
     return resolveGMName(name, userProfile?.id);
-  }, [userProfile?.displayName, userProfile?.id, orgMapping, leads]);
+  }, [userProfile?.displayName, userProfile?.id, orgMapping]);
 
   const snapshotGM = gmName ? (snapshot?.gms?.[gmName] ?? null) : null;
-  const useSnapshotGM = !!snapshotGM;
 
-  const stats = useMemo(() => {
-    if (useSnapshotGM && selectedPresetKey === "trailing_4_weeks") return snapshotGM.stats;
-    return getGMDashboardStats(leads, dateRange, gmName);
-  }, [leads, dateRange, gmName, useSnapshotGM, snapshotGM, selectedPresetKey]);
+  const stats = useMemo(
+    () => snapshotGM?.stats ?? EMPTY_GM_DASHBOARD_STATS,
+    [snapshotGM]
+  );
   const prevRange = useMemo(() => getComparisonDateRange(selectedPresetKey), [selectedPresetKey]);
-  const prevStats = useMemo(() => {
-    if (useSnapshotGM && snapshotGM?.comparison) return snapshotGM.comparison;
-    return prevRange ? getGMDashboardStats(leads, prevRange, gmName) : null;
-  }, [leads, prevRange, gmName, useSnapshotGM, snapshotGM]);
+  const prevStats = useMemo(
+    () => snapshotGM?.comparison ?? null,
+    [snapshotGM]
+  );
 
   const greeting = getTimeOfDayGreeting();
   const insight = getGMContextualInsight({ stats });
@@ -536,7 +566,7 @@ export function GMDashboardPage({ navigateTo }) {
             <GMMetricDrilldownModal
               metricKey={drilldownMetric}
               onClose={() => setDrilldownMetric(null)}
-              leads={leads}
+              leads={[]}
               dateRange={dateRange}
               comparisonRange={prevRange}
               currentValue={numericCurrent}
@@ -658,7 +688,7 @@ export function GMDashboardPage({ navigateTo }) {
           <div data-onboarding="gm-meeting-prep">
             <GMMeetingPrepModule
               navigateTo={navigateTo}
-              leads={leads}
+              leads={[]}
               dateRange={dateRange}
               reduceMotion={reduceMotion}
             />
@@ -666,7 +696,7 @@ export function GMDashboardPage({ navigateTo }) {
           <div data-onboarding="gm-spot-check">
             <GMSpotCheckModule
               navigateTo={navigateTo}
-              leads={leads}
+              leads={[]}
               dateRange={dateRange}
               reduceMotion={reduceMotion}
             />
@@ -709,7 +739,7 @@ export function GMDashboardPage({ navigateTo }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <GMLeaderboardModule
             navigateTo={navigateTo}
-            leads={leads}
+            leads={[]}
             dateRange={dateRange}
             reduceMotion={reduceMotion}
             snapshotLeaderboard={snapshot?.leaderboard}
@@ -718,7 +748,6 @@ export function GMDashboardPage({ navigateTo }) {
           />
           <ActivityReportModule
             navigateTo={navigateTo}
-            leads={leads}
             reduceMotion={reduceMotion}
           />
         </div>

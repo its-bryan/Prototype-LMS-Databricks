@@ -1,6 +1,6 @@
-import { useMemo } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { getActivityReportData } from "../selectors/demoSelectors";
+import { fetchActivityReport } from "../data/databricksData";
 
 const cardAnim = (i, reduced = false) => ({
   initial: reduced ? false : { opacity: 0, y: 20 },
@@ -8,8 +8,18 @@ const cardAnim = (i, reduced = false) => ({
   transition: { delay: reduced ? 0 : i * 0.06, duration: reduced ? 0.01 : 0.4, ease: [0.4, 0, 0.2, 1] },
 });
 
-export default function ActivityReportModule({ navigateTo, leads, reduceMotion }) {
-  const data = useMemo(() => getActivityReportData(leads ?? [], 50), [leads]);
+const EMPTY_DATA = { logins: [], comments: [], contact: [], all: [] };
+
+export default function ActivityReportModule({ navigateTo, reduceMotion }) {
+  const [data, setData] = useState(EMPTY_DATA);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchActivityReport({ limit: 50 })
+      .then((res) => { if (!cancelled) setData(res ?? EMPTY_DATA); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   const totalCount = data.all.length;
   const loginCount = data.logins.length;

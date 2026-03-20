@@ -1,9 +1,9 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useData } from "../../context/DataContext";
 import BackButton from "../BackButton";
-import { getActivityReportData } from "../../selectors/demoSelectors";
+import { fetchActivityReport } from "../../data/databricksData";
 import { formatDateShort } from "../../utils/dateTime";
 import { ActivityReportSkeleton, usePageTransition } from "../DashboardSkeleton";
 
@@ -29,7 +29,7 @@ const typeLabels = {
 function formatTime(iso) {
   if (!iso) return "—";
   const d = new Date(iso);
-  const now = new Date("2026-02-22T09:00:00");
+  const now = new Date();
   const diffMs = now - d;
   const diffMins = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMs / 3600000);
@@ -41,13 +41,24 @@ function formatTime(iso) {
   return formatDateShort(d, d.getFullYear() !== now.getFullYear());
 }
 
-export default function InteractiveGMActivityReportPage() {
-  const { leads, demandLeads, initialDataReady } = useData();
-  const navigate = useNavigate();
-  useEffect(() => { demandLeads(); }, [demandLeads]);
-  const [activeTab, setActiveTab] = useState("all");
+const EMPTY_DATA = { logins: [], comments: [], contact: [], all: [] };
 
-  const data = useMemo(() => getActivityReportData(leads ?? [], 100), [leads]);
+export default function InteractiveGMActivityReportPage() {
+  const { initialDataReady } = useData();
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState("all");
+  const [data, setData] = useState(EMPTY_DATA);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    fetchActivityReport({ limit: 100 })
+      .then((res) => { if (!cancelled) setData(res ?? EMPTY_DATA); })
+      .catch((err) => { console.error("[activity-report] fetch failed:", err); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
 
   const entries = activeTab === "all"
     ? data.all
@@ -60,7 +71,7 @@ export default function InteractiveGMActivityReportPage() {
   const hasData = entries.length > 0;
 
   const pageReady = usePageTransition();
-  if (!initialDataReady || !pageReady) return <ActivityReportSkeleton />;
+  if (!initialDataReady || !pageReady || loading) return <ActivityReportSkeleton />;
 
   return (
     <div className="space-y-6">

@@ -81,12 +81,19 @@ async def get_tasks(
             "has_next": (offset + limit) < total,
         }
 
+    hard_cap = 500
     if branch or statuses or search:
-        return query(
-            f"{select_cols}{base_from} {where_sql} ORDER BY t.created_at DESC",
-            tuple(params),
+        rows = query(
+            f"{select_cols}{base_from} {where_sql} ORDER BY t.created_at DESC LIMIT %s",
+            tuple([*params, hard_cap]),
         )
-    return query("SELECT * FROM tasks ORDER BY created_at DESC")
+        if len(rows) >= hard_cap:
+            print(f"[tasks-api] WARNING: unpaged /tasks hit {hard_cap}-row cap. Migrate caller to paged=1.", flush=True)
+        return rows
+    rows = query(f"SELECT * FROM tasks ORDER BY created_at DESC LIMIT %s", (hard_cap,))
+    if len(rows) >= hard_cap:
+        print(f"[tasks-api] WARNING: unpaged /tasks hit {hard_cap}-row cap. Migrate caller to paged=1.", flush=True)
+    return rows
 
 @router.post("/tasks")
 async def create_task(body: dict):
@@ -269,10 +276,14 @@ async def get_tasks_for_gm(
             "has_next": (offset + limit) < total,
         }
 
-    return query(
-        f"{select_cols}{from_sql} WHERE {where_sql} ORDER BY t.due_date ASC NULLS LAST, t.created_at ASC",
-        tuple(params),
+    hard_cap = 500
+    rows = query(
+        f"{select_cols}{from_sql} WHERE {where_sql} ORDER BY t.due_date ASC NULLS LAST, t.created_at ASC LIMIT %s",
+        tuple([*params, hard_cap]),
     )
+    if len(rows) >= hard_cap:
+        print(f"[tasks-api] WARNING: unpaged /tasks/gm hit {hard_cap}-row cap. Migrate caller to paged=1.", flush=True)
+    return rows
 
 @router.get("/tasks/{task_id}")
 async def get_task(task_id: int):

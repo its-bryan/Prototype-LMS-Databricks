@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import BackButton from "../BackButton";
 import { useData } from "../../context/DataContext";
-import { getLeadById } from "../../selectors/demoSelectors";
 import LeadDetail from "../LeadDetail";
 import LeadContactCard from "../LeadContactCard";
 import InteractiveEnrichmentForm from "./InteractiveEnrichmentForm";
@@ -15,11 +14,27 @@ export default function InteractiveLeadDetail() {
   const { leadId } = useParams();
   const isGMContext = pathname.startsWith("/gm/");
   const backLabel = isGMContext ? "Back to Lead Review" : "Back to leads";
-  const { leads, fetchTasksForLead, updateTaskStatus, demandLeads, initialDataReady } = useData();
-  useEffect(() => { demandLeads(); }, [demandLeads]);
+  const { fetchLeadById, fetchTasksForLead, updateTaskStatus, initialDataReady } = useData();
   const resolvedLeadId = Number.isNaN(Number(leadId)) ? leadId : Number(leadId);
-  const lead = getLeadById(leads, resolvedLeadId);
+  const [lead, setLead] = useState(null);
+  const [leadLoading, setLeadLoading] = useState(true);
   const [leadTasks, setLeadTasks] = useState([]);
+
+  /* eslint-disable react-hooks/set-state-in-effect -- fetch lead + tasks on id change */
+  useEffect(() => {
+    if (!leadId) {
+      setLead(null);
+      setLeadLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setLeadLoading(true);
+    fetchLeadById(resolvedLeadId)
+      .then((l) => { if (!cancelled) setLead(l ?? null); })
+      .catch(() => { if (!cancelled) setLead(null); })
+      .finally(() => { if (!cancelled) setLeadLoading(false); });
+    return () => { cancelled = true; };
+  }, [leadId, resolvedLeadId, fetchLeadById]);
 
   const loadTasks = useCallback(async () => {
     if (!lead?.id) return;
@@ -30,14 +45,15 @@ export default function InteractiveLeadDetail() {
       console.error("[InteractiveLeadDetail] Failed to fetch tasks:", err);
       setLeadTasks([]);
     }
-  }, [lead?.id, fetchTasksForLead]);
+  }, [lead, fetchTasksForLead]);
 
   useEffect(() => {
-    loadTasks();
+    void loadTasks();
   }, [loadTasks]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const pageReady = usePageTransition();
-  if (!initialDataReady || !pageReady) return <LeadDetailSkeleton />;
+  if (!initialDataReady || !pageReady || leadLoading) return <LeadDetailSkeleton />;
 
   if (!lead) {
     return (

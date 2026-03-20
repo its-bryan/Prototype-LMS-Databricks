@@ -60,8 +60,7 @@ function formatDueDate(dueStr) {
 }
 
 export default function InteractiveGMMeetingPrepPage() {
-  const { leads, loading, orgMapping, createComplianceTasksForBranch, winsLearnings, updateLeadDirective, markLeadReviewed, gmTasks, fetchGMTasks, fetchLeadsPage, fetchGMTasksPage, demandLeads, initialDataReady } = useData();
-  useEffect(() => { demandLeads(); }, [demandLeads]);
+  const { leads, loading, orgMapping, createComplianceTasksForBranch, winsLearnings, updateLeadDirective, markLeadReviewed, gmTasks, fetchGMTasks, fetchLeadsPage, fetchGMTasksPage, initialDataReady } = useData();
   const navigate = useNavigate();
   const { userProfile } = useAuth();
   const reduceMotion = useReducedMotion();
@@ -98,10 +97,9 @@ export default function InteractiveGMMeetingPrepPage() {
     if (!name) return resolveGMName(null, userProfile?.id);
     const nm = normalizeGmName(name);
     if ((orgMapping ?? []).some((r) => r.gm && normalizeGmName(r.gm) === nm)) return name;
-    if ((leads ?? []).some((l) => normalizeGmName(l.generalMgr ?? l.general_mgr) === nm)) return name;
     return resolveGMName(name, userProfile?.id);
-  }, [userProfile?.displayName, userProfile?.id, orgMapping, leads]);
-  const gmBranches = useMemo(() => getBranchesForGM(gmName, leads ?? []), [gmName, leads]);
+  }, [userProfile?.displayName, userProfile?.id, orgMapping]);
+  const gmBranches = useMemo(() => getBranchesForGM(gmName), [gmName]);
 
   useEffect(() => {
     if (gmBranches.length > 0 && fetchGMTasks) {
@@ -183,7 +181,7 @@ export default function InteractiveGMMeetingPrepPage() {
 
   const gmFilteredLeads = useMemo(() => {
     if (!gmName) return leads ?? [];
-    const myBranches = getBranchesForGM(gmName, leads ?? []);
+    const myBranches = getBranchesForGM(gmName);
     return (leads ?? []).filter((l) => leadInGmBranchList(l.branch, myBranches));
   }, [leads, gmName]);
   const stats = useMemo(() => getGMDashboardStats(leads, dateRange, gmName), [leads, dateRange, gmName]);

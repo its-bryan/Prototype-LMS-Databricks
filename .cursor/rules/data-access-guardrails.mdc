@@ -1,0 +1,46 @@
+---
+description: Guardrails for data access patterns — prevents unbounded queries and enforces paged/filtered API usage
+globs: src/**/*.jsx, src/**/*.js, routers/**/*.py
+alwaysApply: true
+---
+
+# Data Access Guardrails
+
+## NEVER do these
+
+1. **Never import or call `demandLeads()`** — this function has been removed. It fetched the entire leads table into the browser.
+2. **Never destructure `leads` from `useData()`** — the global leads array no longer exists in DataContext.
+3. **Never call `refetchLeads()`** — removed for the same reason.
+4. **Never use `readCache("leads")` or `writeCache("leads", ...)`** — browser sessionStorage caching of the full leads table is prohibited.
+5. **Never write an unpaged `SELECT * FROM leads` without a `LIMIT`** — all leads queries must be bounded.
+
+## ALWAYS do these
+
+1. **Use `fetchLeadsPage(...)` for lead lists** — server-side paginated, with `limit`, `offset`, `branch`, `status`, `startDate`, `endDate` filters.
+2. **Use `fetchLeadById(id)` for a single lead** — fetches one row by primary key.
+3. **Use `snapshot` or `observatorySnapshot` from `useData()` for aggregate metrics** — these are pre-computed server-side with date bounds.
+4. **Use `fetchActivityReport(...)` for activity report data** — bounded server endpoint, no client-side leads iteration.
+5. **Cap all new API endpoints** — any new endpoint returning lead rows must include `LIMIT` (hard cap 500 for unpaged, standard pagination for paged).
+6. **Bound snapshot queries** — `services/snapshot.py` uses 12-week lookback, `services/observatory_snapshot.py` uses 56-week lookback. Do not remove these date bounds.
+
+## GM name resolution
+
+- Use `getBranchesForGM(gmName)` from `demoSelectors.js` — it resolves purely from `orgMapping`, not from leads data.
+- Never pass a `leads` array to `getBranchesForGM`.
+
+## API date contract
+
+- Always use `YYYY-MM-DD` format for `start_date` and `end_date` query params.
+- Use the `toApiDate()` helper in `databricksData.js` before passing dates to `buildQuery()`.
+
+## Performance SLOs (target at 800K leads)
+
+| Operation | Target | Mechanism |
+|---|---|---|
+| Dashboard page load | < 1s | Snapshot (pre-computed, 12-week window) |
+| Observatory page load | < 2s | Observatory snapshot (56-week window) |
+| Leads table page (20 rows) | < 500ms | Paged `GET /leads?paged=1&limit=20` with indexes |
+| Single lead detail | < 200ms | `GET /leads/{id}` primary key lookup |
+| Snapshot recomputation | < 5s | Date-bounded query + in-memory aggregation |
+| Activity report | < 2s | 4-week lookback, 500-row cap |
+| File upload (HLES) | < 30s (50MB max) | Streaming read, batch inserts |

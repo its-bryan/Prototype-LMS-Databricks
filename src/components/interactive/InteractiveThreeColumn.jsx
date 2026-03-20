@@ -1,9 +1,8 @@
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
+import { motion as Motion } from "framer-motion";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import BackButton from "../BackButton";
 import { useData } from "../../context/DataContext";
-import { getCancelledLeads, getLeadById } from "../../selectors/demoSelectors";
 import ThreeColumnReview from "../ThreeColumnReview";
 import StatusBadge from "../StatusBadge";
 
@@ -13,9 +12,33 @@ export default function InteractiveThreeColumn() {
   const { leadId } = useParams();
   const isGMContext = pathname.startsWith("/gm/");
   const resolvedLeadId = Number.isNaN(Number(leadId)) ? leadId : Number(leadId);
-  const { leads } = useData();
-  const cancelledLeads = getCancelledLeads(leads);
-  const lead = getLeadById(leads, resolvedLeadId) || cancelledLeads[0];
+  const { fetchLeadById, fetchLeadsPage } = useData();
+  const [cancelledLeads, setCancelledLeads] = useState([]);
+  const [fetchedLead, setFetchedLead] = useState(null);
+
+  /* eslint-disable react-hooks/set-state-in-effect -- cancelled list + selected lead */
+  useEffect(() => {
+    let cancelled = false;
+    fetchLeadsPage({ status: "Cancelled", limit: 10 })
+      .then((r) => { if (!cancelled) setCancelledLeads(r.items ?? []); })
+      .catch(() => { if (!cancelled) setCancelledLeads([]); });
+    return () => { cancelled = true; };
+  }, [fetchLeadsPage]);
+
+  useEffect(() => {
+    if (resolvedLeadId == null || resolvedLeadId === "") {
+      setFetchedLead(null);
+      return;
+    }
+    let cancelled = false;
+    fetchLeadById(resolvedLeadId)
+      .then((l) => { if (!cancelled) setFetchedLead(l ?? null); })
+      .catch(() => { if (!cancelled) setFetchedLead(null); });
+    return () => { cancelled = true; };
+  }, [resolvedLeadId, fetchLeadById]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  const lead = fetchedLead ?? cancelledLeads[0];
 
   const [directive, setDirective] = useState("");
   const [isArchived, setIsArchived] = useState(false);
@@ -56,7 +79,7 @@ export default function InteractiveThreeColumn() {
         <div className="space-y-6">
           <ThreeColumnReview lead={lead} showMismatchWarning={lead.mismatch} />
 
-          <motion.div
+          <Motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
@@ -83,7 +106,7 @@ export default function InteractiveThreeColumn() {
               </button>
               {isArchived && <StatusBadge status="Reviewed" />}
             </div>
-          </motion.div>
+          </Motion.div>
         </div>
       )}
     </div>

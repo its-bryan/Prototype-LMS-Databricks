@@ -15,7 +15,7 @@ function formatNow() {
 export default function InteractiveEnrichmentForm({ lead }) {
   const { userProfile } = useAuth();
   const { role } = useApp();
-  const { updateLeadEnrichment, refetchLeads, cancellationReasonCategories, nextActions } = useData();
+  const { updateLeadEnrichment, cancellationReasonCategories, nextActions } = useData();
 
   const existing = lead.enrichment || {};
   const [status, setStatus] = useState(lead.status || "Unused");
@@ -114,7 +114,6 @@ export default function InteractiveEnrichmentForm({ lead }) {
     setSaveError(null);
     try {
       await updateLeadEnrichment(lead.id, enrichment, newEntry, status);
-      await refetchLeads?.();
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 2000);
       if (notes?.trim()) {

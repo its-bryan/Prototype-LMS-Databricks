@@ -15,7 +15,7 @@ async def get_all_config():
         ("SELECT * FROM leaderboard_data ORDER BY created_at DESC LIMIT 1", None),
         ("SELECT * FROM cancellation_reason_categories ORDER BY sort_order", None),
         ("SELECT * FROM next_actions ORDER BY sort_order", None),
-        ("SELECT * FROM wins_learnings ORDER BY created_at DESC", None),
+        ("SELECT * FROM wins_learnings ORDER BY created_at DESC LIMIT 50", None),
     ])
     return {
         "orgMapping": results[0],

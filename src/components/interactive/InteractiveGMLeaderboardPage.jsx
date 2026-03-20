@@ -1,11 +1,10 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useData } from "../../context/DataContext";
 import { useAuth } from "../../context/AuthContext";
 import BackButton from "../BackButton";
 import {
-  getGMBranchLeaderboard,
   getDateRangePresets,
   resolveGMName,
   normalizeGmName,
@@ -35,7 +34,7 @@ function fmtMD(d) {
 }
 
 export default function InteractiveGMLeaderboardPage() {
-  const { leads, loading, demandLeads, initialDataReady, snapshot, orgMapping } = useData();
+  const { loading, initialDataReady, snapshot, orgMapping } = useData();
   const { userProfile } = useAuth();
   const navigate = useNavigate();
 
@@ -50,9 +49,8 @@ export default function InteractiveGMLeaderboardPage() {
     const nm = normalizeGmName(name);
     const orgMatch = (orgMapping ?? []).find((r) => r.gm && normalizeGmName(r.gm) === nm);
     if (orgMatch) return orgMatch.gm;
-    if ((leads ?? []).some((l) => normalizeGmName(l.generalMgr ?? l.general_mgr) === nm)) return name;
     return resolveGMName(name, userProfile?.id);
-  }, [userProfile?.displayName, userProfile?.id, orgMapping, leads]);
+  }, [userProfile?.displayName, userProfile?.id, orgMapping]);
 
   // Trailing 4 weeks preset — locked; used as fallback dateRange when snapshot is unavailable
   const presets = useMemo(() => getDateRangePresets(), [loading]);
@@ -71,13 +69,9 @@ export default function InteractiveGMLeaderboardPage() {
     return { start, end };
   }, [trailing4wPreset]);
 
-  // Primary path: snapshot.leaderboard filtered to GM's branches, re-sorted client-side.
-  // Fallback path: demand leads + compute via selector (covers first-load before snapshot arrives).
+  // snapshot.leaderboard filtered to GM's branches, re-sorted client-side.
+  // If snapshot is not ready, show an empty leaderboard (no full leads array).
   const useSnapshot = !!(snapshot?.leaderboard?.length);
-
-  useEffect(() => {
-    if (!useSnapshot) demandLeads();
-  }, [useSnapshot, demandLeads]);
 
   const leaderboard = useMemo(() => {
     if (useSnapshot) {
@@ -118,8 +112,17 @@ export default function InteractiveGMLeaderboardPage() {
       return { sorted, benchmark };
     }
 
-    return getGMBranchLeaderboard(leads, dateRange, sortMetric, "my_branches", gmName);
-  }, [useSnapshot, snapshot, gmName, sortMetric, leads, dateRange]);
+    return {
+      sorted: [],
+      benchmark: {
+        conversionRate: null,
+        pctWithin30: null,
+        branchHrdPct: null,
+        commentRate: null,
+        total: 0,
+      },
+    };
+  }, [useSnapshot, snapshot, gmName, sortMetric]);
 
   const pageReady = usePageTransition();
   if (!initialDataReady || !pageReady) return <GMLeaderboardSkeleton />;
@@ -262,7 +265,7 @@ export default function InteractiveGMLeaderboardPage() {
           <BranchDetailPane
             branchRow={selectedBranch}
             dateRange={dateRange}
-            leads={leads}
+            leads={[]}
             onClose={() => setSelectedBranch(null)}
           />
         )}

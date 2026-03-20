@@ -262,6 +262,8 @@ export async function fetchLeadsPage({
   search = null,
   startDate = null,
   endDate = null,
+  enrichmentComplete = null,
+  hasDirective = null,
 } = {}) {
   const startDateParam = toApiDate(startDate);
   const endDateParam = toApiDate(endDate);
@@ -278,6 +280,8 @@ export async function fetchLeadsPage({
     search,
     start_date: startDateParam,
     end_date: endDateParam,
+    enrichment_complete: enrichmentComplete,
+    has_directive: hasDirective,
   });
   const result = await apiGet(`/leads${query}`);
   return {
@@ -287,6 +291,18 @@ export async function fetchLeadsPage({
     offset: result?.offset ?? offset,
     hasNext: !!result?.has_next,
   };
+}
+
+/** Fetch a single lead by ID. */
+export async function fetchLeadById(leadId) {
+  const row = await apiGet(`/leads/${leadId}`);
+  return leadFromRow(row);
+}
+
+/** Fetch activity report data (comments, contacts, logins) for a GM's branches. */
+export async function fetchActivityReport({ gmName = null, branches = null, limit = 100 } = {}) {
+  const query = buildQuery({ gm_name: gmName, branches, limit });
+  return apiGet(`/activity-report${query}`);
 }
 
 /** Fetch the upload / data-freshness summary. */

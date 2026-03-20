@@ -1,11 +1,9 @@
 import { useState, useRef, useEffect, lazy, Suspense } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion as Motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "../../context/AppContext";
 import { useAuth } from "../../context/AuthContext";
-import { useData } from "../../context/DataContext";
 import { roleDefaultPaths, viewPaths } from "../../config/navigation";
-import { getAllLeads } from "../../selectors/demoSelectors";
 
 const BMDashboardInbox = lazy(() =>
   import("../interactive/InteractiveDashboard").then((m) => ({ default: m.BMDashboardInbox }))
@@ -15,11 +13,10 @@ export default function DemoTopBar({ onHelpClick }) {
   const navigate = useNavigate();
   const { role } = useApp();
   const { userProfile, signOut } = useAuth();
-  const { leads } = useData();
   const [inboxOpen, setInboxOpen] = useState(false);
   const panelRef = useRef(null);
 
-  const directiveCount = role === "bm" ? getAllLeads(leads).filter((l) => l.gmDirective).length : 0;
+  const directiveCount = 0;
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -103,7 +100,7 @@ export default function DemoTopBar({ onHelpClick }) {
 
               <AnimatePresence>
                 {inboxOpen && (
-                  <motion.div
+                  <Motion.div
                     initial={{ opacity: 0, y: -8, scale: 0.97 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -8, scale: 0.97 }}
@@ -115,7 +112,7 @@ export default function DemoTopBar({ onHelpClick }) {
                         <BMDashboardInbox navigateTo={handleNavigate} />
                       </Suspense>
                     </div>
-                  </motion.div>
+                  </Motion.div>
                 )}
               </AnimatePresence>
             </div>

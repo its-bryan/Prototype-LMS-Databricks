@@ -6,7 +6,7 @@ router = APIRouter()
 
 @router.get("/wins-learnings")
 async def get_wins_learnings():
-    return query("SELECT * FROM wins_learnings ORDER BY created_at DESC")
+    return query("SELECT * FROM wins_learnings ORDER BY created_at DESC LIMIT 200")
 
 
 @router.post("/wins-learnings")

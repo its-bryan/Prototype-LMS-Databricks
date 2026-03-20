@@ -3,11 +3,12 @@ import { useData } from "../../context/DataContext";
 import MultiSelectFilter from "../observatory/MultiSelectFilter";
 import ObservatoryBarChart from "../observatory/ObservatoryBarChart";
 import UnusedLeadsDrilldown from "../observatory/UnusedLeadsDrilldown";
-import { leadInDateRange } from "../../selectors/demoSelectors";
 import { buildTrendPoints, listFilters, periodToDateRange } from "../observatory/observatoryUtils";
 
+const DRILL_PAGE = 50;
+
 export default function ObservatoryConversionPage() {
-  const { observatorySnapshot, leads, demandLeads } = useData();
+  const { observatorySnapshot, fetchLeadsPage } = useData();
 
   const [granularity, setGranularity] = useState("week");
   const [selectedZones, setSelectedZones] = useState([]);
@@ -16,10 +17,12 @@ export default function ObservatoryConversionPage() {
   const [selectedHertzZones, setSelectedHertzZones] = useState([]);
   const [selectedPeriod, setSelectedPeriod] = useState(null);
 
+  const [unusedDrillItems, setUnusedDrillItems] = useState([]);
+  const [unusedDrillTotal, setUnusedDrillTotal] = useState(0);
+  const [unusedDrillOffset, setUnusedDrillOffset] = useState(0);
+  const [unusedDrillLoading, setUnusedDrillLoading] = useState(false);
+
   const filters = useMemo(() => listFilters(observatorySnapshot), [observatorySnapshot]);
-  useEffect(() => {
-    demandLeads();
-  }, [demandLeads]);
 
   const points = useMemo(
     () =>
@@ -57,23 +60,65 @@ export default function ObservatoryConversionPage() {
       if (zoneFiltered && !zoneSet.has(branchData.zone)) continue;
       if (gmFiltered && !gmSet.has(branchData.gm)) continue;
       if (amFiltered && !amSet.has(branchData.am)) continue;
-      if (hertzZoneFiltered && !hertzZoneSet.has(branchData.hertzZone || "�")) continue;
+      if (hertzZoneFiltered && !hertzZoneSet.has(branchData.hertzZone || "\x9d")) continue;
       selectedBranches.add(branchData.branch || branchKey);
     }
     return selectedBranches;
   }, [observatorySnapshot, selectedZones, selectedGms, selectedAms, selectedHertzZones]);
 
-  const unusedLeads = useMemo(() => {
-    if (!selectedPeriod?.rawLabel) return [];
-    const range = periodToDateRange(selectedPeriod.rawLabel, granularity);
-    if (!range) return [];
+  const branchesParam = useMemo(() => {
+    const list = [...filteredBranchSet].filter(Boolean);
+    return list.length ? list.join(",") : null;
+  }, [filteredBranchSet]);
 
-    return (leads ?? [])
-      .filter((lead) => lead.status === "Unused")
-      .filter((lead) => filteredBranchSet.has(lead.branch))
-      .filter((lead) => leadInDateRange(lead, range.start, range.end))
-      .sort((a, b) => (b.daysOpen ?? 0) - (a.daysOpen ?? 0));
-  }, [leads, selectedPeriod, granularity, filteredBranchSet]);
+  useEffect(() => {
+    if (!selectedPeriod?.rawLabel) {
+      setUnusedDrillItems([]);
+      setUnusedDrillTotal(0);
+      setUnusedDrillOffset(0);
+      return;
+    }
+    const range = periodToDateRange(selectedPeriod.rawLabel, granularity);
+    if (!range || !branchesParam) {
+      setUnusedDrillItems([]);
+      setUnusedDrillTotal(0);
+      return;
+    }
+
+    let cancelled = false;
+    setUnusedDrillLoading(true);
+    fetchLeadsPage({
+      status: "Unused",
+      branches: branchesParam,
+      startDate: range.start,
+      endDate: range.end,
+      limit: DRILL_PAGE,
+      offset: unusedDrillOffset,
+    })
+      .then((res) => {
+        if (cancelled) return;
+        const items = res?.items ?? [];
+        setUnusedDrillItems(
+          [...items].sort((a, b) => (b.daysOpen ?? 0) - (a.daysOpen ?? 0))
+        );
+        setUnusedDrillTotal(res?.total ?? items.length);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setUnusedDrillItems([]);
+        setUnusedDrillTotal(0);
+      })
+      .finally(() => {
+        if (!cancelled) setUnusedDrillLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedPeriod, granularity, branchesParam, unusedDrillOffset, fetchLeadsPage]);
+
+  useEffect(() => {
+    setUnusedDrillOffset(0);
+  }, [selectedPeriod?.rawLabel, granularity, branchesParam]);
 
   const handleBarClick = (point, barType) => {
     if (barType !== "unused") return;
@@ -82,6 +127,35 @@ export default function ObservatoryConversionPage() {
 
   const title = "Conversion %";
   const subtitle = granularity === "month" ? "Last 12 months" : "Last 24 weeks";
+
+  const drillFooter =
+    selectedPeriod && branchesParam ? (
+      <div className="px-5 py-3 border-t border-[var(--neutral-100)] flex items-center justify-between text-xs text-[var(--neutral-600)]">
+        <span>
+          {unusedDrillTotal === 0
+            ? "0 results"
+            : `Showing ${unusedDrillOffset + 1}-${Math.min(unusedDrillOffset + DRILL_PAGE, unusedDrillTotal)} of ${unusedDrillTotal}`}
+        </span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setUnusedDrillOffset((o) => Math.max(0, o - DRILL_PAGE))}
+            disabled={unusedDrillOffset === 0 || unusedDrillLoading}
+            className="px-2.5 py-1 rounded border border-[var(--neutral-200)] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--neutral-50)]"
+          >
+            Prev
+          </button>
+          <button
+            type="button"
+            onClick={() => setUnusedDrillOffset((o) => o + DRILL_PAGE)}
+            disabled={unusedDrillLoading || unusedDrillOffset + DRILL_PAGE >= unusedDrillTotal}
+            className="px-2.5 py-1 rounded border border-[var(--neutral-200)] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--neutral-50)]"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+    ) : null;
 
   return (
     <div className="px-6 py-5 space-y-4 text-[var(--hertz-black)]">
@@ -153,7 +227,10 @@ export default function ObservatoryConversionPage() {
       {selectedPeriod && (
         <UnusedLeadsDrilldown
           periodLabel={selectedPeriod.label}
-          leads={unusedLeads}
+          leads={unusedDrillItems}
+          totalCount={branchesParam ? unusedDrillTotal : 0}
+          loading={unusedDrillLoading && branchesParam != null}
+          footer={drillFooter}
           onClose={() => setSelectedPeriod(null)}
         />
       )}

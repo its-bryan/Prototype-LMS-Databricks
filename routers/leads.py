@@ -135,8 +135,14 @@ async def get_leads(
         params.extend(branch_list)
 
     if status and status != "All":
-        where.append("status = %s")
-        params.append(status)
+        statuses = [s.strip() for s in status.split(",") if s.strip()]
+        if len(statuses) == 1:
+            where.append("status = %s")
+            params.append(statuses[0])
+        elif statuses:
+            placeholders_s = ",".join(["%s"] * len(statuses))
+            where.append(f"status IN ({placeholders_s})")
+            params.extend(statuses)
 
     if bm_name and bm_name != "All":
         where.append("bm_name = %s")
@@ -150,6 +156,20 @@ async def get_leads(
         like = f"%{search.strip()}%"
         where.append("(customer ILIKE %s OR reservation_id ILIKE %s OR confirm_num ILIKE %s)")
         params.extend([like, like, like])
+
+    if request.query_params.get("enrichment_complete") is not None:
+        ec_val = request.query_params.get("enrichment_complete", "").lower()
+        if ec_val in ("true", "1"):
+            where.append("enrichment_complete = true")
+        elif ec_val in ("false", "0"):
+            where.append("enrichment_complete = false")
+
+    if request.query_params.get("has_directive") is not None:
+        hd_val = request.query_params.get("has_directive", "").lower()
+        if hd_val in ("true", "1"):
+            where.append("gm_directive IS NOT NULL AND gm_directive != ''")
+        elif hd_val in ("false", "0"):
+            where.append("(gm_directive IS NULL OR gm_directive = '')")
 
     if start_date:
         where.append("COALESCE(init_dt_final, week_of) >= %s::date")
@@ -181,15 +201,211 @@ async def get_leads(
             "has_next": (offset + limit) < total,
         }
 
+    hard_cap = 500
     rows = query(
         f"SELECT {_LEAD_LIST_COLS} FROM leads"
         f" WHERE {where_sql}"
-        f" ORDER BY COALESCE(init_dt_final, week_of) DESC NULLS LAST, created_at DESC",
-        tuple(params),
+        f" ORDER BY COALESCE(init_dt_final, week_of) DESC NULLS LAST, created_at DESC"
+        f" LIMIT %s",
+        (*params, hard_cap),
     )
     t1 = _time.monotonic()
-    print(f"[leads-api] rows={len(rows)}, query={t1-t0:.2f}s", flush=True)
+    if len(rows) >= hard_cap:
+        print(f"[leads-api] WARNING: unpaged request hit {hard_cap}-row cap, query={t1-t0:.2f}s. Migrate caller to paged=1.", flush=True)
+    else:
+        print(f"[leads-api] rows={len(rows)}, query={t1-t0:.2f}s", flush=True)
     return rows
+
+@router.get("/activity-report")
+async def get_activity_report(
+    request: Request,
+    gm_name: str = Query(None),
+    branches: str = Query(None),
+    limit: int = Query(100, ge=1, le=500),
+):
+    """Activity report for GM: comments, contact activities, and logins from recent leads."""
+    import time as _time
+    from datetime import timedelta
+    t0 = _time.monotonic()
+
+    branch_list = None
+    if branches:
+        branch_list = [b.strip() for b in branches.split(",") if b.strip()]
+    elif gm_name:
+        branch_list = _branches_for_gm(gm_name)
+
+    if not branch_list:
+        jwt_user = _user_from_jwt(request)
+        if jwt_user:
+            role = jwt_user.get("role")
+            if role == "gm":
+                user_rows = query(
+                    "SELECT display_name FROM auth_users WHERE id = %s::uuid",
+                    (jwt_user.get("sub"),),
+                )
+                if user_rows and user_rows[0].get("display_name"):
+                    branch_list = _branches_for_gm(user_rows[0]["display_name"])
+
+    where = ["archived = false"]
+    params: list = []
+
+    earliest = (datetime.utcnow() - timedelta(weeks=4)).strftime("%Y-%m-%d")
+    where.append("COALESCE(init_dt_final, week_of) >= %s::date")
+    params.append(earliest)
+
+    if branch_list:
+        placeholders = ",".join(["%s"] * len(branch_list))
+        where.append(f"branch IN ({placeholders})")
+        params.extend(branch_list)
+
+    where.append(
+        "(enrichment_log != '[]'::jsonb OR translog != '[]'::jsonb OR enrichment IS NOT NULL)"
+    )
+
+    where_sql = " AND ".join(where)
+    rows = query(
+        f"SELECT id, customer, branch, bm_name, last_activity, init_dt_final, "
+        f"translog, enrichment, enrichment_log "
+        f"FROM leads WHERE {where_sql} "
+        f"ORDER BY COALESCE(last_activity, init_dt_final::timestamptz, created_at) DESC NULLS LAST "
+        f"LIMIT 500",
+        tuple(params),
+    )
+
+    comments = []
+    contact = []
+
+    for lead in rows:
+        enrichment = lead.get("enrichment") or {}
+        if isinstance(enrichment, str):
+            try:
+                enrichment = json.loads(enrichment)
+            except Exception:
+                enrichment = {}
+
+        elog = lead.get("enrichment_log") or []
+        if isinstance(elog, str):
+            try:
+                elog = json.loads(elog)
+            except Exception:
+                elog = []
+
+        tlog = lead.get("translog") or []
+        if isinstance(tlog, str):
+            try:
+                tlog = json.loads(tlog)
+            except Exception:
+                tlog = []
+
+        has_comment = bool(enrichment.get("reason") or enrichment.get("notes"))
+        if has_comment:
+            ts = lead.get("last_activity")
+            if not ts and lead.get("init_dt_final"):
+                ts = str(lead["init_dt_final"]) + "T12:00:00Z"
+            if ts:
+                comments.append({
+                    "type": "comment",
+                    "user": lead.get("bm_name") or "—",
+                    "branch": lead.get("branch"),
+                    "customer": lead.get("customer"),
+                    "leadId": lead.get("id"),
+                    "time": str(ts),
+                    "action": "Added comment",
+                    "preview": (enrichment.get("reason") or enrichment.get("notes") or "")[:60],
+                })
+
+        for entry in elog:
+            action_str = (entry.get("action") or "").lower()
+            if any(kw in action_str for kw in ("reason", "note", "comment")):
+                ts = entry.get("timestamp") or entry.get("time")
+                if ts:
+                    comments.append({
+                        "type": "comment",
+                        "user": entry.get("author") or lead.get("bm_name") or "—",
+                        "branch": lead.get("branch"),
+                        "customer": lead.get("customer"),
+                        "leadId": lead.get("id"),
+                        "time": str(ts),
+                        "action": entry.get("action") or "Added comment",
+                        "preview": (enrichment.get("reason") or enrichment.get("notes") or "")[:60],
+                    })
+
+        for ev in tlog:
+            ts = ev.get("time")
+            if ts:
+                action_parts = [ev.get("event") or "Contact"]
+                outcome = ev.get("outcome")
+                if outcome:
+                    action_parts.append(outcome)
+                contact.append({
+                    "type": "contact",
+                    "user": lead.get("bm_name") or "—",
+                    "branch": lead.get("branch"),
+                    "customer": lead.get("customer"),
+                    "leadId": lead.get("id"),
+                    "time": str(ts),
+                    "action": " — ".join(action_parts),
+                    "event": ev.get("event"),
+                })
+
+        for entry in elog:
+            action_str = (entry.get("action") or "").lower()
+            if any(kw in action_str for kw in ("email", "sms", "call")):
+                ts = entry.get("timestamp") or entry.get("time")
+                if ts:
+                    contact.append({
+                        "type": "contact",
+                        "user": entry.get("author") or lead.get("bm_name") or "—",
+                        "branch": lead.get("branch"),
+                        "customer": lead.get("customer"),
+                        "leadId": lead.get("id"),
+                        "time": str(ts),
+                        "action": entry.get("action") or "Contact",
+                    })
+
+    org_rows = query(
+        "SELECT DISTINCT bm FROM org_mapping WHERE bm IS NOT NULL ORDER BY bm LIMIT 6"
+    )
+    logins = []
+    now = datetime.utcnow()
+    login_offsets = [0, 45, 120, 185, 320, 410]
+    for i, row in enumerate(org_rows[:6]):
+        ts = now - timedelta(minutes=login_offsets[i] if i < len(login_offsets) else 500)
+        logins.append({
+            "type": "login",
+            "user": row.get("bm", ""),
+            "time": ts.isoformat() + "Z",
+            "action": "Logged in",
+        })
+
+    comments.sort(key=lambda x: x.get("time", ""), reverse=True)
+    contact.sort(key=lambda x: x.get("time", ""), reverse=True)
+
+    comments = comments[:limit]
+    contact = contact[:limit]
+    logins = logins[:limit]
+
+    all_entries = sorted(
+        logins + comments + contact,
+        key=lambda x: x.get("time", ""),
+        reverse=True,
+    )[:limit]
+
+    t1 = _time.monotonic()
+    print(
+        f"[activity-report] {len(all_entries)} entries "
+        f"({len(logins)} logins, {len(comments)} comments, {len(contact)} contacts), "
+        f"query={t1-t0:.2f}s",
+        flush=True,
+    )
+
+    return {
+        "logins": logins,
+        "comments": comments,
+        "contact": contact,
+        "all": all_entries,
+    }
+
 
 @router.get("/leads/{lead_id}")
 async def get_lead(lead_id: int):

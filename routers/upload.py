@@ -1,9 +1,12 @@
-from fastapi import APIRouter, UploadFile, File, Form, BackgroundTasks
+from collections import defaultdict
+
+from fastapi import APIRouter, UploadFile, File, Form, BackgroundTasks, HTTPException
 import pandas as pd
 import json
 import io
 import os
 import re
+import time as _time
 from datetime import datetime
 from db import execute, query, with_connection
 from etl.clean import clean_hles_data, clean_translog_data
@@ -25,6 +28,19 @@ HLES_LANDING_VOLUME_PATH = os.getenv("HLES_LANDING_VOLUME_PATH", "/Volumes/datal
 TRANSLOG_LANDING_VOLUME_PATH = os.getenv(
     "TRANSLOG_LANDING_VOLUME_PATH", "/Volumes/datalabs/lab_lms_prod/translog_landing_prod"
 )
+
+MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50 MB
+
+
+def _norm_translog_key(k):
+    if k is None:
+        return None
+    if isinstance(k, float) and pd.isna(k):
+        return None
+    if pd.isna(k):
+        return None
+    s = str(k).strip()
+    return s if s else None
 
 
 def _land_file_in_volume(contents: bytes, original_filename: str, base_path: str) -> str | None:
@@ -184,6 +200,14 @@ async def upload_hles(
 ):
     """Upload HLES Excel file -> land in Volume (if configured) -> ETL -> batch insert/update leads."""
     contents = await file.read()
+    if len(contents) > MAX_UPLOAD_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail=(
+                f"File too large ({len(contents) / 1024 / 1024:.1f} MB). Maximum is 50 MB. "
+                "For historical bulk loads, use the admin CLI."
+            ),
+        )
     landed_path = _land_file_in_volume(contents, file.filename or "hles.xlsx", HLES_LANDING_VOLUME_PATH)
     df = pd.read_excel(io.BytesIO(contents), engine="openpyxl")
 
@@ -295,6 +319,14 @@ async def upload_hles(
 async def upload_translog(file: UploadFile = File(...)):
     """Upload TRANSLOG Excel file -> land in Volume (if configured) -> match events to leads."""
     contents = await file.read()
+    if len(contents) > MAX_UPLOAD_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail=(
+                f"File too large ({len(contents) / 1024 / 1024:.1f} MB). Maximum is 50 MB. "
+                "For historical bulk loads, use the admin CLI."
+            ),
+        )
     # Land raw file in Unity Catalog Volume (datalabs.lab_lms_prod.translog_landing_prod)
     landed_path = _land_file_in_volume(
         contents, file.filename or "translog.xlsx", TRANSLOG_LANDING_VOLUME_PATH
@@ -307,35 +339,79 @@ async def upload_translog(file: UploadFile = File(...)):
     if landed_path:
         stats["landedPath"] = landed_path
 
+    rows_events: list[tuple[str, dict]] = []
     for _, row in df_clean.iterrows():
-        # Match lead by confirm_num (preferred) or reservation_id for backward compatibility
-        key = row.get("confirm_num") or row.get("reservation_id")
+        key = _norm_translog_key(row.get("confirm_num") or row.get("reservation_id"))
         if not key:
             stats["orphan"] += 1
             continue
-        existing = query(
-            "SELECT id, translog FROM leads WHERE confirm_num = %s OR reservation_id = %s LIMIT 1",
-            (key, key)
-        )
-        if existing:
-            lead = existing[0]
-            current_log = lead["translog"] or []
-            current_log.append({
-                "time": str(row.get("event_time", "")),
-                "event": row.get("event_type", ""),
-                "outcome": row.get("outcome", "")
-            })
-            execute(
-                """UPDATE leads SET
-                    translog = %s::jsonb,
-                    last_activity = now(),
-                    updated_at = now()
-                WHERE id = %s""",
-                (json.dumps(current_log), lead["id"])
+        rows_events.append(
+            (
+                key,
+                {
+                    "time": str(row.get("event_time", "")),
+                    "event": row.get("event_type", ""),
+                    "outcome": row.get("outcome", ""),
+                },
             )
-            stats["matched"] += 1
-        else:
-            stats["orphan"] += 1
+        )
+
+    if not rows_events:
+        return stats
+
+    unique_keys = list(dict.fromkeys(k for k, _ in rows_events))
+    print(f"[upload] TRANSLOG processing {len(df_clean)} rows...", flush=True)
+    t_start = _time.monotonic()
+
+    confirm_map: dict[str, dict] = {}
+    res_map: dict[str, dict] = {}
+    leads_by_id: dict = {}
+
+    with with_connection() as conn:
+        with conn.cursor() as cur:
+            for i in range(0, len(unique_keys), HLES_SELECT_CHUNK):
+                chunk = unique_keys[i : i + HLES_SELECT_CHUNK]
+                if not chunk:
+                    continue
+                placeholders = ",".join(["%s"] * len(chunk))
+                cur.execute(
+                    f"""SELECT id, confirm_num, reservation_id, translog FROM leads
+                        WHERE confirm_num IN ({placeholders}) OR reservation_id IN ({placeholders})""",
+                    tuple(chunk) + tuple(chunk),
+                )
+                for lead in cur.fetchall():
+                    lid = lead["id"]
+                    leads_by_id[lid] = lead
+                    c = _norm_translog_key(lead.get("confirm_num"))
+                    r = _norm_translog_key(lead.get("reservation_id"))
+                    if c and c not in confirm_map:
+                        confirm_map[c] = lead
+                    if r and r not in res_map:
+                        res_map[r] = lead
+
+            lead_events = defaultdict(list)
+            for key, evt in rows_events:
+                lead = confirm_map.get(key) or res_map.get(key)
+                if not lead:
+                    stats["orphan"] += 1
+                    continue
+                lead_events[lead["id"]].append(evt)
+                stats["matched"] += 1
+
+            for lead_id, new_events in lead_events.items():
+                lead = leads_by_id[lead_id]
+                current_log = list(lead.get("translog") or [])
+                current_log.extend(new_events)
+                cur.execute(
+                    """UPDATE leads SET
+                        translog = %s::jsonb,
+                        last_activity = now(),
+                        updated_at = now()
+                    WHERE id = %s""",
+                    (json.dumps(current_log), lead_id),
+                )
+
+    print(f"[upload] TRANSLOG done in {_time.monotonic() - t_start:.2f}s", flush=True)
 
     return stats
 

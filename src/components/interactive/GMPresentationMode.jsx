@@ -1506,7 +1506,7 @@ function SpotCheckLeadDetailPanel({ lead, onBack }) {
 }
 
 function SlideSpotCheck({ frozenLeads, gmName, initialBranch }) {
-  const myBranches = useMemo(() => getBranchesForGM(gmName, frozenLeads ?? []), [gmName, frozenLeads]);
+  const myBranches = useMemo(() => getBranchesForGM(gmName), [gmName]);
 
   const [selectedBranch, setSelectedBranch] = useState(initialBranch ?? myBranches[0] ?? null);
   const [statusFilter, setStatusFilter] = useState(null);

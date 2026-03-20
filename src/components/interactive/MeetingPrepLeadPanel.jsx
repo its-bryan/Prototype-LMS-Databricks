@@ -4,20 +4,39 @@
  * isReadOnly when viewing past week.
  */
 import { useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion as Motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import LeadDetail from "../LeadDetail";
 import LeadContactCard from "../LeadContactCard";
 import InteractiveEnrichmentForm from "./InteractiveEnrichmentForm";
 import { useData } from "../../context/DataContext";
-import { getLeadById, getTasksForLead } from "../../selectors/demoSelectors";
 
 export default function MeetingPrepLeadPanel({ lead, isReadOnly, onClose }) {
   const navigate = useNavigate();
-  const { leads, fetchTasksForLead } = useData();
+  const { fetchTasksForLead, fetchLeadById } = useData();
 
-  // Use live lead from context so updates reflect; fallback to prop
-  const liveLead = getLeadById(leads ?? [], lead?.id) ?? lead;
+  const [liveLead, setLiveLead] = useState(lead);
+
+  useEffect(() => {
+    setLiveLead(lead);
+  }, [lead]);
+
+  /* eslint-disable react-hooks/exhaustive-deps -- refetch by lead id only; prop updates sync via effect above */
+  useEffect(() => {
+    if (!lead?.id) return;
+    const fallback = lead;
+    let cancelled = false;
+    fetchLeadById(lead.id)
+      .then((l) => {
+        if (!cancelled) setLiveLead(l ?? fallback);
+      })
+      .catch(() => {
+        if (!cancelled) setLiveLead(fallback);
+      });
+    return () => { cancelled = true; };
+  }, [lead?.id, fetchLeadById]);
+  /* eslint-enable react-hooks/exhaustive-deps */
+
   const [leadTasks, setLeadTasks] = useState([]);
 
   const loadTasks = useCallback(async () => {
@@ -73,7 +92,7 @@ export default function MeetingPrepLeadPanel({ lead, isReadOnly, onClose }) {
 
   return (
     <AnimatePresence>
-      <motion.div
+      <Motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -84,7 +103,7 @@ export default function MeetingPrepLeadPanel({ lead, isReadOnly, onClose }) {
         <div className="absolute inset-0 bg-black/20" onClick={onClose} aria-hidden />
 
         {/* Panel */}
-        <motion.div
+        <Motion.div
           initial={{ x: "100%" }}
           animate={{ x: 0 }}
           exit={{ x: "100%" }}
@@ -141,8 +160,8 @@ export default function MeetingPrepLeadPanel({ lead, isReadOnly, onClose }) {
               }
             />
           </div>
-        </motion.div>
-      </motion.div>
+        </Motion.div>
+      </Motion.div>
     </AnimatePresence>
   );
 }

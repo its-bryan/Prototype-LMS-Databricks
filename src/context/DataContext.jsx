@@ -27,7 +27,7 @@ const dataModule = await import("../data/databricksData.js");
 const {
   fetchDashboardSnapshot: apiFetchDashboardSnapshot,
   fetchObservatorySnapshot: apiFetchObservatorySnapshot,
-  fetchLeads,
+  fetchLeadById: apiFetchLeadById,
   fetchLeadsPage: apiFetchLeadsPage,
   fetchUploadSummary,
   fetchAllConfig: apiFetchAllConfig,
@@ -58,7 +58,7 @@ const {
   submitWinsLearning: apiSubmitWinsLearning,
 } = dataModule;
 
-import { setOrgMappingSource, setBranchManagersSource, setWeeklyTrendsSource, setNowFromLeads, setNowFromDate } from "../selectors/demoSelectors";
+import { setOrgMappingSource, setBranchManagersSource, setWeeklyTrendsSource, setNowFromDate } from "../selectors/demoSelectors";
 
 const DataContext = createContext(null);
 
@@ -85,7 +85,6 @@ function writeCache(key, data) {
 // Read all caches once at module load (synchronous).
 const _c = USE_LIVE_API
   ? {
-      leads: readCache("leads"),
       orgMapping: readCache("orgMapping"),
       dataAsOfDate: readCache("dataAsOfDate"),
       branchManagers: readCache("branchManagers"),
@@ -106,7 +105,6 @@ const _cachedObsSnapshot = readCache("obsSnapshot");
 // Hydrate selector module-level variables from cache so stats compute
 // correctly even before the background refresh finishes.
 if (_c.snapshot?.now) setNowFromDate(_c.snapshot.now);
-else if (_c.leads?.length) setNowFromLeads(_c.leads);
 if (_c.orgMapping?.length) setOrgMappingSource(_c.orgMapping);
 if (_c.branchManagers?.length) setBranchManagersSource(_c.branchManagers);
 if (_c.weeklyTrends) setWeeklyTrendsSource(_c.weeklyTrends);
@@ -154,9 +152,9 @@ function ensureMismatchDemoLead(leads) {
 export function DataProvider({ children }) {
   const orgMappingRef = useRef(_c.orgMapping ?? []);
 
-  // --- State initialised from cache (instant render) or empty (skeleton) ---
+  // leads state kept only for mock mode and single-lead mutations (directive, enrichment, review)
   const [leads, setLeads] = useState(() => {
-    if (USE_LIVE_API) return _c.leads ?? [];
+    if (USE_LIVE_API) return [];
     const stored = loadLeadsFromStorage();
     const initial = stored ?? [...mockLeads];
     return ensureMismatchDemoLead(initial);
@@ -190,10 +188,8 @@ export function DataProvider({ children }) {
 
   // `loading` controls skeletons — resolves once snapshot (or cached leads) is available.
   // Leads are loaded on-demand for drill-down views, not on mount.
-  const [loading, setLoading] = useState(USE_LIVE_API && !_hasCachedSnapshot && !_hasCachedLeads);
+  const [loading, setLoading] = useState(USE_LIVE_API && !_hasCachedSnapshot);
   const [orgMappingReady, setOrgMappingReady] = useState(!USE_LIVE_API || _hasCachedOrgMapping);
-  const [leadsReady, setLeadsReady] = useState(_hasCachedLeads);
-  const leadsRequestedRef = useRef(_hasCachedLeads);
 
   // `isRefreshing` — true while a background data refresh is in-flight.
   // The DataBanner shows "Fetching and updating dashboard" when this is true.
@@ -235,32 +231,6 @@ export function DataProvider({ children }) {
     }
   }, [USE_LIVE_API, leads]);
 
-  const refetchLeads = useCallback(async () => {
-    if (!USE_LIVE_API) return;
-    bumpPending(1);
-    setError(null);
-    try {
-      const data = await fetchLeads();
-      setLeads(data ?? []);
-      writeCache("leads", data ?? []);
-      if (data?.length) setNowFromLeads(data);
-      setLeadsReady(true);
-    } catch (err) {
-      setError(err?.message ?? "Failed to fetch leads");
-    } finally {
-      setLoading(false);
-      bumpPending(-1);
-    }
-  }, []);
-
-  /** Load leads on-demand. Call from views that need individual lead data
-   *  (Meeting Prep, Lead Detail, Spot Check, etc.). No-op if already loaded. */
-  const demandLeads = useCallback(() => {
-    if (leadsRequestedRef.current) return;
-    leadsRequestedRef.current = true;
-    refetchLeads();
-  }, [refetchLeads]);
-
   const fetchLeadsPage = useCallback(
     async (params = {}) => {
       if (USE_LIVE_API) return apiFetchLeadsPage(params);
@@ -274,6 +244,16 @@ export function DataProvider({ children }) {
         offset,
         hasNext: offset + limit < (leads ?? []).length,
       };
+    },
+    [USE_LIVE_API, leads]
+  );
+
+  const fetchLeadById = useCallback(
+    async (leadId) => {
+      if (!USE_LIVE_API) {
+        return (leads ?? []).find((l) => l.id === leadId) ?? null;
+      }
+      return apiFetchLeadById(leadId);
     },
     [USE_LIVE_API, leads]
   );
@@ -669,8 +649,6 @@ export function DataProvider({ children }) {
   const value = {
     leads,
     loading,
-    leadsReady,
-    demandLeads,
     initialDataReady,
     isRefreshing,
     error,
@@ -680,7 +658,6 @@ export function DataProvider({ children }) {
     refetchObservatorySnapshot,
     orgMapping,
     gmTasks,
-    refetchLeads,
     refetchOrgMapping,
     refetchDataAsOfDate,
     refetchSnapshot,
@@ -692,6 +669,7 @@ export function DataProvider({ children }) {
     insertGmDirective,
     fetchLeadActivities,
     fetchLeadsPage,
+    fetchLeadById,
     fetchTasksForBranch,
     fetchTasksForBranchPage,
     fetchTasksForLead,

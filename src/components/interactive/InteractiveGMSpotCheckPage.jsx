@@ -8,10 +8,8 @@ import StatusBadge from "../StatusBadge";
 import ThreeColumnReview from "../ThreeColumnReview";
 import {
   getSpotCheckData,
-  getZoneBenchmark,
   getDateRangePresets,
   getComparisonDateRange,
-  getLeadById,
   resolveGMName,
   getBranchesForGM,
   normalizeGmName,
@@ -50,9 +48,8 @@ function MetricComparison({ label, branchVal, zoneVal, suffix = "%", onClick }) 
 }
 
 export default function InteractiveGMSpotCheckPage() {
-  const { leads, loading, orgMapping, updateLeadDirective, markLeadReviewed, demandLeads, initialDataReady } = useData();
+  const { loading, orgMapping, updateLeadDirective, markLeadReviewed, initialDataReady, fetchLeadsPage, fetchLeadById, snapshot } = useData();
   const navigate = useNavigate();
-  useEffect(() => { demandLeads(); }, [demandLeads]);
   const { userProfile } = useAuth();
   const reduceMotion = useReducedMotion();
   const presets = useMemo(() => getDateRangePresets(), [loading]);
@@ -60,12 +57,12 @@ export default function InteractiveGMSpotCheckPage() {
     const name = userProfile?.displayName;
     if (!name) return resolveGMName(null, userProfile?.id);
     const nm = normalizeGmName(name);
-    if ((orgMapping ?? []).some((r) => r.gm && normalizeGmName(r.gm) === nm)) return name;
-    if ((leads ?? []).some((l) => normalizeGmName(l.generalMgr ?? l.general_mgr) === nm)) return name;
+    const orgMatch = (orgMapping ?? []).find((r) => r.gm && normalizeGmName(r.gm) === nm);
+    if (orgMatch) return orgMatch.gm;
     return resolveGMName(name, userProfile?.id);
-  }, [userProfile?.displayName, userProfile?.id, orgMapping, leads]);
+  }, [userProfile?.displayName, userProfile?.id, orgMapping]);
 
-  const myBranches = useMemo(() => getBranchesForGM(gmName, leads ?? []), [gmName, leads]);
+  const myBranches = useMemo(() => getBranchesForGM(gmName), [gmName]);
 
   const selectedPresetKey = "trailing_4_weeks";
   const [selectedBranch, setSelectedBranch] = useState(myBranches[0] ?? null);
@@ -90,23 +87,48 @@ export default function InteractiveGMSpotCheckPage() {
     [selectedPresetKey]
   );
 
-  const spotData = useMemo(
-    () => selectedBranch ? getSpotCheckData(leads, selectedBranch, dateRange) : null,
-    [leads, selectedBranch, dateRange]
-  );
+  const [spotData, setSpotData] = useState(null);
 
-  const zoneBenchmark = useMemo(
-    () => getZoneBenchmark(leads, dateRange, gmName),
-    [leads, dateRange, gmName]
-  );
+  useEffect(() => {
+    if (!selectedBranch || !dateRange) return;
+    let cancelled = false;
+    setSpotData(null);
+    fetchLeadsPage({
+      branch: selectedBranch,
+      startDate: dateRange.start,
+      endDate: dateRange.end,
+      limit: 200,
+    })
+      .then((result) => {
+        if (cancelled) return;
+        const branchLeads = result.items;
+        setSpotData(getSpotCheckData(branchLeads, selectedBranch, dateRange));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedBranch, dateRange, fetchLeadsPage]);
 
-  const selectedLead = selectedLeadId ? getLeadById(leads, selectedLeadId) : null;
+  const zoneBenchmark = useMemo(() => {
+    const snGm = snapshot?.gms?.[gmName];
+    if (snGm?.stats) return snGm.stats;
+    return { conversionRate: 0, pctWithin30: 0, branchPct: 0, commentCompliance: 0 };
+  }, [snapshot, gmName]);
+
+  const [selectedLead, setSelectedLead] = useState(null);
+  useEffect(() => {
+    if (!selectedLeadId) {
+      setSelectedLead(null);
+      return;
+    }
+    fetchLeadById(selectedLeadId).then(setSelectedLead).catch(() => setSelectedLead(null));
+  }, [selectedLeadId, fetchLeadById]);
+
   const bmName = useMemo(() => {
     const orgBm = orgMapping.find((r) => leadBranchMatches(r.branch, selectedBranch))?.bm;
-    if (orgBm && orgBm !== "— Unassigned —") return orgBm;
-    const fromLead = (leads ?? []).find((l) => leadBranchMatches(l.branch, selectedBranch) && l.bmName && l.bmName !== "—")?.bmName;
-    return fromLead ?? "—";
-  }, [orgMapping, selectedBranch, leads]);
+    return orgBm && orgBm !== "— Unassigned —" ? orgBm : "—";
+  }, [orgMapping, selectedBranch]);
 
   useEffect(() => {
     if (selectedLead && panelRef.current) {
@@ -144,9 +166,6 @@ export default function InteractiveGMSpotCheckPage() {
   };
 
   const pageReady = usePageTransition();
-  // #region agent log
-  console.log('[DEBUG-2ecb09] SpotCheck render', { initialDataReady, pageReady, loading, leadsCount: (leads??[]).length, ts: Date.now() });
-  // #endregion
   if (!initialDataReady || !pageReady) return <SpotCheckSkeleton />;
 
   return (
@@ -156,7 +175,7 @@ export default function InteractiveGMSpotCheckPage() {
           <MetricDrilldownModal
             metricKey={drilldownMetric}
             onClose={() => setDrilldownMetric(null)}
-            leads={leads}
+            leads={[]}
             branchTasks={[]}
             dateRange={dateRange}
             comparisonRange={comparisonRange}

@@ -1,11 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
-import { motion } from "framer-motion";
+import { motion as Motion } from "framer-motion";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import BackButton from "../BackButton";
 import { useAuth } from "../../context/AuthContext";
 import { useData } from "../../context/DataContext";
-import { getLeadById } from "../../selectors/demoSelectors";
-import { formatDateTime, formatDateTimeShort } from "../../utils/dateTime";
+import { formatDateTime } from "../../utils/dateTime";
 import { TaskDetailSkeleton, usePageTransition } from "../DashboardSkeleton";
 
 const STATUS_OPTIONS = ["Open", "In Progress", "Done"];
@@ -39,8 +38,9 @@ export default function InteractiveTaskDetail() {
   const isGMContext = pathname.startsWith("/gm/");
   const resolvedTaskId = Number.isNaN(Number(taskId)) ? taskId : Number(taskId);
   const { userProfile } = useAuth();
-  const { leads, fetchTaskById, updateTaskStatus, appendTaskNote, initialDataReady } = useData();
+  const { fetchLeadById, fetchTaskById, updateTaskStatus, appendTaskNote, initialDataReady } = useData();
   const [task, setTask] = useState(null);
+  const [linkedLead, setLinkedLead] = useState(null);
   const [loading, setLoading] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [newNoteText, setNewNoteText] = useState("");
@@ -63,6 +63,30 @@ export default function InteractiveTaskDetail() {
   useEffect(() => {
     loadTask();
   }, [loadTask]);
+
+  /* eslint-disable react-hooks/exhaustive-deps -- omit full `task` to avoid refetch when notes/status update the same task */
+  useEffect(() => {
+    if (!task) {
+      setLinkedLead(null);
+      return;
+    }
+    if (task.lead) {
+      setLinkedLead(task.lead);
+      return;
+    }
+    if (!task.leadId) {
+      setLinkedLead(null);
+      return;
+    }
+    let cancelled = false;
+    fetchLeadById(task.leadId)
+      .then((l) => { if (!cancelled) setLinkedLead(l ?? null); })
+      .catch(() => { if (!cancelled) setLinkedLead(null); });
+    return () => { cancelled = true; };
+  }, [task?.id, task?.leadId, fetchLeadById]);
+  /* eslint-enable react-hooks/exhaustive-deps */
+
+  const pageReady = usePageTransition();
 
   const handleStatusChange = async (newStatus) => {
     if (!task || task.status === newStatus) return;
@@ -110,7 +134,6 @@ export default function InteractiveTaskDetail() {
     );
   }
 
-  const pageReady = usePageTransition();
   if (loading || !initialDataReady || !pageReady) {
     return <TaskDetailSkeleton />;
   }
@@ -132,15 +155,14 @@ export default function InteractiveTaskDetail() {
         ? "bg-[var(--hertz-primary)]/25 text-[var(--hertz-black)]"
         : "bg-[var(--color-error)]/15 text-[var(--color-error)]";
 
-  // Resolve lead for display (Supabase returns task.lead; mock needs lookup)
-  const lead = task.lead ?? (task.leadId ? getLeadById(leads, task.leadId) : null);
+  const lead = task.lead ?? linkedLead;
   const leadDisplay = lead ? { customer: lead.customer, reservationId: lead.reservationId } : null;
 
   const assignedToName = task.assignedToName ?? task.assignedTo ?? "—";
   const sourceLabel = SOURCE_LABELS[task.source] ?? task.source;
 
   return (
-    <motion.div
+    <Motion.div
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.3 }}
@@ -211,7 +233,7 @@ export default function InteractiveTaskDetail() {
               [...(task.notesLog ?? [])]
                 .sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0))
                 .map((ev, i) => (
-                  <motion.div
+                  <Motion.div
                     key={ev.timestamp ?? i}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -231,7 +253,7 @@ export default function InteractiveTaskDetail() {
                       <p className="text-sm font-medium text-[var(--hertz-black)]">{ev.note}</p>
                       <p className="text-xs text-[var(--neutral-600)]">By {ev.author} · {ev.time}</p>
                     </div>
-                  </motion.div>
+                  </Motion.div>
                 ))
             )}
           </div>
@@ -300,6 +322,6 @@ export default function InteractiveTaskDetail() {
           </div>
         </div>
       </div>
-    </motion.div>
+    </Motion.div>
   );
 }

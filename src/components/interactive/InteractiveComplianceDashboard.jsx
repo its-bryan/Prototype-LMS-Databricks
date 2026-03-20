@@ -1,18 +1,14 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useAuth } from "../../context/AuthContext";
 import { useData } from "../../context/DataContext";
 import {
-  getGMDashboardStats,
-  getGMBranchLeaderboard,
   getDateRangePresets,
   getComparisonDateRange,
-  getInsuranceCompanies,
   relChange,
   resolveGMName,
   getBranchesForGM,
   normalizeGmName,
-  leadBranchMatches,
 } from "../../selectors/demoSelectors";
 import GMMetricDrilldownModal from "../GMMetricDrilldownModal";
 import { ComplianceSkeleton, usePageTransition } from "../DashboardSkeleton";
@@ -30,9 +26,8 @@ function getQuartile(rate, maxRate) {
 
 export default function InteractiveComplianceDashboard() {
   const { userProfile } = useAuth();
-  const { leads, orgMapping, demandLeads, initialDataReady } = useData();
+  const { orgMapping, initialDataReady, snapshot } = useData();
   const reduceMotion = useReducedMotion();
-  useEffect(() => { demandLeads(); }, [demandLeads]);
   const presets = useMemo(() => getDateRangePresets(), []);
 
   const gmName = useMemo(() => {
@@ -40,44 +35,63 @@ export default function InteractiveComplianceDashboard() {
     if (!name) return resolveGMName(null, userProfile?.id);
     const nm = normalizeGmName(name);
     if ((orgMapping ?? []).some((r) => r.gm && normalizeGmName(r.gm) === nm)) return name;
-    if ((leads ?? []).some((l) => normalizeGmName(l.generalMgr ?? l.general_mgr) === nm)) return name;
     return resolveGMName(name, userProfile?.id);
-  }, [userProfile?.displayName, userProfile?.id, orgMapping, leads]);
-  const gmBranches = useMemo(() => getBranchesForGM(gmName, leads ?? []), [gmName, leads]);
+  }, [userProfile?.displayName, userProfile?.id, orgMapping]);
+  const gmBranches = useMemo(() => getBranchesForGM(gmName), [gmName]);
   const selectedPresetKey = "trailing_4_weeks";
-  const scope = "my_branches";
   const [branchFilter, setBranchFilter] = useState("All");
   const [insuranceFilter, setInsuranceFilter] = useState("All");
   const [sortMetric, setSortMetric] = useState("conversionRate");
 
   const currentPreset = presets.find((p) => p.key === selectedPresetKey);
   const dateRange = currentPreset ? { start: currentPreset.start, end: currentPreset.end } : null;
-  const insuranceCompanies = useMemo(() => getInsuranceCompanies(leads), [leads]);
+  const insuranceCompanies = [];
   const branches = useMemo(() => [...new Set(gmBranches)].sort(), [gmBranches]);
 
-  const filteredLeads = useMemo(() => {
-    let result = (leads ?? []).filter((l) => gmBranches.some((b) => leadBranchMatches(l.branch, b)));
-    if (branchFilter !== "All") {
-      result = result.filter((l) => leadBranchMatches(l.branch, branchFilter));
-    }
-    if (insuranceFilter !== "All") {
-      result = result.filter((l) => l.insuranceCompany === insuranceFilter);
-    }
-    return result;
-  }, [leads, gmBranches, branchFilter, insuranceFilter]);
+  const filteredLeads = [];
 
-  const stats = useMemo(() => getGMDashboardStats(filteredLeads, dateRange), [filteredLeads, dateRange]);
-  const leaderboard = useMemo(
-    () => getGMBranchLeaderboard(filteredLeads, dateRange, sortMetric, scope, gmName),
-    [filteredLeads, dateRange, sortMetric, scope, gmName]
-  );
+  const stats = useMemo(() => {
+    const snGm = snapshot?.gms?.[gmName];
+    if (snGm?.stats) return snGm.stats;
+    return {
+      conversionRate: 0,
+      pctWithin30: 0,
+      commentCompliance: 0,
+      branchPct: 0,
+      cancelledUnreviewed: 0,
+      unusedOverdue: 0,
+      noContactAttempt: 0,
+    };
+  }, [snapshot, gmName]);
+
+  const leaderboard = useMemo(() => {
+    if (!snapshot?.leaderboard?.length) return { sorted: [], benchmark: { total: 0 } };
+    const nmGm = normalizeGmName(gmName);
+    let rows = snapshot.leaderboard.filter((r) => normalizeGmName(r.gm) === nmGm);
+    if (branchFilter !== "All") rows = rows.filter((r) => r.branch === branchFilter);
+    const sortKey = sortMetric;
+    const sorted = [...rows]
+      .sort((a, b) => (b[sortKey] ?? -1) - (a[sortKey] ?? -1))
+      .map((r, i) => ({ ...r, rank: i + 1 }));
+    const benchTotal = rows.reduce((s, r) => s + (r.total ?? 0), 0);
+    const benchRented = rows.reduce((s, r) => s + (r.rented ?? 0), 0);
+    const benchmark = {
+      [sortMetric]: benchTotal ? Math.round((benchRented / benchTotal) * 100) : null,
+      total: benchTotal,
+    };
+    return { sorted, benchmark };
+  }, [snapshot, gmName, branchFilter, sortMetric]);
 
   const maxRate = Math.max(...leaderboard.sorted.map((b) => b[sortMetric] ?? 0), 1);
   const benchVal = leaderboard.benchmark?.[sortMetric];
   const benchWidth = benchVal != null ? Math.min(100, benchVal) : null;
 
   const comparisonRange = useMemo(() => getComparisonDateRange(selectedPresetKey), [selectedPresetKey]);
-  const prevStats = useMemo(() => (comparisonRange ? getGMDashboardStats(filteredLeads, comparisonRange) : null), [filteredLeads, comparisonRange]);
+  const prevStats = useMemo(() => {
+    const snGm = snapshot?.gms?.[gmName];
+    if (snGm?.comparison) return snGm.comparison;
+    return null;
+  }, [snapshot, gmName]);
 
   const summaryCards = [
     { label: "Cancelled Unreviewed", value: String(stats.cancelledUnreviewed), metricKey: "cancelled_unreviewed", relChange: relChange(stats.cancelledUnreviewed, prevStats?.cancelledUnreviewed), lowerIsBetter: true },
@@ -125,7 +139,7 @@ export default function InteractiveComplianceDashboard() {
             <GMMetricDrilldownModal
               metricKey={drilldownMetric}
               onClose={() => setDrilldownMetric(null)}
-              leads={filteredLeads}
+              leads={[]}
               dateRange={dateRange}
               comparisonRange={comparisonRange}
               currentValue={metricValueMap[drilldownMetric]}

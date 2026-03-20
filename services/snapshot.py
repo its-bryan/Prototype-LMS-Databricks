@@ -12,6 +12,7 @@ triggered immediately after each HLES upload completes.
 import json
 import re
 import logging
+import time as _time
 from datetime import date, datetime, timedelta, timezone
 
 from db import query, execute
@@ -681,11 +682,15 @@ def _build_leaderboard_indexed(
 
 def compute_and_store_snapshot():
     """Compute dashboard metrics for the trailing 4-week view and store as JSONB."""
-    import time as _time
     t0 = _time.monotonic()
+    earliest_date = (datetime.utcnow() - timedelta(weeks=12)).strftime("%Y-%m-%d")
     print("[snapshot] compute_and_store_snapshot started", flush=True)
     try:
-        leads = query("SELECT * FROM leads WHERE archived = false")
+        leads = query(
+            "SELECT * FROM leads WHERE archived = false AND COALESCE(init_dt_final, week_of) >= %s",
+            (earliest_date,),
+        )
+        print(f"[snapshot] loaded {len(leads)} leads in {_time.monotonic() - t0:.2f}s", flush=True)
         org_rows = query("SELECT * FROM org_mapping")
         tasks = query("SELECT * FROM tasks")
     except Exception:
@@ -694,10 +699,10 @@ def compute_and_store_snapshot():
         return
 
     t_load = _time.monotonic()
-    print(f"[snapshot] loaded {len(leads)} leads, {len(org_rows)} org rows, {len(tasks)} tasks in {t_load - t0:.1f}s", flush=True)
 
     if not leads:
         print("[snapshot] no leads found — skipping", flush=True)
+        print(f"[snapshot] compute complete in {_time.monotonic() - t0:.2f}s", flush=True)
         return
 
     now = _get_now(leads)
@@ -811,6 +816,7 @@ def compute_and_store_snapshot():
         )
         t_done = _time.monotonic()
         print(f"[snapshot] STORED OK — now={now}, {len(branches_snapshot)} branches, {len(gms_snapshot)} GMs, json={len(payload)} chars, total={t_done - t0:.1f}s", flush=True)
+        print(f"[snapshot] compute complete in {_time.monotonic() - t0:.2f}s", flush=True)
     except Exception as exc:
         print(f"[snapshot] ERROR storing snapshot: {exc}", flush=True)
         logger.exception("Failed to store dashboard snapshot")

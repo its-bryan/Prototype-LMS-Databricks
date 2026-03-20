@@ -2,21 +2,8 @@ import { useMemo, useEffect, useRef } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { useApp } from "../../context/AppContext";
 import { useAuth } from "../../context/AuthContext";
-import { useData } from "../../context/DataContext";
 import { useLocation, useNavigate } from "react-router-dom";
 import { roleNav, roleUsers, viewPaths } from "../../config/navigation";
-import {
-  getDateRangePresets,
-  getMeetingPrepOutstandingCount,
-  getDefaultBranchForDemo,
-  getGMOutstandingCount,
-  getGMLeadsToReviewCount,
-  getTasksForGMBranches,
-  getBranchesWithFlags,
-  resolveGMName,
-  normalizeGmName,
-} from "../../selectors/demoSelectors";
-
 const iconMap = {
   home: (
     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -135,63 +122,15 @@ export default function Sidebar() {
   const currentPath = useMemo(() => normalizePath(pathname), [pathname]);
   const reduceMotion = useReducedMotion();
   const { signOut, userProfile } = useAuth();
-  const { leads, gmTasks, orgMapping } = useData();
   const navItems = role ? roleNav[role] || [] : [];
   const feedbackItem = navItems.find((item) => item.id === "feedback") ?? null;
   const primaryNavItems = navItems.filter((item) => item.id !== "feedback");
   const isProfileActive = currentPath === staticPathForView("profile");
 
-  // Outstanding actions for Meeting Prep (this week only) — leads needing comments + data mismatches
-  const meetingPrepOutstanding = useMemo(() => {
-    if (role !== "bm") return 0;
-    const presets = getDateRangePresets();
-    const thisWeek = presets.find((p) => p.key === "this_week");
-    if (!thisWeek) return 0;
-    const dateRange = { start: thisWeek.start, end: thisWeek.end };
-    const branch = (userProfile?.branch?.trim() || getDefaultBranchForDemo());
-    return getMeetingPrepOutstandingCount(leads ?? [], dateRange, branch);
-  }, [role, leads, userProfile?.branch]);
-
-  const gmName = useMemo(() => {
-    const name = userProfile?.displayName;
-    if (!name) return resolveGMName(null, userProfile?.id);
-    const nm = normalizeGmName(name);
-    if ((orgMapping ?? []).some((r) => r.gm && normalizeGmName(r.gm) === nm)) return name;
-    if ((leads ?? []).some((l) => normalizeGmName(l.generalMgr ?? l.general_mgr) === nm)) return name;
-    return resolveGMName(name, userProfile?.id);
-  }, [userProfile?.displayName, userProfile?.id, orgMapping, leads]);
-
-  // GM Meeting Prep: outstanding branch items + open tasks to chase
-  const gmMeetingPrepOutstanding = useMemo(() => {
-    if (role !== "gm") return 0;
-    const presets = getDateRangePresets();
-    const thisWeek = presets.find((p) => p.key === "this_week");
-    if (!thisWeek) return 0;
-    const dateRange = { start: thisWeek.start, end: thisWeek.end };
-    const outstanding = getGMOutstandingCount(leads ?? [], dateRange, gmName);
-    const openTasks = getTasksForGMBranches(gmTasks, gmName, leads);
-    return outstanding + openTasks.length;
-  }, [role, leads, gmTasks, gmName]);
-
-  // GM Spot Check: branches with red flags (untouched leads or mismatches)
-  const gmSpotCheckFlags = useMemo(() => {
-    if (role !== "gm") return 0;
-    const presets = getDateRangePresets();
-    const thisWeek = presets.find((p) => p.key === "this_week");
-    if (!thisWeek) return 0;
-    const dateRange = { start: thisWeek.start, end: thisWeek.end };
-    return getBranchesWithFlags(leads ?? [], dateRange, gmName).flaggedBranches;
-  }, [role, leads, gmName]);
-
-  // GM Lead Review: leads pending review (cancelled unreviewed + unused overdue)
-  const gmLeadReviewCount = useMemo(() => {
-    if (role !== "gm") return 0;
-    const presets = getDateRangePresets();
-    const thisWeek = presets.find((p) => p.key === "this_week");
-    if (!thisWeek) return 0;
-    const dateRange = { start: thisWeek.start, end: thisWeek.end };
-    return getGMLeadsToReviewCount(leads ?? [], dateRange);
-  }, [role, leads]);
+  const meetingPrepOutstanding = 0;
+  const gmMeetingPrepOutstanding = 0;
+  const gmSpotCheckFlags = 0;
+  const gmLeadReviewCount = 0;
 
   const resolvedActive = useMemo(() => {
     const entries = Object.entries(viewPaths)
