@@ -173,14 +173,6 @@ function ComparisonCards({ config, currentValue, previousValue, currentRange, pr
   const fmtCurrent = config.format(currentValue);
   const fmtPrevious = config.format(previousValue);
 
-  let relChange = null;
-  if (previousValue != null && previousValue !== 0 && currentValue != null) {
-    relChange = Math.round(((currentValue - previousValue) / Math.abs(previousValue)) * 100);
-  }
-
-  const isPositive = config.lowerIsBetter ? relChange < 0 : relChange > 0;
-  const isNegative = config.lowerIsBetter ? relChange > 0 : relChange < 0;
-
   return (
     <div className="grid grid-cols-2 gap-3 mb-5">
       <div className="border-2 border-[var(--hertz-primary)] rounded-lg p-4 bg-[var(--hertz-primary)]/5">
@@ -188,18 +180,6 @@ function ComparisonCards({ config, currentValue, previousValue, currentRange, pr
         <p className="text-xs text-[var(--neutral-600)] mb-2">{formatRange(currentRange)}</p>
         <div className="flex items-center gap-2">
           <p className="text-2xl font-extrabold text-[var(--hertz-black)]">{fmtCurrent}</p>
-          {relChange != null && relChange !== 0 && (
-            <span
-              className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
-                isPositive ? "bg-[#2E7D32]/15 text-[#2E7D32]" : isNegative ? "bg-[#C62828]/15 text-[#C62828]" : "bg-[var(--neutral-100)] text-[var(--neutral-600)]"
-              }`}
-            >
-              {config.lowerIsBetter
-                ? (relChange < 0 ? "↓" : "↑")
-                : (relChange > 0 ? "↑" : "↓")}
-              {Math.abs(relChange)}%
-            </span>
-          )}
         </div>
         {config.numeratorLabel && (
           <p className="text-xs text-[var(--neutral-600)] mt-1">
@@ -221,7 +201,7 @@ function ComparisonCards({ config, currentValue, previousValue, currentRange, pr
   );
 }
 
-function LeadTable({ leads, config, allLeads }) {
+function LeadTable({ leads, config, allLeads, onLeadClick }) {
   const showHighlight = !!config.numeratorFilter;
   const extraCol = config.extraColumn;
   const colCount = 7 + (showHighlight ? 1 : 0) + (extraCol ? 1 : 0);
@@ -255,8 +235,11 @@ function LeadTable({ leads, config, allLeads }) {
                 return (
                   <tr
                     key={lead.id}
+                    onClick={onLeadClick ? () => onLeadClick(lead) : undefined}
                     className={`border-t border-[var(--neutral-200)] transition-colors ${
                       isNumerator ? "bg-[#2E7D32]/5" : ""
+                    } ${
+                      onLeadClick ? "cursor-pointer hover:bg-[var(--neutral-50)]" : ""
                     }`}
                   >
                     {showHighlight && (
@@ -377,7 +360,7 @@ function TaskTable({ tasks, config, allLeads }) {
   );
 }
 
-export default function MetricDrilldownModal({ metricKey, onClose, leads, branchTasks, dateRange, comparisonRange, branch }) {
+export default function MetricDrilldownModal({ metricKey, onClose, leads, branchTasks, dateRange, comparisonRange, branch, onLeadClick }) {
   const [activeTab, setActiveTab] = useState("current");
   const [groupByPrimary, setGroupByPrimary] = useState(null);
   const [groupBySecondary, setGroupBySecondary] = useState(null);
@@ -556,7 +539,7 @@ export default function MetricDrilldownModal({ metricKey, onClose, leads, branch
               transition={{ duration: 0.15 }}
             >
               {isLeadMetric ? (
-                <LeadTable leads={activeData} config={config} allLeads={leads} />
+                <LeadTable leads={activeData} config={config} allLeads={leads} onLeadClick={onLeadClick} />
               ) : (
                 <TaskTable tasks={activeData} config={config} allLeads={leads} />
               )}

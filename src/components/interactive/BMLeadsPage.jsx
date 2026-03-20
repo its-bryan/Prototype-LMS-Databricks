@@ -6,7 +6,6 @@ import BackButton from "../BackButton";
 import StatusBadge from "../StatusBadge";
 import {
   getDateRangePresets,
-  getLeadsForBranchInRange,
   getDefaultBranchForDemo,
 } from "../../selectors/demoSelectors";
 import { formatDateShort } from "../../utils/dateTime";
@@ -16,40 +15,58 @@ import { usePageTransition, BMDashboardSkeleton } from "../DashboardSkeleton";
 const STATUS_TABS = ["All", "Cancelled", "Unused", "Rented"];
 
 export default function BMLeadsPage() {
-  const { leads, loading, updateLeadDirective, markLeadReviewed, demandLeads, initialDataReady } = useData();
+  const { loading, fetchLeadsPage, initialDataReady } = useData();
   const { userProfile } = useAuth();
   const navigate = useNavigate();
 
-  useEffect(() => { demandLeads(); }, [demandLeads]);
-
   const branch = userProfile?.branch?.trim() || getDefaultBranchForDemo();
   const presets = useMemo(() => getDateRangePresets(), [loading]);
+  const pageSize = 20;
 
   const [selectedPresetKey, setSelectedPresetKey] = useState("trailing_4_weeks");
   const [statusFilter, setStatusFilter] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
+  const [offset, setOffset] = useState(0);
+  const [totalLeads, setTotalLeads] = useState(0);
+  const [pagedLeads, setPagedLeads] = useState([]);
+  const [pageLoading, setPageLoading] = useState(false);
 
   const currentPreset = presets.find((p) => p.key === selectedPresetKey);
   const dateRange = currentPreset ? { start: currentPreset.start, end: currentPreset.end } : null;
 
-  const filteredLeads = useMemo(() => {
-    let result = getLeadsForBranchInRange(leads, dateRange, branch);
+  useEffect(() => {
+    setOffset(0);
+  }, [selectedPresetKey, statusFilter, searchQuery, branch]);
 
-    if (statusFilter !== "All") {
-      result = result.filter((l) => l.status === statusFilter);
-    }
-
-    if (searchQuery.trim()) {
-      const q = searchQuery.trim().toLowerCase();
-      result = result.filter(
-        (l) =>
-          (l.customer ?? "").toLowerCase().includes(q) ||
-          (l.reservationId ?? "").toLowerCase().includes(q)
-      );
-    }
-
-    return result;
-  }, [leads, dateRange, branch, statusFilter, searchQuery]);
+  useEffect(() => {
+    let cancelled = false;
+    setPageLoading(true);
+    fetchLeadsPage({
+      branch,
+      status: statusFilter === "All" ? null : statusFilter,
+      search: searchQuery.trim() || null,
+      startDate: dateRange?.start ?? null,
+      endDate: dateRange?.end ?? null,
+      limit: pageSize,
+      offset,
+    })
+      .then((result) => {
+        if (cancelled) return;
+        setPagedLeads(result?.items ?? []);
+        setTotalLeads(result?.total ?? 0);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setPagedLeads([]);
+        setTotalLeads(0);
+      })
+      .finally(() => {
+        if (!cancelled) setPageLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchLeadsPage, branch, statusFilter, searchQuery, dateRange?.start, dateRange?.end, offset]);
 
   const pageReady = usePageTransition();
   if (!initialDataReady || !pageReady) return <BMDashboardSkeleton />;
@@ -125,14 +142,24 @@ export default function BMLeadsPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredLeads.length === 0 && (
+              {!pageLoading && pagedLeads.length === 0 && (
                 <tr>
                   <td colSpan="5" className="px-4 py-12 text-center text-[var(--neutral-500)]">
                     No leads match the current filters
                   </td>
                 </tr>
               )}
-              {filteredLeads.map((lead) => (
+              {pageLoading &&
+                Array.from({ length: 6 }).map((_, idx) => (
+                  <tr key={`loading-${idx}`} className="border-b border-[var(--neutral-100)] animate-pulse">
+                    <td className="px-4 py-3"><div className="h-3 w-16 rounded bg-[var(--neutral-200)]" /></td>
+                    <td className="px-4 py-3"><div className="h-3 w-32 rounded bg-[var(--neutral-200)]" /></td>
+                    <td className="px-4 py-3"><div className="h-5 w-16 rounded-full bg-[var(--neutral-200)]" /></td>
+                    <td className="px-4 py-3"><div className="h-3 w-24 rounded bg-[var(--neutral-200)]" /></td>
+                    <td className="px-4 py-3"><div className="h-3 w-20 rounded bg-[var(--neutral-200)]" /></td>
+                  </tr>
+                ))}
+              {pagedLeads.map((lead) => (
                 <tr
                   key={lead.id}
                   onClick={() => navigate(`/bm/leads/${lead.id}`)}
@@ -152,6 +179,29 @@ export default function BMLeadsPage() {
               ))}
             </tbody>
           </table>
+        </div>
+        <div className="flex items-center justify-between text-xs text-[var(--neutral-600)] px-1">
+          <span>
+            {totalLeads === 0 ? "0 results" : `Showing ${offset + 1}-${Math.min(offset + pageSize, totalLeads)} of ${totalLeads}`}
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setOffset((prev) => Math.max(0, prev - pageSize))}
+              disabled={offset === 0 || pageLoading}
+              className="px-2.5 py-1 rounded border border-[var(--neutral-200)] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--neutral-50)]"
+            >
+              Prev
+            </button>
+            <button
+              type="button"
+              onClick={() => setOffset((prev) => prev + pageSize)}
+              disabled={pageLoading || offset + pageSize >= totalLeads}
+              className="px-2.5 py-1 rounded border border-[var(--neutral-200)] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--neutral-50)]"
+            >
+              Next
+            </button>
+          </div>
         </div>
       </div>
     </div>

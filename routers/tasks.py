@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 import json
 import logging
 import time
@@ -20,17 +20,71 @@ def _parse_uuid(s):
         return None
 
 @router.get("/tasks")
-async def get_tasks(lead_id: int = None, branch: str = None):
-    if lead_id:
+async def get_tasks(
+    lead_id: int = None,
+    branch: str = None,
+    statuses: str = Query(None),
+    search: str = Query(None),
+    limit: int = Query(20, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    paged: bool = Query(False),
+):
+    if lead_id and not paged and not statuses and not search:
         return query("SELECT * FROM tasks WHERE lead_id = %s ORDER BY created_at DESC", (lead_id,))
+
+    where = []
+    params = []
+    normalized = None
     if branch:
         normalized = " ".join(branch.split())
+        where.append("trim(regexp_replace(l.branch, '\\s+', ' ', 'g')) = %s")
+        params.append(normalized)
+
+    if lead_id:
+        where.append("t.lead_id = %s")
+        params.append(lead_id)
+
+    if statuses:
+        status_list = [s.strip() for s in statuses.split(",") if s.strip()]
+        if status_list:
+            placeholders = ",".join(["%s"] * len(status_list))
+            where.append(f"t.status IN ({placeholders})")
+            params.extend(status_list)
+
+    if search:
+        like = f"%{search.strip()}%"
+        where.append("(t.title ILIKE %s OR COALESCE(l.customer, '') ILIKE %s)")
+        params.extend([like, like])
+
+    where_sql = ("WHERE " + " AND ".join(where)) if where else ""
+    base_from = (
+        " FROM tasks t"
+        " LEFT JOIN leads l ON t.lead_id = l.id"
+    )
+    select_cols = (
+        "SELECT t.*, l.customer, l.reservation_id, l.branch as lead_branch, l.status as lead_status"
+    )
+
+    if paged:
+        count_rows = query(f"SELECT COUNT(*)::int AS total{base_from} {where_sql}", tuple(params))
+        total = count_rows[0]["total"] if count_rows else 0
+        rows = query(
+            f"{select_cols}{base_from} {where_sql}"
+            " ORDER BY t.created_at DESC LIMIT %s OFFSET %s",
+            tuple([*params, limit, offset]),
+        )
+        return {
+            "items": rows,
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+            "has_next": (offset + limit) < total,
+        }
+
+    if branch or statuses or search:
         return query(
-            """SELECT t.* FROM tasks t
-               JOIN leads l ON t.lead_id = l.id
-               WHERE trim(regexp_replace(l.branch, '\\s+', ' ', 'g')) = %s
-               ORDER BY t.created_at DESC""",
-            (normalized,)
+            f"{select_cols}{base_from} {where_sql} ORDER BY t.created_at DESC",
+            tuple(params),
         )
     return query("SELECT * FROM tasks ORDER BY created_at DESC")
 
@@ -166,7 +220,14 @@ async def create_compliance_tasks(body: dict):
     return {"created": created, "reminded": reminded, "errors": errors}
 
 @router.get("/tasks/gm")
-async def get_tasks_for_gm(branches: str = ""):
+async def get_tasks_for_gm(
+    branches: str = "",
+    statuses: str = Query(None),
+    search: str = Query(None),
+    limit: int = Query(20, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    paged: bool = Query(False),
+):
     """Fetch tasks for multiple branches (comma-separated)."""
     if not branches:
         return []
@@ -174,13 +235,43 @@ async def get_tasks_for_gm(branches: str = ""):
     if not branch_list:
         return []
     placeholders = ",".join(["%s"] * len(branch_list))
+    where = [f"l.branch IN ({placeholders})"]
+    params = [*branch_list]
+
+    if statuses:
+        status_list = [s.strip() for s in statuses.split(",") if s.strip()]
+        if status_list:
+            status_placeholders = ",".join(["%s"] * len(status_list))
+            where.append(f"t.status IN ({status_placeholders})")
+            params.extend(status_list)
+
+    if search:
+        like = f"%{search.strip()}%"
+        where.append("(t.title ILIKE %s OR COALESCE(l.customer, '') ILIKE %s)")
+        params.extend([like, like])
+
+    where_sql = " AND ".join(where)
+    select_cols = "SELECT t.*, l.customer, l.reservation_id, l.branch as lead_branch, l.status as lead_status"
+    from_sql = " FROM tasks t JOIN leads l ON t.lead_id = l.id"
+
+    if paged:
+        count_rows = query(f"SELECT COUNT(*)::int AS total{from_sql} WHERE {where_sql}", tuple(params))
+        total = count_rows[0]["total"] if count_rows else 0
+        rows = query(
+            f"{select_cols}{from_sql} WHERE {where_sql} ORDER BY t.due_date ASC NULLS LAST, t.created_at ASC LIMIT %s OFFSET %s",
+            tuple([*params, limit, offset]),
+        )
+        return {
+            "items": rows,
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+            "has_next": (offset + limit) < total,
+        }
+
     return query(
-        f"""SELECT t.*, l.customer, l.reservation_id, l.branch as lead_branch
-            FROM tasks t
-            JOIN leads l ON t.lead_id = l.id
-            WHERE l.branch IN ({placeholders})
-            ORDER BY t.due_date ASC NULLS LAST, t.created_at ASC""",
-        tuple(branch_list)
+        f"{select_cols}{from_sql} WHERE {where_sql} ORDER BY t.due_date ASC NULLS LAST, t.created_at ASC",
+        tuple(params),
     )
 
 @router.get("/tasks/{task_id}")

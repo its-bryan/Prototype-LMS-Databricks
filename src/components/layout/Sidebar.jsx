@@ -281,23 +281,11 @@ export default function Sidebar() {
           const isObsChild = item.parentId === "observatory";
           if (isObsChild && !obsExpanded) return null;
 
-          // Determine active state
-          let isActive;
-          if (item.id === "bm-work") {
-            isActive = workChildIds.includes(resolvedActive) || resolvedActive === "bm-work";
-          } else if (item.id === "bm-dashboard") {
-            isActive = summaryChildIds.includes(resolvedActive) || resolvedActive === "bm-dashboard";
-          } else if (item.id === "gm-overview") {
-            isActive = gmOverviewChildIds.includes(resolvedActive) || resolvedActive === "gm-overview";
-          } else if (item.id === "gm-todos") {
-            isActive = gmTodosChildIds.includes(resolvedActive) || resolvedActive === "gm-todos";
-          } else if (item.id === "observatory") {
-            isActive = obsChildIds.includes(resolvedActive) || resolvedActive === "observatory";
-          } else {
-            isActive = resolvedActive === item.id;
-          }
+          // Highlight only the exact menu the user is on.
+          const isActive = resolvedActive === item.id;
 
           const isChild = !!item.parentId;
+          const showIcon = isChild || sidebarCollapsed;
 
           const showMeetingPrepBadge =
             item.id === "bm-meeting-prep" && meetingPrepOutstanding > 0;
@@ -367,17 +355,19 @@ export default function Sidebar() {
                 }`}
                 title={showBadge ? badgeTitle : item.label}
               >
-                <span className={`relative shrink-0 ${isActive ? "text-[#FFD100]" : ""}`}>
-                  {iconMap[item.icon]}
-                  {showBadge && (
-                    <span
-                      className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-[var(--hertz-primary)] text-[var(--hertz-black)] text-[10px] font-bold shadow-[var(--shadow-sm)]"
-                      aria-label={badgeTitle}
-                    >
-                      {badgeCount > 99 ? "99+" : badgeCount}
-                    </span>
-                  )}
-                </span>
+                {showIcon && (
+                  <span className={`relative shrink-0 ${isActive ? "text-[#FFD100]" : ""}`}>
+                    {iconMap[item.icon]}
+                    {showBadge && (
+                      <span
+                        className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-[var(--hertz-primary)] text-[var(--hertz-black)] text-[10px] font-bold shadow-[var(--shadow-sm)]"
+                        aria-label={badgeTitle}
+                      >
+                        {badgeCount > 99 ? "99+" : badgeCount}
+                      </span>
+                    )}
+                  </span>
+                )}
                 {!sidebarCollapsed && (
                   <span className="truncate">{item.label}</span>
                 )}

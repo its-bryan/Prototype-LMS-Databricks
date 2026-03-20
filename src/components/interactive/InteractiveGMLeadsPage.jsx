@@ -5,10 +5,7 @@ import { useData } from "../../context/DataContext";
 import { useAuth } from "../../context/AuthContext";
 import BackButton from "../BackButton";
 import {
-  getGMLeads,
   getDateRangePresets,
-  getInsuranceCompanies,
-  getLeadById,
   resolveGMName,
   normalizeGmName,
 } from "../../selectors/demoSelectors";
@@ -21,11 +18,11 @@ import { GMLeadsPageSkeleton, usePageTransition } from "../DashboardSkeleton";
 const STATUS_TABS = ["All", "Cancelled", "Unused", "Rented"];
 
 export default function InteractiveGMLeadsPage() {
-  const { leads, loading, orgMapping, updateLeadDirective, markLeadReviewed, demandLeads, initialDataReady } = useData();
+  const { loading, orgMapping, updateLeadDirective, markLeadReviewed, fetchLeadsPage, initialDataReady } = useData();
   const { userProfile } = useAuth();
   const navigate = useNavigate();
-  useEffect(() => { demandLeads(); }, [demandLeads]);
   const presets = useMemo(() => getDateRangePresets(), [loading]);
+  const pageSize = 20;
 
   const [selectedPresetKey, setSelectedPresetKey] = useState("this_week");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -36,6 +33,11 @@ export default function InteractiveGMLeadsPage() {
   const [selectedLeadId, setSelectedLeadId] = useState(null);
   const [directive, setDirective] = useState("");
   const [directiveSaved, setDirectiveSaved] = useState(false);
+  const [offset, setOffset] = useState(0);
+  const [totalLeads, setTotalLeads] = useState(0);
+  const [pagedLeads, setPagedLeads] = useState([]);
+  const [pageLoading, setPageLoading] = useState(false);
+  const [refreshTick, setRefreshTick] = useState(0);
 
   const currentPreset = presets.find((p) => p.key === selectedPresetKey);
   const dateRange = currentPreset ? { start: currentPreset.start, end: currentPreset.end } : null;
@@ -46,9 +48,8 @@ export default function InteractiveGMLeadsPage() {
     const nm = normalizeGmName(name);
     const orgMatch = (orgMapping ?? []).find((r) => r.gm && normalizeGmName(r.gm) === nm);
     if (orgMatch) return orgMatch.gm;
-    if ((leads ?? []).some((l) => normalizeGmName(l.generalMgr ?? l.general_mgr) === nm)) return name;
     return resolveGMName(name, userProfile?.id);
-  }, [userProfile?.displayName, userProfile?.id, orgMapping, leads]);
+  }, [userProfile?.displayName, userProfile?.id, orgMapping]);
 
   const gmOrgRows = useMemo(() => {
     if (!gmName) return orgMapping;
@@ -58,19 +59,63 @@ export default function InteractiveGMLeadsPage() {
 
   const bmNames = useMemo(() => [...new Set(gmOrgRows.map((r) => r.bm).filter(Boolean))].sort(), [gmOrgRows]);
   const branches = useMemo(() => [...new Set(gmOrgRows.map((r) => r.branch).filter(Boolean))].sort(), [gmOrgRows]);
-  const insuranceCompanies = useMemo(() => getInsuranceCompanies(leads), [leads]);
+  const insuranceCompanies = useMemo(
+    () => [...new Set((pagedLeads ?? []).map((l) => l.insuranceCompany).filter(Boolean))].sort(),
+    [pagedLeads]
+  );
 
-  const filteredLeads = useMemo(() => {
-    return getGMLeads(leads, dateRange, {
-      statusFilter: statusFilter === "All" ? null : statusFilter,
-      bmFilter: bmFilter === "All" ? null : bmFilter,
-      branchFilter: branchFilter === "All" ? null : branchFilter,
-      insuranceFilter: insuranceFilter === "All" ? null : insuranceFilter,
-      searchQuery: searchQuery || null,
-    }, gmName);
-  }, [leads, dateRange, statusFilter, bmFilter, branchFilter, insuranceFilter, searchQuery, gmName]);
+  useEffect(() => {
+    setOffset(0);
+    setSelectedLeadId(null);
+  }, [selectedPresetKey, statusFilter, bmFilter, branchFilter, insuranceFilter, searchQuery, gmName]);
 
-  const selectedLead = selectedLeadId ? getLeadById(leads, selectedLeadId) : null;
+  useEffect(() => {
+    let cancelled = false;
+    setPageLoading(true);
+    fetchLeadsPage({
+      gmName,
+      status: statusFilter === "All" ? null : statusFilter,
+      bmName: bmFilter === "All" ? null : bmFilter,
+      branch: branchFilter === "All" ? null : branchFilter,
+      insurance: insuranceFilter === "All" ? null : insuranceFilter,
+      search: searchQuery.trim() || null,
+      startDate: dateRange?.start ?? null,
+      endDate: dateRange?.end ?? null,
+      limit: pageSize,
+      offset,
+    })
+      .then((result) => {
+        if (cancelled) return;
+        setPagedLeads(result?.items ?? []);
+        setTotalLeads(result?.total ?? 0);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setPagedLeads([]);
+        setTotalLeads(0);
+      })
+      .finally(() => {
+        if (!cancelled) setPageLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    fetchLeadsPage,
+    gmName,
+    statusFilter,
+    bmFilter,
+    branchFilter,
+    insuranceFilter,
+    searchQuery,
+    dateRange?.start,
+    dateRange?.end,
+    pageSize,
+    offset,
+    refreshTick,
+  ]);
+
+  const selectedLead = selectedLeadId ? pagedLeads.find((l) => l.id === selectedLeadId) : null;
 
   const handleSelectLead = (id, rowEl) => {
     setSelectedLeadId(id);
@@ -87,7 +132,12 @@ export default function InteractiveGMLeadsPage() {
     if (!directive.trim() || !selectedLeadId) return;
     setDirectiveSaving(true);
     try {
-      await updateLeadDirective(selectedLeadId, directive.trim());
+      const updated = await updateLeadDirective(selectedLeadId, directive.trim());
+      if (updated) {
+        setPagedLeads((prev) => prev.map((lead) => (lead.id === selectedLeadId ? updated : lead)));
+      } else {
+        setRefreshTick((v) => v + 1);
+      }
       setDirective("");
       setDirectiveSaved(true);
       setTimeout(() => setDirectiveSaved(false), 3000);
@@ -103,6 +153,7 @@ export default function InteractiveGMLeadsPage() {
     try {
       await markLeadReviewed(selectedLeadId);
       setSelectedLeadId(null);
+      setRefreshTick((v) => v + 1);
     } catch (err) {
       console.error("Failed to mark lead reviewed:", err);
     }
@@ -176,6 +227,9 @@ export default function InteractiveGMLeadsPage() {
 
             <select value={insuranceFilter} onChange={(e) => setInsuranceFilter(e.target.value)} className="px-3 py-1.5 border border-[var(--neutral-200)] rounded-md text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[var(--hertz-primary)]">
               <option value="All">All Insurance</option>
+              {insuranceFilter !== "All" && !insuranceCompanies.includes(insuranceFilter) && (
+                <option value={insuranceFilter}>{insuranceFilter}</option>
+              )}
               {insuranceCompanies.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
 
@@ -202,14 +256,25 @@ export default function InteractiveGMLeadsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredLeads.length === 0 && (
+                {!pageLoading && pagedLeads.length === 0 && (
                   <tr>
                     <td colSpan="6" className="px-4 py-8 text-center text-[var(--neutral-500)]">
                       No leads match the current filters
                     </td>
                   </tr>
                 )}
-                {filteredLeads.map((lead) => (
+                {pageLoading &&
+                  Array.from({ length: 8 }).map((_, idx) => (
+                    <tr key={`loading-${idx}`} className="border-b border-[var(--neutral-100)] animate-pulse">
+                      <td className="px-4 py-3"><div className="h-3 w-16 rounded bg-[var(--neutral-200)]" /></td>
+                      <td className="px-4 py-3"><div className="h-3 w-28 rounded bg-[var(--neutral-200)]" /></td>
+                      <td className="px-4 py-3"><div className="h-5 w-16 rounded-full bg-[var(--neutral-200)]" /></td>
+                      <td className="px-4 py-3"><div className="h-3 w-20 rounded bg-[var(--neutral-200)]" /></td>
+                      <td className="px-4 py-3"><div className="h-3 w-20 rounded bg-[var(--neutral-200)]" /></td>
+                      <td className="px-4 py-3"><div className="h-3 w-20 rounded bg-[var(--neutral-200)]" /></td>
+                    </tr>
+                  ))}
+                {pagedLeads.map((lead) => (
                   <tr
                     key={lead.id}
                     onClick={(e) => handleSelectLead(lead.id, e.currentTarget)}
@@ -223,14 +288,7 @@ export default function InteractiveGMLeadsPage() {
                       {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
                     </td>
                     <td className="px-4 py-3 font-medium text-[var(--hertz-black)]">
-                      <div className="flex items-center gap-1.5">
-                        {lead.customer}
-                        {lead.gmDirective && (
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[var(--hertz-primary-subtle)] text-[var(--hertz-black)]" title={lead.gmDirective}>
-                            Directive
-                          </span>
-                        )}
-                      </div>
+                      <div>{lead.customer}</div>
                       <div className="text-xs text-[var(--neutral-500)] font-mono">{lead.reservationId}</div>
                     </td>
                     <td className="px-4 py-3"><StatusBadge status={lead.status} /></td>
@@ -241,6 +299,29 @@ export default function InteractiveGMLeadsPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+          <div className="mt-3 flex items-center justify-between text-xs text-[var(--neutral-600)] px-1">
+            <span>
+              {totalLeads === 0 ? "0 results" : `Showing ${offset + 1}-${Math.min(offset + pageSize, totalLeads)} of ${totalLeads}`}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setOffset((prev) => Math.max(0, prev - pageSize))}
+                disabled={offset === 0 || pageLoading}
+                className="px-2.5 py-1 rounded border border-[var(--neutral-200)] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--neutral-50)]"
+              >
+                Prev
+              </button>
+              <button
+                type="button"
+                onClick={() => setOffset((prev) => prev + pageSize)}
+                disabled={pageLoading || offset + pageSize >= totalLeads}
+                className="px-2.5 py-1 rounded border border-[var(--neutral-200)] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--neutral-50)]"
+              >
+                Next
+              </button>
+            </div>
           </div>
         </div>
       </div>

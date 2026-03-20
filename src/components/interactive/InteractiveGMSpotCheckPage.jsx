@@ -23,9 +23,7 @@ import { SpotCheckSkeleton, usePageTransition } from "../DashboardSkeleton";
 
 const easeOut = [0.4, 0, 0.2, 1];
 
-function MetricComparison({ label, branchVal, zoneVal, suffix = "%", lowerIsBetter = false, onClick }) {
-  const diff = branchVal - zoneVal;
-  const isGood = lowerIsBetter ? diff <= 0 : diff >= 0;
+function MetricComparison({ label, branchVal, zoneVal, suffix = "%", onClick }) {
   const isClickable = !!onClick;
   const Wrapper = isClickable ? motion.button : "div";
   return (
@@ -45,11 +43,6 @@ function MetricComparison({ label, branchVal, zoneVal, suffix = "%", lowerIsBett
         <p className="text-xl font-bold text-[var(--hertz-black)]">
           {branchVal}{suffix}
         </p>
-        <span className={`text-xs font-semibold px-1.5 py-0.5 rounded mb-0.5 ${
-          isGood ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
-        }`}>
-          {diff > 0 ? "+" : ""}{diff}{suffix} vs zone
-        </span>
       </div>
       <p className="text-xs text-[var(--neutral-500)] mt-0.5">Zone avg: {zoneVal}{suffix}</p>
     </Wrapper>
@@ -168,6 +161,10 @@ export default function InteractiveGMSpotCheckPage() {
             dateRange={dateRange}
             comparisonRange={comparisonRange}
             branch={selectedBranch}
+            onLeadClick={(lead) => {
+              setDrilldownMetric(null);
+              navigate(`/gm/leads/${lead.id}`);
+            }}
           />
         )}
       </AnimatePresence>

@@ -60,7 +60,7 @@ function formatDueDate(dueStr) {
 }
 
 export default function InteractiveGMMeetingPrepPage() {
-  const { leads, loading, orgMapping, createComplianceTasksForBranch, winsLearnings, updateLeadDirective, markLeadReviewed, gmTasks, fetchGMTasks, demandLeads, initialDataReady } = useData();
+  const { leads, loading, orgMapping, createComplianceTasksForBranch, winsLearnings, updateLeadDirective, markLeadReviewed, gmTasks, fetchGMTasks, fetchLeadsPage, fetchGMTasksPage, demandLeads, initialDataReady } = useData();
   useEffect(() => { demandLeads(); }, [demandLeads]);
   const navigate = useNavigate();
   const { userProfile } = useAuth();
@@ -73,6 +73,15 @@ export default function InteractiveGMMeetingPrepPage() {
   const [leadsExpanded, setLeadsExpanded] = useState(false);
   const [unreachableExpanded, setUnreachableExpanded] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState(null);
+  const pageSize = 20;
+  const [leadsPageOffset, setLeadsPageOffset] = useState(0);
+  const [leadsPageTotal, setLeadsPageTotal] = useState(0);
+  const [pagedLeadsToReview, setPagedLeadsToReview] = useState([]);
+  const [leadsPageLoading, setLeadsPageLoading] = useState(false);
+  const [tasksPageOffset, setTasksPageOffset] = useState(0);
+  const [tasksPageTotal, setTasksPageTotal] = useState(0);
+  const [pagedOpenTasks, setPagedOpenTasks] = useState([]);
+  const [tasksPageLoading, setTasksPageLoading] = useState(false);
 
   const [directive, setDirective] = useState("");
   const [directiveSaved, setDirectiveSaved] = useState(false);
@@ -99,6 +108,78 @@ export default function InteractiveGMMeetingPrepPage() {
       fetchGMTasks(gmBranches);
     }
   }, [gmBranches, fetchGMTasks]);
+
+  useEffect(() => {
+    setLeadsPageOffset(0);
+  }, [gmName, dateRange?.start, dateRange?.end]);
+
+  useEffect(() => {
+    setTasksPageOffset(0);
+  }, [gmBranches.join(",")]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!gmName) {
+      setPagedLeadsToReview([]);
+      setLeadsPageTotal(0);
+      return;
+    }
+    setLeadsPageLoading(true);
+    fetchLeadsPage({
+      gmName,
+      startDate: dateRange?.start ?? null,
+      endDate: dateRange?.end ?? null,
+      limit: pageSize,
+      offset: leadsPageOffset,
+    })
+      .then((res) => {
+        if (cancelled) return;
+        setPagedLeadsToReview(res?.items ?? []);
+        setLeadsPageTotal(res?.total ?? 0);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setPagedLeadsToReview([]);
+        setLeadsPageTotal(0);
+      })
+      .finally(() => {
+        if (!cancelled) setLeadsPageLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchLeadsPage, gmName, dateRange?.start, dateRange?.end, leadsPageOffset]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!gmBranches.length) {
+      setPagedOpenTasks([]);
+      setTasksPageTotal(0);
+      return;
+    }
+    setTasksPageLoading(true);
+    fetchGMTasksPage(gmBranches, {
+      statuses: "Open,In Progress",
+      limit: pageSize,
+      offset: tasksPageOffset,
+    })
+      .then((res) => {
+        if (cancelled) return;
+        setPagedOpenTasks(res?.items ?? []);
+        setTasksPageTotal(res?.total ?? 0);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setPagedOpenTasks([]);
+        setTasksPageTotal(0);
+      })
+      .finally(() => {
+        if (!cancelled) setTasksPageLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchGMTasksPage, gmBranches, tasksPageOffset]);
 
   const gmFilteredLeads = useMemo(() => {
     if (!gmName) return leads ?? [];
@@ -305,10 +386,10 @@ export default function InteractiveGMMeetingPrepPage() {
                             </tr>
                           </thead>
                           <tbody>
-                            {leadsToReview.length === 0 ? (
+                            {!leadsPageLoading && pagedLeadsToReview.length === 0 ? (
                               <tr><td colSpan={4} className="px-4 py-8 text-center text-[var(--neutral-500)]">No leads to review.</td></tr>
                             ) : (
-                              leadsToReview.slice(0, 20).map((lead) => (
+                              pagedLeadsToReview.map((lead) => (
                                 <tr
                                   key={lead.id}
                                   onClick={() => { setSelectedLeadId(lead.id); setDirective(""); setDirectiveSaved(false); }}
@@ -323,16 +404,42 @@ export default function InteractiveGMMeetingPrepPage() {
                                 </tr>
                               ))
                             )}
+                            {leadsPageLoading &&
+                              Array.from({ length: 6 }).map((_, idx) => (
+                                <tr key={`lp-${idx}`} className="border-t border-[var(--neutral-100)] animate-pulse">
+                                  <td className="px-4 py-3"><div className="h-3 w-16 rounded bg-[var(--neutral-200)]" /></td>
+                                  <td className="px-4 py-3"><div className="h-3 w-28 rounded bg-[var(--neutral-200)]" /></td>
+                                  <td className="px-4 py-3"><div className="h-5 w-16 rounded-full bg-[var(--neutral-200)]" /></td>
+                                  <td className="px-4 py-3"><div className="h-3 w-20 rounded bg-[var(--neutral-200)]" /></td>
+                                </tr>
+                              ))}
                           </tbody>
                         </table>
-                        {leadsToReview.length > 20 && (
-                          <button
-                            onClick={() => navigate("/gm/leads")}
-                            className="w-full py-3 text-center text-sm font-medium text-[var(--neutral-600)] bg-[var(--neutral-50)] hover:bg-[var(--neutral-100)] transition-colors cursor-pointer border-t border-[var(--neutral-200)]"
-                          >
-                            View all {leadsToReview.length} leads
-                          </button>
-                        )}
+                        <div className="px-4 py-2 border-t border-[var(--neutral-200)] flex items-center justify-between text-xs text-[var(--neutral-600)]">
+                          <span>
+                            {leadsPageTotal === 0
+                              ? "0 results"
+                              : `Showing ${leadsPageOffset + 1}-${Math.min(leadsPageOffset + pageSize, leadsPageTotal)} of ${leadsPageTotal}`}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setLeadsPageOffset((prev) => Math.max(0, prev - pageSize))}
+                              disabled={leadsPageOffset === 0 || leadsPageLoading}
+                              className="px-2.5 py-1 rounded border border-[var(--neutral-200)] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--neutral-50)]"
+                            >
+                              Prev
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setLeadsPageOffset((prev) => prev + pageSize)}
+                              disabled={leadsPageLoading || leadsPageOffset + pageSize >= leadsPageTotal}
+                              className="px-2.5 py-1 rounded border border-[var(--neutral-200)] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--neutral-50)]"
+                            >
+                              Next
+                            </button>
+                          </div>
+                        </div>
                       </div>
 
                       <AnimatePresence>
@@ -583,11 +690,11 @@ export default function InteractiveGMMeetingPrepPage() {
                     className="overflow-hidden"
                   >
                     <div className="mt-3 border border-[var(--neutral-200)] rounded-lg overflow-hidden bg-white">
-                      {gmTasksLoading ? (
+                      {gmTasksLoading || tasksPageLoading ? (
                         <div className="px-6 py-8 text-center">
                           <p className="text-[var(--neutral-600)]">Loading tasks…</p>
                         </div>
-                      ) : openTasks.length === 0 ? (
+                      ) : tasksPageTotal === 0 ? (
                         <div className="px-6 py-8 text-center">
                           <p className="text-[var(--neutral-600)]">No open tasks to chase. All tasks assigned to your team are complete.</p>
                         </div>
@@ -605,8 +712,8 @@ export default function InteractiveGMMeetingPrepPage() {
                               </tr>
                             </thead>
                             <tbody>
-                              {openTasks.slice(0, 15).map((task) => {
-                                const lead = task.leadId ? getLeadById(leads, task.leadId) : null;
+                              {pagedOpenTasks.map((task) => {
+                                const lead = task.lead ?? (task.leadId ? getLeadById(leads, task.leadId) : null);
                                 const overdue = task.dueDate && new Date(task.dueDate + "T23:59:59") < new Date();
                                 return (
                                   <tr
@@ -666,11 +773,31 @@ export default function InteractiveGMMeetingPrepPage() {
                               })}
                             </tbody>
                           </table>
-                          {openTasks.length > 15 && (
-                            <p className="px-4 py-2 text-xs text-[var(--neutral-500)] border-t border-[var(--neutral-100)]">
-                              Showing 15 of {openTasks.length} — click a row to view task details
-                            </p>
-                          )}
+                          <div className="px-4 py-2 text-xs text-[var(--neutral-500)] border-t border-[var(--neutral-100)] flex items-center justify-between">
+                            <span>
+                              {tasksPageTotal === 0
+                                ? "0 results"
+                                : `Showing ${tasksPageOffset + 1}-${Math.min(tasksPageOffset + pageSize, tasksPageTotal)} of ${tasksPageTotal}`}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setTasksPageOffset((prev) => Math.max(0, prev - pageSize))}
+                                disabled={tasksPageOffset === 0 || tasksPageLoading}
+                                className="px-2.5 py-1 rounded border border-[var(--neutral-200)] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--neutral-50)]"
+                              >
+                                Prev
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setTasksPageOffset((prev) => prev + pageSize)}
+                                disabled={tasksPageLoading || tasksPageOffset + pageSize >= tasksPageTotal}
+                                className="px-2.5 py-1 rounded border border-[var(--neutral-200)] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--neutral-50)]"
+                              >
+                                Next
+                              </button>
+                            </div>
+                          </div>
                         </>
                       )}
                     </div>

@@ -28,6 +28,7 @@ const {
   fetchDashboardSnapshot: apiFetchDashboardSnapshot,
   fetchObservatorySnapshot: apiFetchObservatorySnapshot,
   fetchLeads,
+  fetchLeadsPage: apiFetchLeadsPage,
   fetchUploadSummary,
   fetchAllConfig: apiFetchAllConfig,
   fetchOrgMapping: apiFetchOrgMapping,
@@ -37,6 +38,7 @@ const {
   fetchCancellationReasonCategories: apiFetchCancellationReasonCategories,
   fetchNextActions: apiFetchNextActions,
   fetchTasksForGM: apiFetchTasksForGM,
+  fetchTasksForGMPage: apiFetchTasksForGMPage,
   updateLeadEnrichment: apiUpdateLeadEnrichment,
   updateLeadContact: apiUpdateLeadContact,
   updateLeadDirective: apiUpdateLeadDirective,
@@ -45,6 +47,7 @@ const {
   insertGmDirective: apiInsertGmDirective,
   fetchLeadActivities: apiFetchLeadActivities,
   fetchTasksForBranch: apiFetchTasksForBranch,
+  fetchTasksForBranchPage: apiFetchTasksForBranchPage,
   fetchTasksForLead: apiFetchTasksForLead,
   fetchTaskById: apiFetchTaskById,
   updateTaskStatus: apiUpdateTaskStatus,
@@ -257,6 +260,23 @@ export function DataProvider({ children }) {
     leadsRequestedRef.current = true;
     refetchLeads();
   }, [refetchLeads]);
+
+  const fetchLeadsPage = useCallback(
+    async (params = {}) => {
+      if (USE_LIVE_API) return apiFetchLeadsPage(params);
+      const limit = params.limit ?? 20;
+      const offset = params.offset ?? 0;
+      const items = (leads ?? []).slice(offset, offset + limit);
+      return {
+        items,
+        total: (leads ?? []).length,
+        limit,
+        offset,
+        hasNext: offset + limit < (leads ?? []).length,
+      };
+    },
+    [USE_LIVE_API, leads]
+  );
 
   const refetchOrgMapping = useCallback(async () => {
     if (!USE_LIVE_API) return;
@@ -542,6 +562,14 @@ export function DataProvider({ children }) {
     [USE_LIVE_API]
   );
 
+  const fetchTasksForBranchPage = useCallback(
+    async (branch, params = {}) => {
+      if (USE_LIVE_API) return apiFetchTasksForBranchPage(branch, params);
+      return { items: [], total: 0, limit: params.limit ?? 20, offset: params.offset ?? 0, hasNext: false };
+    },
+    [USE_LIVE_API]
+  );
+
   const fetchTasksForLead = useCallback(
     async (leadId) => {
       if (!USE_LIVE_API) return [];
@@ -554,6 +582,14 @@ export function DataProvider({ children }) {
     async (taskId) => {
       if (!USE_LIVE_API) return null;
       return apiFetchTaskById(taskId);
+    },
+    [USE_LIVE_API]
+  );
+
+  const fetchGMTasksPage = useCallback(
+    async (gmBranches, params = {}) => {
+      if (USE_LIVE_API) return apiFetchTasksForGMPage(gmBranches, params);
+      return { items: [], total: 0, limit: params.limit ?? 20, offset: params.offset ?? 0, hasNext: false };
     },
     [USE_LIVE_API]
   );
@@ -655,10 +691,13 @@ export function DataProvider({ children }) {
     fetchGmDirectives,
     insertGmDirective,
     fetchLeadActivities,
+    fetchLeadsPage,
     fetchTasksForBranch,
+    fetchTasksForBranchPage,
     fetchTasksForLead,
     fetchTaskById,
     fetchGMTasks,
+    fetchGMTasksPage,
     updateTaskStatus,
     appendTaskNote,
     insertTask,

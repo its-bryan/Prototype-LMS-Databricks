@@ -82,6 +82,15 @@ async def get_leads(
     branches: str = Query(None),
     branch: str = Query(None),
     gm_name: str = Query(None),
+    status: str = Query(None),
+    bm_name: str = Query(None),
+    insurance: str = Query(None),
+    search: str = Query(None),
+    start_date: str = Query(None),
+    end_date: str = Query(None),
+    limit: int = Query(20, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    paged: bool = Query(False),
 ):
     import time as _time
     t0 = _time.monotonic()
@@ -117,24 +126,69 @@ async def get_leads(
                     branch_list = _branches_for_gm(user_rows[0]["display_name"])
                     print(f"[leads-api] JWT gm '{user_rows[0]['display_name']}' -> {len(branch_list)} branches", flush=True)
 
+    where = ["archived = false"]
+    params: list = []
+
     if branch_list:
         placeholders = ",".join(["%s"] * len(branch_list))
+        where.append(f"branch IN ({placeholders})")
+        params.extend(branch_list)
+
+    if status and status != "All":
+        where.append("status = %s")
+        params.append(status)
+
+    if bm_name and bm_name != "All":
+        where.append("bm_name = %s")
+        params.append(bm_name)
+
+    if insurance and insurance != "All":
+        where.append("insurance_company = %s")
+        params.append(insurance)
+
+    if search:
+        like = f"%{search.strip()}%"
+        where.append("(customer ILIKE %s OR reservation_id ILIKE %s OR confirm_num ILIKE %s)")
+        params.extend([like, like, like])
+
+    if start_date:
+        where.append("COALESCE(init_dt_final, week_of) >= %s::date")
+        params.append(start_date)
+    if end_date:
+        where.append("COALESCE(init_dt_final, week_of) <= %s::date")
+        params.append(end_date)
+
+    where_sql = " AND ".join(where)
+
+    if paged:
+        count_rows = query(f"SELECT COUNT(*)::int AS total FROM leads WHERE {where_sql}", tuple(params))
+        total = count_rows[0]["total"] if count_rows else 0
+        paged_params = [*params, limit, offset]
         rows = query(
             f"SELECT {_LEAD_LIST_COLS} FROM leads"
-            f" WHERE archived = false AND branch IN ({placeholders})"
-            f" ORDER BY created_at DESC",
-            tuple(branch_list),
+            f" WHERE {where_sql}"
+            f" ORDER BY created_at DESC"
+            f" LIMIT %s OFFSET %s",
+            tuple(paged_params),
         )
         t1 = _time.monotonic()
-        print(f"[leads-api] filtered={len(branch_list)} branches, rows={len(rows)}, query={t1-t0:.2f}s", flush=True)
-        return rows
+        print(f"[leads-api] paged rows={len(rows)}/{total}, offset={offset}, limit={limit}, query={t1-t0:.2f}s", flush=True)
+        return {
+            "items": rows,
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+            "has_next": (offset + limit) < total,
+        }
 
     rows = query(
         f"SELECT {_LEAD_LIST_COLS} FROM leads"
-        f" WHERE archived = false ORDER BY created_at DESC"
+        f" WHERE {where_sql}"
+        f" ORDER BY created_at DESC",
+        tuple(params),
     )
     t1 = _time.monotonic()
-    print(f"[leads-api] all leads, rows={len(rows)}, query={t1-t0:.2f}s", flush=True)
+    print(f"[leads-api] rows={len(rows)}, query={t1-t0:.2f}s", flush=True)
     return rows
 
 @router.get("/leads/{lead_id}")

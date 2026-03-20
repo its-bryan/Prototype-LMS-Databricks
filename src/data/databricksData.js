@@ -56,6 +56,16 @@ function apiPost(path, body) {
   return apiFetch(path, { method: "POST", body: JSON.stringify(body) });
 }
 
+function buildQuery(params = {}) {
+  const searchParams = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v == null || v === "") return;
+    searchParams.set(k, String(v));
+  });
+  const query = searchParams.toString();
+  return query ? `?${query}` : "";
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Row transformers  (snake_case → camelCase)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -113,6 +123,7 @@ function taskFromRow(r) {
     customer: r.customer,
     reservationId: r.reservation_id,
     branch: r.lead_branch,
+    status: r.lead_status ?? null,
   } : null;
   return {
     id: r.id,
@@ -222,6 +233,43 @@ export async function fetchObservatorySnapshot() {
 export async function fetchLeads() {
   const rows = await apiGet("/leads");
   return (rows ?? []).map(leadFromRow);
+}
+
+export async function fetchLeadsPage({
+  limit = 20,
+  offset = 0,
+  branches = null,
+  branch = null,
+  gmName = null,
+  status = null,
+  bmName = null,
+  insurance = null,
+  search = null,
+  startDate = null,
+  endDate = null,
+} = {}) {
+  const query = buildQuery({
+    paged: 1,
+    limit,
+    offset,
+    branches,
+    branch,
+    gm_name: gmName,
+    status,
+    bm_name: bmName,
+    insurance,
+    search,
+    start_date: startDate,
+    end_date: endDate,
+  });
+  const result = await apiGet(`/leads${query}`);
+  return {
+    items: (result?.items ?? []).map(leadFromRow),
+    total: result?.total ?? 0,
+    limit: result?.limit ?? limit,
+    offset: result?.offset ?? offset,
+    hasNext: !!result?.has_next,
+  };
 }
 
 /** Fetch the upload / data-freshness summary. */
@@ -461,6 +509,30 @@ export async function fetchTasksForBranch(branch) {
   return (rows ?? []).map(taskFromRow);
 }
 
+export async function fetchTasksForBranchPage(branch, {
+  limit = 20,
+  offset = 0,
+  statuses = null,
+  search = null,
+} = {}) {
+  const query = buildQuery({
+    branch,
+    paged: 1,
+    limit,
+    offset,
+    statuses,
+    search,
+  });
+  const result = await apiGet(`/tasks${query}`);
+  return {
+    items: (result?.items ?? []).map(taskFromRow),
+    total: result?.total ?? 0,
+    limit: result?.limit ?? limit,
+    offset: result?.offset ?? offset,
+    hasNext: !!result?.has_next,
+  };
+}
+
 /** Fetch tasks linked to a specific lead. */
 export async function fetchTasksForLead(leadId) {
   const rows = await apiGet(`/tasks?lead_id=${encodeURIComponent(leadId)}`);
@@ -493,6 +565,33 @@ export async function fetchTasksForGM(gmBranches) {
   if (!gmBranches || gmBranches.length === 0) return [];
   const rows = await apiGet(`/tasks/gm?branches=${gmBranches.map(encodeURIComponent).join(",")}`);
   return (rows ?? []).map(taskFromRow);
+}
+
+export async function fetchTasksForGMPage(gmBranches, {
+  limit = 20,
+  offset = 0,
+  statuses = null,
+  search = null,
+} = {}) {
+  if (!gmBranches || gmBranches.length === 0) {
+    return { items: [], total: 0, limit, offset, hasNext: false };
+  }
+  const query = buildQuery({
+    branches: gmBranches.join(","),
+    paged: 1,
+    limit,
+    offset,
+    statuses,
+    search,
+  });
+  const result = await apiGet(`/tasks/gm${query}`);
+  return {
+    items: (result?.items ?? []).map(taskFromRow),
+    total: result?.total ?? 0,
+    limit: result?.limit ?? limit,
+    offset: result?.offset ?? offset,
+    hasNext: !!result?.has_next,
+  };
 }
 
 /** Create a new task. */

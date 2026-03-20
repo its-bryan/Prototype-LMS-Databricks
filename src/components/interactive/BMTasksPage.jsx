@@ -27,48 +27,49 @@ export default function BMTasksPage() {
   const navigate = useNavigate();
   const { userProfile } = useAuth();
   const {
-    leads,
-    demandLeads,
-    fetchTasksForBranch,
+    fetchTasksForBranchPage,
     updateTaskStatus,
     loading,
     initialDataReady,
   } = useData();
 
   const branch = userProfile?.branch?.trim() || getDefaultBranchForDemo();
+  const pageSize = 20;
 
   const [tasks, setTasks] = useState([]);
   const [tasksLoading, setTasksLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("All");
   const [search, setSearch] = useState("");
   const [updatingId, setUpdatingId] = useState(null);
+  const [offset, setOffset] = useState(0);
+  const [totalTasks, setTotalTasks] = useState(0);
 
   useEffect(() => {
-    demandLeads();
-  }, [demandLeads]);
+    setOffset(0);
+  }, [activeTab, search, branch]);
 
   useEffect(() => {
     if (!branch) return;
     let cancelled = false;
     setTasksLoading(true);
-    fetchTasksForBranch(branch)
+    const statuses = activeTab === "All" ? null : activeTab === "Open" ? "Open,In Progress" : "Done";
+    fetchTasksForBranchPage(branch, { limit: pageSize, offset, statuses, search: search.trim() || null })
       .then((result) => {
-        if (!cancelled) setTasks(result ?? []);
+        if (cancelled) return;
+        setTasks(result?.items ?? []);
+        setTotalTasks(result?.total ?? 0);
       })
       .catch(() => {
-        if (!cancelled) setTasks([]);
+        if (!cancelled) {
+          setTasks([]);
+          setTotalTasks(0);
+        }
       })
       .finally(() => {
         if (!cancelled) setTasksLoading(false);
       });
     return () => { cancelled = true; };
-  }, [branch, fetchTasksForBranch]);
-
-  const leadsMap = useMemo(() => {
-    const map = new Map();
-    for (const l of leads) map.set(l.id, l);
-    return map;
-  }, [leads]);
+  }, [branch, fetchTasksForBranchPage, activeTab, search, offset]);
 
   const handleMarkDone = useCallback(
     async (taskId) => {
@@ -91,27 +92,9 @@ export default function BMTasksPage() {
     [updateTaskStatus]
   );
 
-  const filtered = useMemo(() => {
-    let list = tasks;
-    if (activeTab === "Open") list = list.filter((t) => t.status === "Open" || t.status === "In Progress");
-    if (activeTab === "Done") list = list.filter((t) => t.status === "Done");
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter((t) => {
-        const lead = t.lead ?? leadsMap.get(t.leadId);
-        const customerName = lead?.customer ?? "";
-        return (
-          t.title?.toLowerCase().includes(q) ||
-          customerName.toLowerCase().includes(q)
-        );
-      });
-    }
-    return list;
-  }, [tasks, activeTab, search, leadsMap]);
-
   const grouped = useMemo(() => {
     const groups = new Map();
-    for (const t of filtered) {
+    for (const t of tasks) {
       const key = t.leadId ?? "__no_lead__";
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key).push(t);
@@ -120,18 +103,9 @@ export default function BMTasksPage() {
       arr.sort((a, b) => (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9));
     }
     return [...groups.entries()].map(([leadId, items]) => {
-      const lead = items[0]?.lead ?? leadsMap.get(leadId) ?? null;
+      const lead = items[0]?.lead ?? null;
       return { leadId, lead, tasks: items };
     });
-  }, [filtered, leadsMap]);
-
-  const counts = useMemo(() => {
-    const c = { All: tasks.length, Open: 0, Done: 0 };
-    for (const t of tasks) {
-      if (t.status === "Done") c.Done++;
-      else c.Open++;
-    }
-    return c;
   }, [tasks]);
 
   const isLoading = loading || tasksLoading || !initialDataReady;
@@ -160,7 +134,6 @@ export default function BMTasksPage() {
               }`}
             >
               {tab}
-              <span className="ml-1.5 text-xs opacity-60">{counts[tab]}</span>
             </button>
           ))}
         </div>
@@ -277,6 +250,29 @@ export default function BMTasksPage() {
           ))}
         </div>
       )}
+      <div className="mt-4 flex items-center justify-between text-xs text-[var(--neutral-600)]">
+        <span>
+          {totalTasks === 0 ? "0 results" : `Showing ${offset + 1}-${Math.min(offset + pageSize, totalTasks)} of ${totalTasks}`}
+        </span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setOffset((prev) => Math.max(0, prev - pageSize))}
+            disabled={offset === 0 || tasksLoading}
+            className="px-2.5 py-1 rounded border border-[var(--neutral-200)] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--neutral-50)]"
+          >
+            Prev
+          </button>
+          <button
+            type="button"
+            onClick={() => setOffset((prev) => prev + pageSize)}
+            disabled={tasksLoading || offset + pageSize >= totalTasks}
+            className="px-2.5 py-1 rounded border border-[var(--neutral-200)] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--neutral-50)]"
+          >
+            Next
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
