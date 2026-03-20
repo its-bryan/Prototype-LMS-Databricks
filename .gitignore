@@ -48,3 +48,12 @@ __pycache__/
 
 # Other deployment platforms
 vercel.json
+
+# Frontend visual test artifacts
+docs/frontend-test-results/
+
+# Local machine temp artifacts (Windows/browser)
+.tmp-localappdata/
+LocalLow/
+Thumbs.db
+Desktop.ini
