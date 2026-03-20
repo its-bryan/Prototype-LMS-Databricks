@@ -1191,8 +1191,11 @@ export default function InteractiveUploads() {
                     const dateStr =
                       row.createdAt != null
                         ? new Date(row.createdAt).toLocaleString("en-US", {
-                            dateStyle: "short",
-                            timeStyle: "short",
+                            month: "numeric",
+                            day: "numeric",
+                            year: "2-digit",
+                            hour: "numeric",
+                            minute: "2-digit",
                             timeZone: "America/Los_Angeles",
                             timeZoneName: "short",
                           })

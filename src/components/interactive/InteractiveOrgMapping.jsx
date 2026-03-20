@@ -16,6 +16,8 @@ export default function InteractiveOrgMapping() {
   const [isSaved, setIsSaved] = useState(false);
   const [filterZone, setFilterZone] = useState("All");
   const [filterUnassigned, setFilterUnassigned] = useState(false);
+  const PAGE_SIZE = 20;
+  const [page, setPage] = useState(0);
 
   const zones = useMemo(
     () => ["All", ...new Set(rows.map((r) => r.zone).filter(Boolean))],
@@ -30,6 +32,10 @@ export default function InteractiveOrgMapping() {
     if (filterUnassigned) result = result.filter((r) => !r.bm || r.bm === "— Unassigned —");
     return result;
   }, [rows, filterZone, filterUnassigned]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages - 1);
+  const pagedRows = filteredRows.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
 
   const handleBMChange = (branch, value) => {
     setRows((prev) => prev.map((r) => (r.branch === branch ? { ...r, bm: value } : r)));
@@ -75,7 +81,7 @@ export default function InteractiveOrgMapping() {
           <label className="text-xs font-medium text-[var(--neutral-500)]">Zone</label>
           <select
             value={filterZone}
-            onChange={(e) => setFilterZone(e.target.value)}
+            onChange={(e) => { setFilterZone(e.target.value); setPage(0); }}
             className="text-sm border border-[var(--neutral-200)] rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:border-[var(--hertz-primary)]"
           >
             {zones.map((z) => (
@@ -84,7 +90,7 @@ export default function InteractiveOrgMapping() {
           </select>
         </div>
         <button
-          onClick={() => setFilterUnassigned(!filterUnassigned)}
+          onClick={() => { setFilterUnassigned(!filterUnassigned); setPage(0); }}
           className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors cursor-pointer ${
             filterUnassigned
               ? "border-[#C62828] bg-[#FFEBEE] text-[#C62828]"
@@ -121,7 +127,7 @@ export default function InteractiveOrgMapping() {
             </tr>
           </thead>
           <tbody>
-            {filteredRows.map((row, i) => {
+            {pagedRows.map((row, i) => {
               const isUnassigned = !row.bm || row.bm === "— Unassigned —";
               const isEditing = editingRow === row.branch;
               return (
@@ -192,6 +198,48 @@ export default function InteractiveOrgMapping() {
           </tbody>
         </table>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-3">
+          <span className="text-xs text-[var(--neutral-500)]">
+            Showing {safePage * PAGE_SIZE + 1}–{Math.min((safePage + 1) * PAGE_SIZE, filteredRows.length)} of {filteredRows.length}
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setPage(0)}
+              disabled={safePage === 0}
+              className="px-2 py-1 text-xs rounded border border-[var(--neutral-200)] hover:bg-[var(--neutral-50)] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            >
+              First
+            </button>
+            <button
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={safePage === 0}
+              className="px-2 py-1 text-xs rounded border border-[var(--neutral-200)] hover:bg-[var(--neutral-50)] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            >
+              Prev
+            </button>
+            <span className="px-2 text-xs font-medium text-[var(--hertz-black)]">
+              {safePage + 1} / {totalPages}
+            </span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={safePage >= totalPages - 1}
+              className="px-2 py-1 text-xs rounded border border-[var(--neutral-200)] hover:bg-[var(--neutral-50)] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            >
+              Next
+            </button>
+            <button
+              onClick={() => setPage(totalPages - 1)}
+              disabled={safePage >= totalPages - 1}
+              className="px-2 py-1 text-xs rounded border border-[var(--neutral-200)] hover:bg-[var(--neutral-50)] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            >
+              Last
+            </button>
+          </div>
+        </div>
+      )}
 
       <p className="text-xs text-[var(--neutral-400)] mt-3">
         AM, GM, and Zone columns are read-only — they update automatically when HLES data is uploaded.
