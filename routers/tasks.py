@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query
 import json
 import logging
+import re
 import time
 import uuid
 from datetime import datetime
@@ -241,9 +242,10 @@ async def get_tasks_for_gm(
     branch_list = [b.strip() for b in branches.split(",") if b.strip()]
     if not branch_list:
         return []
-    placeholders = ",".join(["%s"] * len(branch_list))
-    where = [f"l.branch IN ({placeholders})"]
-    params = [*branch_list]
+    normalized = [re.sub(r"\s+", " ", b.strip()) for b in branch_list]
+    placeholders = ",".join(["%s"] * len(normalized))
+    where = [f"regexp_replace(l.branch, '\\s+', ' ', 'g') IN ({placeholders})"]
+    params = [*normalized]
 
     if statuses:
         status_list = [s.strip() for s in statuses.split(",") if s.strip()]

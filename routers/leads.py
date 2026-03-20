@@ -130,9 +130,10 @@ async def get_leads(
     params: list = []
 
     if branch_list:
-        placeholders = ",".join(["%s"] * len(branch_list))
-        where.append(f"branch IN ({placeholders})")
-        params.extend(branch_list)
+        normalized = [re.sub(r"\s+", " ", b.strip()) for b in branch_list]
+        placeholders = ",".join(["%s"] * len(normalized))
+        where.append(f"regexp_replace(branch, '\\s+', ' ', 'g') IN ({placeholders})")
+        params.extend(normalized)
 
     if status and status != "All":
         statuses = [s.strip() for s in status.split(",") if s.strip()]
@@ -254,9 +255,10 @@ async def get_activity_report(
     params.append(earliest)
 
     if branch_list:
-        placeholders = ",".join(["%s"] * len(branch_list))
-        where.append(f"branch IN ({placeholders})")
-        params.extend(branch_list)
+        normalized = [re.sub(r"\s+", " ", b.strip()) for b in branch_list]
+        placeholders = ",".join(["%s"] * len(normalized))
+        where.append(f"regexp_replace(branch, '\\s+', ' ', 'g') IN ({placeholders})")
+        params.extend(normalized)
 
     where.append(
         "(enrichment_log != '[]'::jsonb OR translog != '[]'::jsonb OR enrichment IS NOT NULL)"

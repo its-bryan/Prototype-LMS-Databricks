@@ -108,7 +108,7 @@ export function BMDashboard({ navigateTo }) {
     }
   }, [branch, fetchTasksForBranch]);
 
-  const presets = getDateRangePresets();
+  const presets = useMemo(() => getDateRangePresets(), []);
   const [selectedPresetKey, setSelectedPresetKey] = useState("trailing_4_weeks");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
@@ -510,7 +510,10 @@ export function GMDashboardPage({ navigateTo }) {
   const selectedPresetKey = "trailing_4_weeks";
 
   const currentPreset = presets.find((p) => p.key === selectedPresetKey);
-  const dateRange = currentPreset ? { start: currentPreset.start, end: currentPreset.end } : null;
+  const dateRange = useMemo(
+    () => (currentPreset ? { start: currentPreset.start, end: currentPreset.end } : null),
+    [currentPreset],
+  );
 
   const gmName = useMemo(() => {
     const name = userProfile?.displayName;

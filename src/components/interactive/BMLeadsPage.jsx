@@ -32,7 +32,10 @@ export default function BMLeadsPage() {
   const [pageLoading, setPageLoading] = useState(false);
 
   const currentPreset = presets.find((p) => p.key === selectedPresetKey);
-  const dateRange = currentPreset ? { start: currentPreset.start, end: currentPreset.end } : null;
+  const dateRange = useMemo(
+    () => (currentPreset ? { start: currentPreset.start, end: currentPreset.end } : null),
+    [currentPreset],
+  );
 
   useEffect(() => {
     setOffset(0);

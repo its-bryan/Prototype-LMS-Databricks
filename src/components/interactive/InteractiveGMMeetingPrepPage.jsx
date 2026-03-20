@@ -89,7 +89,10 @@ export default function InteractiveGMMeetingPrepPage() {
   const panelRef = useRef(null);
 
   const currentPreset = presets.find((p) => p.key === selectedPresetKey);
-  const dateRange = currentPreset ? { start: currentPreset.start, end: currentPreset.end } : null;
+  const dateRange = useMemo(
+    () => (currentPreset ? { start: currentPreset.start, end: currentPreset.end } : null),
+    [currentPreset],
+  );
   const comparisonRange = useMemo(() => getComparisonDateRange(selectedPresetKey), [selectedPresetKey]);
 
   const gmName = useMemo(() => {

@@ -103,7 +103,7 @@ export default function InteractiveBMLeaderboard() {
   const branch = (userProfile?.branch?.trim() || getDefaultBranchForDemo());
   const reduceMotion = useReducedMotion();
 
-  const presets = getDateRangePresets();
+  const presets = useMemo(() => getDateRangePresets(), []);
   const [metricKey, setMetricKey] = useState("conversionRate");
 
   const dateRange = useMemo(() => {
