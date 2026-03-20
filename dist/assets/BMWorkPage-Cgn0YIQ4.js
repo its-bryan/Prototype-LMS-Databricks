@@ -1,0 +1,1 @@
+import{j as r}from"./index-zafegbBE.js";import o from"./BMSummaryPage-CFi8BoMm.js";import"./InteractiveDashboard-DD5uEMWs.js";import"./StatusBadge-DSK7Xh_k.js";import"./MetricDrilldownModal-BNnu_vqs.js";import"./dashboardHelpers-BpZUfw9S.js";import"./DashboardSkeleton-ChhGjH9_.js";function u(){return r.jsx(o,{})}export{u as default};

@@ -699,3 +699,98 @@ export async function submitWinsLearning(entry) {
   });
   return winsLearningFromRow(row);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Feedback & Feature Requests
+// ─────────────────────────────────────────────────────────────────────────────
+
+function feedbackFromRow(r) {
+  if (!r) return null;
+  return {
+    id: r.id,
+    rating: r.rating,
+    feedbackText: r.feedback_text ?? null,
+    comments: r.comments ?? null,
+    userName: r.user_name ?? "Anonymous",
+    isAnonymous: !!r.is_anonymous,
+    createdAt: r.created_at,
+  };
+}
+
+function featureRequestFromRow(r) {
+  if (!r) return null;
+  return {
+    id: r.id,
+    requesterName: r.requester_name,
+    title: r.title,
+    description: r.description,
+    currentProcess: r.current_process ?? null,
+    frequency: r.frequency ?? null,
+    timeSpent: r.time_spent ?? null,
+    upvoteCount: r.upvote_count ?? 0,
+    userHasUpvoted: !!r.user_has_upvoted,
+    createdAt: r.created_at,
+  };
+}
+
+export async function fetchFeedbackSummary() {
+  const summary = await apiGet("/feedback/summary");
+  return {
+    nps: summary?.nps ?? 0,
+    totalFeedback: summary?.total_feedback ?? 0,
+    avgRating: summary?.avg_rating ?? 0,
+    promotersPct: summary?.promoters_pct ?? 0,
+    detractorsPct: summary?.detractors_pct ?? 0,
+    latest: (summary?.latest ?? []).map(feedbackFromRow),
+  };
+}
+
+export async function fetchFeedbackList({ limit = 20, offset = 0 } = {}) {
+  const query = buildQuery({ limit, offset });
+  const result = await apiGet(`/feedback${query}`);
+  return {
+    items: (result?.items ?? []).map(feedbackFromRow),
+    total: result?.total ?? 0,
+    limit: result?.limit ?? limit,
+    offset: result?.offset ?? offset,
+    hasNext: !!result?.has_next,
+  };
+}
+
+export async function submitFeedback({ rating, feedbackText, comments, isAnonymous = false }) {
+  const row = await apiPost("/feedback", {
+    rating,
+    feedback_text: feedbackText,
+    comments,
+    is_anonymous: isAnonymous,
+  });
+  return feedbackFromRow(row);
+}
+
+export async function fetchFeatureRequests() {
+  const result = await apiGet("/feature-requests");
+  return {
+    items: (result?.items ?? []).map(featureRequestFromRow),
+    total: result?.total ?? 0,
+  };
+}
+
+export async function submitFeatureRequest({ title, description, currentProcess, frequency, timeSpent }) {
+  const row = await apiPost("/feature-requests", {
+    title,
+    description,
+    current_process: currentProcess,
+    frequency,
+    time_spent: timeSpent,
+  });
+  return featureRequestFromRow(row);
+}
+
+export async function toggleFeatureRequestUpvote(id) {
+  const result = await apiPost(`/feature-requests/${id}/upvote`, {});
+  return {
+    requestId: result?.request_id ?? id,
+    userHasUpvoted: !!result?.user_has_upvoted,
+    upvoteCount: result?.upvote_count ?? 0,
+  };
+}

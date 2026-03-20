@@ -36,6 +36,7 @@ export const viewPaths = {
   "obs-conversion": "/observatory/conversion",
   "obs-leads": "/observatory/leads",
   "obs-leaderboard": "/observatory/leaderboard",
+  feedback: "/feedback",
   profile: "/profile",
 };
 
@@ -51,6 +52,7 @@ export const roleNav = {
     { id: "obs-conversion", label: "Conversion %", icon: "bar-chart", parentId: "observatory" },
     { id: "obs-leads", label: "Total Leads", icon: "list", parentId: "observatory" },
     { id: "obs-leaderboard", label: "Org Leaderboard", icon: "trophy", parentId: "observatory" },
+    { id: "feedback", label: "Feature Request/Feedback", icon: "message-square" },
   ],
   gm: [
     { id: "gm-overview", label: "Summary", icon: "grid" },
@@ -64,6 +66,7 @@ export const roleNav = {
     { id: "obs-conversion", label: "Conversion %", icon: "bar-chart", parentId: "observatory" },
     { id: "obs-leads", label: "Total Leads", icon: "list", parentId: "observatory" },
     { id: "obs-leaderboard", label: "Org Leaderboard", icon: "trophy", parentId: "observatory" },
+    { id: "feedback", label: "Feature Request/Feedback", icon: "message-square" },
   ],
   admin: [
     { id: "admin-dashboard", label: "Dashboard", icon: "grid" },
@@ -74,6 +77,7 @@ export const roleNav = {
     { id: "obs-conversion", label: "Conversion %", icon: "bar-chart", parentId: "observatory" },
     { id: "obs-leads", label: "Total Leads", icon: "list", parentId: "observatory" },
     { id: "obs-leaderboard", label: "Org Leaderboard", icon: "trophy", parentId: "observatory" },
+    { id: "feedback", label: "Feature Request/Feedback", icon: "message-square" },
   ],
 };
 
