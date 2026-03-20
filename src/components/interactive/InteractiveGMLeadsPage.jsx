@@ -16,6 +16,7 @@ import ThreeColumnReview from "../ThreeColumnReview";
 import { GMLeadsPageSkeleton, usePageTransition } from "../DashboardSkeleton";
 
 const STATUS_TABS = ["All", "Cancelled", "Unused", "Rented"];
+const DEBUG_INGEST_URL = "http://127.0.0.1:7507/ingest/4cdc8682-4d34-4a46-8b0d-92860e51cbd8";
 
 export default function InteractiveGMLeadsPage() {
   const { loading, orgMapping, updateLeadDirective, markLeadReviewed, fetchLeadsPage, initialDataReady } = useData();
@@ -72,6 +73,32 @@ export default function InteractiveGMLeadsPage() {
   useEffect(() => {
     let cancelled = false;
     setPageLoading(true);
+    // #region agent log
+    fetch(DEBUG_INGEST_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "862807" },
+      body: JSON.stringify({
+        sessionId: "862807",
+        runId: "pre-fix",
+        hypothesisId: "H5",
+        location: "InteractiveGMLeadsPage.jsx:useEffect:beforeFetch",
+        message: "GM leads paging request params",
+        data: {
+          hasGmName: !!gmName,
+          statusFilter,
+          bmFilter,
+          branchFilter,
+          insuranceFilter,
+          hasSearch: !!searchQuery.trim(),
+          start: dateRange?.start ?? null,
+          end: dateRange?.end ?? null,
+          offset,
+          pageSize,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
     fetchLeadsPage({
       gmName,
       status: statusFilter === "All" ? null : statusFilter,
@@ -88,6 +115,26 @@ export default function InteractiveGMLeadsPage() {
         if (cancelled) return;
         setPagedLeads(result?.items ?? []);
         setTotalLeads(result?.total ?? 0);
+        // #region agent log
+        fetch(DEBUG_INGEST_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "862807" },
+          body: JSON.stringify({
+            sessionId: "862807",
+            runId: "pre-fix",
+            hypothesisId: "H5",
+            location: "InteractiveGMLeadsPage.jsx:useEffect:afterFetch",
+            message: "GM leads paging response mapped to state",
+            data: {
+              itemsLength: (result?.items ?? []).length,
+              total: result?.total ?? 0,
+              offset,
+              selectedLeadId,
+            },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {});
+        // #endregion
       })
       .catch(() => {
         if (cancelled) return;

@@ -13,6 +13,7 @@ import { formatDateRange } from "../../utils/dashboardHelpers";
 import { usePageTransition, BMDashboardSkeleton } from "../DashboardSkeleton";
 
 const STATUS_TABS = ["All", "Cancelled", "Unused", "Rented"];
+const DEBUG_INGEST_URL = "http://127.0.0.1:7507/ingest/4cdc8682-4d34-4a46-8b0d-92860e51cbd8";
 
 export default function BMLeadsPage() {
   const { loading, fetchLeadsPage, initialDataReady } = useData();
@@ -41,6 +42,29 @@ export default function BMLeadsPage() {
   useEffect(() => {
     let cancelled = false;
     setPageLoading(true);
+    // #region agent log
+    fetch(DEBUG_INGEST_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "862807" },
+      body: JSON.stringify({
+        sessionId: "862807",
+        runId: "pre-fix",
+        hypothesisId: "H3",
+        location: "BMLeadsPage.jsx:useEffect:beforeFetch",
+        message: "BM leads paging request params",
+        data: {
+          hasBranch: !!branch,
+          statusFilter,
+          hasSearch: !!searchQuery.trim(),
+          start: dateRange?.start ?? null,
+          end: dateRange?.end ?? null,
+          offset,
+          pageSize,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
     fetchLeadsPage({
       branch,
       status: statusFilter === "All" ? null : statusFilter,
@@ -54,6 +78,25 @@ export default function BMLeadsPage() {
         if (cancelled) return;
         setPagedLeads(result?.items ?? []);
         setTotalLeads(result?.total ?? 0);
+        // #region agent log
+        fetch(DEBUG_INGEST_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "862807" },
+          body: JSON.stringify({
+            sessionId: "862807",
+            runId: "pre-fix",
+            hypothesisId: "H3",
+            location: "BMLeadsPage.jsx:useEffect:afterFetch",
+            message: "BM leads paging response mapped to state",
+            data: {
+              itemsLength: (result?.items ?? []).length,
+              total: result?.total ?? 0,
+              offset,
+            },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {});
+        // #endregion
       })
       .catch(() => {
         if (cancelled) return;
