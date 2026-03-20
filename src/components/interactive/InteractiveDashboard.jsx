@@ -202,11 +202,14 @@ export function BMDashboard({ navigateTo }) {
           <MetricDrilldownModal
             metricKey={drilldownMetric}
             onClose={() => setDrilldownMetric(null)}
-            leads={[]}
             branchTasks={branchTasks}
             dateRange={dateRange}
             comparisonRange={comparisonRange}
             branch={branch}
+            currentStats={stats}
+            previousStats={comparisonStats}
+            currentTaskStats={_snapshotTasks}
+            previousTaskStats={_snapshotCompTasks}
           />
         )}
       </AnimatePresence>
@@ -569,13 +572,16 @@ export function GMDashboardPage({ navigateTo }) {
             <GMMetricDrilldownModal
               metricKey={drilldownMetric}
               onClose={() => setDrilldownMetric(null)}
-              leads={[]}
               dateRange={dateRange}
               comparisonRange={prevRange}
               currentValue={numericCurrent}
               previousValue={prevTile[drilldownMetric]}
               selectedPresetKey={selectedPresetKey}
               gmName={gmName}
+              chartData={snapshotGM?.chartData ?? []}
+              leaderboardRows={(snapshot?.leaderboard ?? []).filter((r) =>
+                (snapshotGM?.branches ?? []).includes(r.branch),
+              )}
             />
           );
         })()}

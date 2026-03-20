@@ -1,25 +1,27 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  getFilteredLeads,
   tasksInDateRange,
   getOpenTasksCount,
   getTaskCompletionRate,
-  getAverageTimeToContactMinutes,
   formatMinutesToDisplay,
   parseTimeToMinutes,
   getLeadById,
-  getBranchVsHrdSplit,
-  getConversionBreakdown,
   isUnusedOpenOverFiveDays,
 } from "../selectors/demoSelectors";
 import StatusBadge from "./StatusBadge";
 import GroupBySelector from "./GroupBySelector";
 import ConversionBreakdownTable from "./ConversionBreakdownTable";
 import { formatDateRange, formatDateShort } from "../utils/dateTime";
+import { useData } from "../context/DataContext";
 
 function formatRange(range) {
   return formatDateRange(range?.start, range?.end) || "—";
+}
+
+function safeRate(numerator, denominator) {
+  if (!denominator) return 0;
+  return Math.round((numerator / denominator) * 100);
 }
 
 const METRIC_CONFIG = {
@@ -360,32 +362,142 @@ function TaskTable({ tasks, config, allLeads }) {
   );
 }
 
-export default function MetricDrilldownModal({ metricKey, onClose, leads, branchTasks, dateRange, comparisonRange, branch, onLeadClick }) {
+export default function MetricDrilldownModal({
+  metricKey,
+  onClose,
+  branchTasks,
+  dateRange,
+  comparisonRange,
+  branch,
+  onLeadClick,
+  currentStats,
+  previousStats,
+  currentTaskStats,
+  previousTaskStats,
+}) {
+  const { fetchLeadsPage } = useData();
   const [activeTab, setActiveTab] = useState("current");
   const [groupByPrimary, setGroupByPrimary] = useState(null);
   const [groupBySecondary, setGroupBySecondary] = useState(null);
   const [showBenchmarks, setShowBenchmarks] = useState(false);
+  const [currentOffset, setCurrentOffset] = useState(0);
+  const [previousOffset, setPreviousOffset] = useState(0);
+  const [currentLeadsPage, setCurrentLeadsPage] = useState({ items: [], total: 0, hasNext: false, loading: false });
+  const [previousLeadsPage, setPreviousLeadsPage] = useState({ items: [], total: 0, hasNext: false, loading: false });
 
   const config = METRIC_CONFIG[metricKey];
   if (!config) return null;
 
   const isLeadMetric = config.type === "leads";
 
-  const currentLeads = useMemo(() => getFilteredLeads(leads, dateRange, branch), [leads, dateRange, branch]);
-  const previousLeads = useMemo(() => getFilteredLeads(leads, comparisonRange, branch), [leads, comparisonRange, branch]);
-
   const currentTasks = useMemo(() => tasksInDateRange(branchTasks, dateRange), [branchTasks, dateRange]);
   const previousTasks = useMemo(() => (comparisonRange ? tasksInDateRange(branchTasks, comparisonRange) : []), [branchTasks, comparisonRange]);
+  const taskStatsCurrent = currentTaskStats ?? {};
+  const taskStatsPrevious = previousTaskStats ?? {};
 
-  const currentValue = isLeadMetric ? config.getValue(currentLeads) : config.getValue(null, currentTasks);
-  const previousValue = isLeadMetric ? config.getValue(previousLeads) : config.getValue(null, previousTasks);
+  useEffect(() => {
+    setCurrentOffset(0);
+    setPreviousOffset(0);
+  }, [metricKey, dateRange, comparisonRange, branch]);
+
+  useEffect(() => {
+    if (!isLeadMetric || !dateRange || !branch) return;
+    let cancelled = false;
+    setCurrentLeadsPage((prev) => ({ ...prev, loading: true }));
+    fetchLeadsPage({
+      branch,
+      startDate: dateRange.start,
+      endDate: dateRange.end,
+      limit: 20,
+      offset: currentOffset,
+    })
+      .then((result) => {
+        if (cancelled) return;
+        setCurrentLeadsPage({
+          items: result.items ?? [],
+          total: result.total ?? 0,
+          hasNext: !!result.hasNext,
+          loading: false,
+        });
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setCurrentLeadsPage({ items: [], total: 0, hasNext: false, loading: false });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isLeadMetric, dateRange, branch, currentOffset, fetchLeadsPage]);
+
+  useEffect(() => {
+    if (!isLeadMetric || !comparisonRange || !branch) return;
+    let cancelled = false;
+    setPreviousLeadsPage((prev) => ({ ...prev, loading: true }));
+    fetchLeadsPage({
+      branch,
+      startDate: comparisonRange.start,
+      endDate: comparisonRange.end,
+      limit: 20,
+      offset: previousOffset,
+    })
+      .then((result) => {
+        if (cancelled) return;
+        setPreviousLeadsPage({
+          items: result.items ?? [],
+          total: result.total ?? 0,
+          hasNext: !!result.hasNext,
+          loading: false,
+        });
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setPreviousLeadsPage({ items: [], total: 0, hasNext: false, loading: false });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isLeadMetric, comparisonRange, branch, previousOffset, fetchLeadsPage]);
+
+  const currentValue = useMemo(() => {
+    if (!isLeadMetric) {
+      if (metricKey === "open_tasks") return taskStatsCurrent.open ?? getOpenTasksCount(currentTasks);
+      if (metricKey === "task_completion_rate") {
+        const fallback = getTaskCompletionRate(currentTasks);
+        return taskStatsCurrent.completionRate ?? (fallback ?? 0);
+      }
+      if (metricKey === "avg_time_to_contact") return taskStatsCurrent.avgTimeToContactMin ?? null;
+      return config.getValue(null, currentTasks);
+    }
+    const stats = currentStats ?? {};
+    if (metricKey === "total_leads") return stats.total ?? 0;
+    if (metricKey === "conversion_rate") return stats.conversionRate ?? safeRate(stats.rented ?? 0, stats.total ?? 0);
+    if (metricKey === "comment_rate") return stats.enrichmentRate ?? safeRate(stats.enriched ?? 0, stats.total ?? 0);
+    return currentLeadsPage.total;
+  }, [isLeadMetric, metricKey, taskStatsCurrent, currentTasks, config, currentStats, currentLeadsPage.total]);
+
+  const previousValue = useMemo(() => {
+    if (!isLeadMetric) {
+      if (metricKey === "open_tasks") return taskStatsPrevious.open ?? getOpenTasksCount(previousTasks);
+      if (metricKey === "task_completion_rate") {
+        const fallback = getTaskCompletionRate(previousTasks);
+        return taskStatsPrevious.completionRate ?? (fallback ?? 0);
+      }
+      if (metricKey === "avg_time_to_contact") return taskStatsPrevious.avgTimeToContactMin ?? null;
+      return config.getValue(null, previousTasks);
+    }
+    const stats = previousStats ?? {};
+    if (metricKey === "total_leads") return stats.total ?? 0;
+    if (metricKey === "conversion_rate") return stats.conversionRate ?? safeRate(stats.rented ?? 0, stats.total ?? 0);
+    if (metricKey === "comment_rate") return stats.enrichmentRate ?? safeRate(stats.enriched ?? 0, stats.total ?? 0);
+    return previousLeadsPage.total;
+  }, [isLeadMetric, metricKey, taskStatsPrevious, previousTasks, config, previousStats, previousLeadsPage.total]);
 
   const currentDisplayData = isLeadMetric
-    ? (config.getRelevant ? config.getRelevant(currentLeads) : currentLeads)
+    ? currentLeadsPage.items
     : (config.getRelevantTasks ? config.getRelevantTasks(currentTasks) : currentTasks);
 
   const previousDisplayData = isLeadMetric
-    ? (config.getRelevant ? config.getRelevant(previousLeads) : previousLeads)
+    ? previousLeadsPage.items
     : (config.getRelevantTasks ? config.getRelevantTasks(previousTasks) : previousTasks);
 
   const activeData = activeTab === "current" ? currentDisplayData : previousDisplayData;
@@ -393,43 +505,23 @@ export default function MetricDrilldownModal({ metricKey, onClose, leads, branch
   const currentCount = config.numeratorFilter
     ? {
         numerator: isLeadMetric
-          ? currentLeads.filter(config.numeratorFilter).length
+          ? (metricKey === "conversion_rate" ? (currentStats?.rented ?? 0) : metricKey === "comment_rate" ? (currentStats?.enriched ?? 0) : 0)
           : currentTasks.filter(config.numeratorFilter).length,
-        denominator: isLeadMetric ? currentLeads.length : currentTasks.length,
+        denominator: isLeadMetric ? (currentStats?.total ?? 0) : currentTasks.length,
       }
     : { numerator: 0, denominator: 0 };
 
   const previousCount = config.numeratorFilter
     ? {
         numerator: isLeadMetric
-          ? previousLeads.filter(config.numeratorFilter).length
+          ? (metricKey === "conversion_rate" ? (previousStats?.rented ?? 0) : metricKey === "comment_rate" ? (previousStats?.enriched ?? 0) : 0)
           : previousTasks.filter(config.numeratorFilter).length,
-        denominator: isLeadMetric ? previousLeads.length : previousTasks.length,
+        denominator: isLeadMetric ? (previousStats?.total ?? 0) : previousTasks.length,
       }
     : { numerator: 0, denominator: 0 };
 
-  const showConversionBreakdown = metricKey === "conversion_rate" && isLeadMetric;
-  const conversionBreakdown = useMemo(
-    () =>
-      showConversionBreakdown
-        ? getConversionBreakdown(leads ?? [], {
-            dateRange: activeTab === "current" ? dateRange : comparisonRange,
-            branch,
-            groupByPrimary: groupByPrimary || undefined,
-            groupBySecondary: groupBySecondary || undefined,
-          })
-        : { rows: [], zoneBenchmark: null },
-    [
-      showConversionBreakdown,
-      leads,
-      activeTab,
-      dateRange,
-      comparisonRange,
-      branch,
-      groupByPrimary,
-      groupBySecondary,
-    ],
-  );
+  const showConversionBreakdown = false;
+  const conversionBreakdown = { rows: [], zoneBenchmark: null };
 
   return (
     <motion.div
@@ -515,7 +607,7 @@ export default function MetricDrilldownModal({ metricKey, onClose, leads, branch
                   : "bg-[var(--neutral-50)] text-[var(--neutral-600)] hover:bg-[var(--neutral-100)]"
               }`}
             >
-              Current Period ({isLeadMetric ? currentDisplayData.length : currentDisplayData.length} {isLeadMetric ? "leads" : "tasks"})
+              Current Period ({isLeadMetric ? currentLeadsPage.total : currentDisplayData.length} {isLeadMetric ? "leads" : "tasks"})
             </button>
             <button
               onClick={() => setActiveTab("previous")}
@@ -525,7 +617,7 @@ export default function MetricDrilldownModal({ metricKey, onClose, leads, branch
                   : "bg-[var(--neutral-50)] text-[var(--neutral-600)] hover:bg-[var(--neutral-100)]"
               }`}
             >
-              Previous Period ({isLeadMetric ? previousDisplayData.length : previousDisplayData.length} {isLeadMetric ? "leads" : "tasks"})
+              Previous Period ({isLeadMetric ? previousLeadsPage.total : previousDisplayData.length} {isLeadMetric ? "leads" : "tasks"})
             </button>
           </div>
 
@@ -538,13 +630,52 @@ export default function MetricDrilldownModal({ metricKey, onClose, leads, branch
               exit={{ opacity: 0, y: -4 }}
               transition={{ duration: 0.15 }}
             >
-              {isLeadMetric ? (
-                <LeadTable leads={activeData} config={config} allLeads={leads} onLeadClick={onLeadClick} />
+              {isLeadMetric && ((activeTab === "current" && currentLeadsPage.loading) || (activeTab === "previous" && previousLeadsPage.loading)) ? (
+                <div className="border border-[var(--neutral-200)] rounded-lg p-6 text-sm text-[var(--neutral-600)]">
+                  Loading leads...
+                </div>
+              ) : isLeadMetric ? (
+                <LeadTable leads={activeData} config={config} allLeads={[]} onLeadClick={onLeadClick} />
               ) : (
-                <TaskTable tasks={activeData} config={config} allLeads={leads} />
+                <TaskTable tasks={activeData} config={config} allLeads={[]} />
               )}
             </motion.div>
           </AnimatePresence>
+          {isLeadMetric && (
+            <div className="mt-3 flex items-center justify-between">
+              <span className="text-xs text-[var(--neutral-600)]">
+                {activeTab === "current"
+                  ? `Showing ${Math.min(currentOffset + 1, Math.max(currentLeadsPage.total, 1))}-${Math.min(currentOffset + 20, currentLeadsPage.total)} of ${currentLeadsPage.total}`
+                  : `Showing ${Math.min(previousOffset + 1, Math.max(previousLeadsPage.total, 1))}-${Math.min(previousOffset + 20, previousLeadsPage.total)} of ${previousLeadsPage.total}`}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    activeTab === "current"
+                      ? setCurrentOffset((v) => Math.max(v - 20, 0))
+                      : setPreviousOffset((v) => Math.max(v - 20, 0))
+                  }
+                  disabled={activeTab === "current" ? currentOffset === 0 : previousOffset === 0}
+                  className="px-3 py-1.5 text-xs rounded-md border border-[var(--neutral-300)] disabled:opacity-40"
+                >
+                  Previous
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    activeTab === "current"
+                      ? setCurrentOffset((v) => v + 20)
+                      : setPreviousOffset((v) => v + 20)
+                  }
+                  disabled={activeTab === "current" ? !currentLeadsPage.hasNext : !previousLeadsPage.hasNext}
+                  className="px-3 py-1.5 text-xs rounded-md border border-[var(--neutral-300)] disabled:opacity-40"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </motion.div>
     </motion.div>

@@ -1,9 +1,5 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import {
-  getGMMetricTrendByWeek,
-  getGMBranchLeaderboard,
-} from "../selectors/demoSelectors";
 import { formatDateRange } from "../utils/dateTime";
 
 const GM_METRIC_CONFIG = {
@@ -267,13 +263,12 @@ function BranchPerformanceSection({ leaderboard, config, sortKey, onSortChange }
 export default function GMMetricDrilldownModal({
   metricKey,
   onClose,
-  leads,
   dateRange,
   comparisonRange,
   currentValue,
   previousValue,
-  selectedPresetKey,
-  gmName,
+  chartData,
+  leaderboardRows,
 }) {
   const [branchSort, setBranchSort] = useState("highToLow");
 
@@ -292,15 +287,34 @@ export default function GMMetricDrilldownModal({
     ? (relChangeVal != null && relChangeVal > 0)
     : (relChangeVal != null && relChangeVal < 0);
 
-  const trendData = useMemo(
-    () => getGMMetricTrendByWeek(leads, { metric: metricKey, timeframe: "trailing_4_weeks", gmName }),
-    [leads, metricKey, gmName]
-  );
+  const trendData = useMemo(() => {
+    const rows = chartData ?? [];
+    const weekLabels = rows.map((r) => r.label);
+    const metricField =
+      metricKey === "conversion_rate"
+        ? "conversionRate"
+        : metricKey === "comment_rate"
+          ? "commentRate"
+          : null;
+    const values = metricField ? rows.map((r) => r[metricField] ?? null) : [];
+    return {
+      weekLabels,
+      series: [{ name: config.label, values }],
+    };
+  }, [chartData, metricKey, config.label]);
 
-  const leaderboard = useMemo(
-    () => getGMBranchLeaderboard(leads, dateRange, config.branchKey, "my_branches", gmName),
-    [leads, dateRange, config.branchKey, gmName]
-  );
+  const leaderboard = useMemo(() => {
+    const sorted = [...(leaderboardRows ?? [])];
+    const numeric = (v) => (typeof v === "number" ? v : null);
+    const valid = sorted.map((r) => numeric(r[config.branchKey])).filter((v) => v != null);
+    const benchmarkVal = valid.length > 0 ? Math.round(valid.reduce((s, v) => s + v, 0) / valid.length) : null;
+    return {
+      sorted,
+      benchmark: {
+        [config.branchKey]: benchmarkVal,
+      },
+    };
+  }, [leaderboardRows, config.branchKey]);
 
   const formatRange = (r) => formatDateRange(r?.start, r?.end);
 
