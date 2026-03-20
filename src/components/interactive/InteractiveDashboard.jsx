@@ -164,9 +164,9 @@ export function BMDashboard({ navigateTo }) {
   const taskCompletionRate = _snapshotTasks ? _snapshotTasks.completionRate : (dateRange && tasksInPeriod.length > 0 ? completionInPeriod : getTaskCompletionRate(branchTasks));
   const avgTimeToContact = useSnapshotData
     ? (_snapshotTasks?.avgTimeToContactMin ? formatMinutesToDisplay(_snapshotTasks.avgTimeToContactMin) : null)
-    : getAverageTimeToContact(leads, dateRange, branch);
-  const avgTimeToContactMin = _snapshotTasks?.avgTimeToContactMin ?? getAverageTimeToContactMinutes(leads, dateRange, branch);
-  const prevAvgTimeToContactMin = _snapshotCompTasks?.avgTimeToContactMin ?? getAverageTimeToContactMinutes(leads, comparisonRange, branch);
+    : null;
+  const avgTimeToContactMin = _snapshotTasks?.avgTimeToContactMin ?? null;
+  const prevAvgTimeToContactMin = _snapshotCompTasks?.avgTimeToContactMin ?? null;
 
   const relChangeOpenTasks = comparisonRange != null && openInComparison > 0
     ? Math.round(((openInComparison - openInPeriod) / openInComparison) * 100) // fewer = better
@@ -316,7 +316,7 @@ export function BMDashboard({ navigateTo }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <MeetingPrepModule
             navigateTo={navigateTo}
-            leads={leads}
+            leads={[]}
             dateRange={dateRange}
             branch={branch}
             reduceMotion={reduceMotion}
