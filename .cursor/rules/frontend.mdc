@@ -29,3 +29,8 @@ alwaysApply: false
 2. Check what imports it (grep for the component name)
 3. Understand the data flow (props, context, selectors)
 4. Make the minimal change needed
+
+## API date contract (critical)
+- Never pass raw JavaScript `Date` objects into query params.
+- For API date filters (`start_date`, `end_date`), always serialize to `YYYY-MM-DD` using a shared helper (e.g., `toApiDate`).
+- `buildQuery` callers must pass already-normalized date strings.

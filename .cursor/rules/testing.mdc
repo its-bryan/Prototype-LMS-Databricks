@@ -26,6 +26,10 @@ All tools are installed locally and available via the shell-setup PATH rule:
 3. Test manually in the browser after implementation
 4. Document: "To verify: [steps to reproduce expected behavior]"
 
+## Date filter regression tests (required)
+- If a change touches paged endpoints or date-filter query params, add/extend a test that proves API params are serialized as `YYYY-MM-DD`.
+- Include at least one negative case (invalid/non-ISO date input) and verify graceful handling (omit param or return validation error), never SQL-cast 500s.
+
 ## Verification commands (run locally)
 ```powershell
 npm run build                          # Vite build — catches import errors, JSX issues

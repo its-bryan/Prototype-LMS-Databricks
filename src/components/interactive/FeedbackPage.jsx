@@ -38,12 +38,6 @@ function formatRelativeDate(dateValue) {
   return formatDate(dateValue);
 }
 
-function npsColorClass(nps) {
-  if (nps >= 50) return "text-green-600";
-  if (nps >= 0) return "text-amber-600";
-  return "text-red-600";
-}
-
 export default function FeedbackPage() {
   const [summary, setSummary] = useState(null);
   const [summaryLoading, setSummaryLoading] = useState(true);
@@ -164,6 +158,14 @@ export default function FeedbackPage() {
     return `Showing ${start}-${end} of ${feedbackPage.total}`;
   }, [feedbackPage]);
 
+  const totalUpvotes = useMemo(
+    () => (featureRequests ?? []).reduce((sum, item) => sum + (item.upvoteCount ?? 0), 0),
+    [featureRequests]
+  );
+
+  const avgRating = summary?.avgRating ?? 0;
+  const shownRecentCount = (summary?.latest ?? []).length;
+
   return (
     <div className="px-6 py-5 space-y-5">
       <header className="space-y-2">
@@ -179,36 +181,18 @@ export default function FeedbackPage() {
         </div>
       )}
 
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="rounded-xl border border-[var(--neutral-200)] bg-white p-4">
-          <p className="text-xs uppercase tracking-wide text-[var(--neutral-500)]">NPS Score</p>
-          <p className={`text-3xl font-bold mt-2 ${npsColorClass(summary?.nps ?? 0)}`}>
-            {summaryLoading ? "..." : (summary?.nps ?? 0)}
-          </p>
-          <p className="text-xs text-[var(--neutral-600)] mt-2">
-            Promoters {summary?.promotersPct ?? 0}% · Detractors {summary?.detractorsPct ?? 0}%
-          </p>
-        </div>
-        <div className="rounded-xl border border-[var(--neutral-200)] bg-white p-4">
-          <p className="text-xs uppercase tracking-wide text-[var(--neutral-500)]">Average Rating</p>
-          <p className="text-3xl font-bold mt-2 text-[var(--hertz-black)]">
-            {summaryLoading ? "..." : (summary?.avgRating ?? 0).toFixed(1)}
-          </p>
-          <p className="text-xs text-[var(--neutral-600)] mt-2">Out of 5 stars</p>
-        </div>
-        <div className="rounded-xl border border-[var(--neutral-200)] bg-white p-4">
-          <p className="text-xs uppercase tracking-wide text-[var(--neutral-500)]">Total Feedback</p>
-          <p className="text-3xl font-bold mt-2 text-[var(--hertz-black)]">
-            {summaryLoading ? "..." : (summary?.totalFeedback ?? 0)}
-          </p>
-          <p className="text-xs text-[var(--neutral-600)] mt-2">Captured from all users</p>
-        </div>
-      </section>
-
       <section className="rounded-xl border border-[var(--neutral-200)] bg-white p-4 space-y-3">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-[var(--hertz-black)]">Recent Feedback</h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-lg font-semibold text-[var(--hertz-black)]">Recent Feedback</h2>
+              <div className="inline-flex items-center gap-1.5 text-[var(--neutral-700)]">
+                <StarRating value={summaryLoading ? 0 : avgRating} readOnly size="sm" />
+                <span className="text-sm font-medium">
+                  {summaryLoading ? "..." : `${avgRating.toFixed(1)} stars`}
+                </span>
+              </div>
+            </div>
             <p className="text-xs text-[var(--neutral-600)]">Latest 5 submissions from your teams</p>
           </div>
           <button
@@ -238,17 +222,24 @@ export default function FeedbackPage() {
           ))}
         </div>
 
-        <button
-          type="button"
-          onClick={() => {
-            const next = !showAllFeedback;
-            setShowAllFeedback(next);
-            if (next) setFeedbackOffset(0);
-          }}
-          className="text-sm font-medium text-[var(--hertz-black)] underline underline-offset-2 hover:text-[var(--neutral-700)]"
-        >
-          {showAllFeedback ? "Hide All Feedback" : "See More"}
-        </button>
+        <div className="flex items-center gap-1.5 text-sm text-[var(--neutral-700)]">
+          <span>
+            {summaryLoading
+              ? "Loading reviews..."
+              : `Showing ${shownRecentCount} out of ${summary?.totalFeedback ?? 0} reviews.`}
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              const next = !showAllFeedback;
+              setShowAllFeedback(next);
+              if (next) setFeedbackOffset(0);
+            }}
+            className="font-medium text-[var(--hertz-black)] underline underline-offset-2 hover:text-[var(--neutral-700)]"
+          >
+            {showAllFeedback ? "Hide" : "See more"}
+          </button>
+        </div>
 
         {showAllFeedback && (
           <div className="rounded-lg border border-[var(--neutral-200)] overflow-hidden">
@@ -303,7 +294,9 @@ export default function FeedbackPage() {
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold text-[var(--hertz-black)]">Feature Requests</h2>
-            <p className="text-xs text-[var(--neutral-600)]">Sorted by upvotes so top needs stay visible</p>
+            <p className="text-xs text-[var(--neutral-600)]">
+              Sorted by upvotes so top needs stay visible. Total upvotes: {featureRequestsLoading ? "..." : totalUpvotes}
+            </p>
           </div>
           <button
             type="button"

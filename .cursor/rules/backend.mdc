@@ -25,6 +25,11 @@ alwaysApply: false
 - Customer name = ADJ FNAME + ADJ LNAME concatenated
 - BM name comes from org_mapping lookup, not HLES data
 
+## Date input validation (API)
+- Validate date query params before SQL (especially `start_date` and `end_date`).
+- Return HTTP 422 with a clear message for invalid date format.
+- Do not rely on SQL `::date` casts to validate arbitrary client date strings.
+
 ## Deployment
 - `npm run build` before deploying (frontend must be rebuilt)
 - Push via git to trigger Databricks Apps redeploy

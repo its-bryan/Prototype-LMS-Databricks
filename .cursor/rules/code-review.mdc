@@ -23,6 +23,8 @@ When I ask you to review code, follow this checklist:
 - [ ] No unused imports
 - [ ] API calls have error handling
 - [ ] Database queries use parameterized values (no SQL injection)
+- [ ] API date query params use `YYYY-MM-DD` (no raw JS date strings)
+- [ ] Backend validates date input and returns HTTP 422 for bad date formats
 
 ## Output Format
 For each issue found:

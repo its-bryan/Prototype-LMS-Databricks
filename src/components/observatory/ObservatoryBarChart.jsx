@@ -34,7 +34,7 @@ export default function ObservatoryBarChart({
         {subtitle && <p className="text-xs text-[var(--neutral-600)] mt-1">{subtitle}</p>}
       </div>
 
-      <div className="p-4">
+      <div className="px-4 pt-4 pb-7">
         <div className="overflow-x-auto">
           <div className="min-w-[860px]">
             <div className="flex items-stretch gap-3">
@@ -123,7 +123,13 @@ export default function ObservatoryBarChart({
                               </div>
                             </div>
                           ) : (
-                            <div className="w-full rounded-t-md overflow-hidden border border-[var(--neutral-200)] border-b-0 bg-[var(--neutral-50)]">
+                            <div className="relative w-full rounded-t-md overflow-hidden border border-[var(--neutral-200)] border-b-0 bg-[var(--neutral-50)]">
+                              <span
+                                className="absolute left-1/2 -translate-x-1/2 text-[10px] font-semibold text-[var(--neutral-700)]"
+                                style={{ bottom: `${Math.min(rentedHeight + cancelledHeight + unusedHeight + 6, CHART_HEIGHT + 6)}px` }}
+                              >
+                                {formatNumber(p.total ?? ((p.rented ?? 0) + (p.cancelled ?? 0) + (p.unused ?? 0)))}
+                              </span>
                               <motion.div
                                 initial={reduceMotion ? false : { height: 0 }}
                                 animate={{ height: rentedHeight }}
@@ -151,7 +157,7 @@ export default function ObservatoryBarChart({
                             </div>
                           )}
                         </div>
-                        <span className="mt-2 text-[10px] text-[var(--neutral-600)] text-center leading-tight">{p.label}</span>
+                        <span className="mt-4 text-[10px] text-[var(--neutral-600)] text-center leading-tight">{p.label}</span>
                       </div>
                     );
                   })}
@@ -160,14 +166,14 @@ export default function ObservatoryBarChart({
             </div>
 
             {mode === "stacked" && (
-              <div className="mt-3 flex flex-wrap gap-3 text-xs text-[var(--neutral-600)]">
+              <div className="mt-6 flex flex-wrap gap-3 text-xs text-[var(--neutral-600)]">
                 <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[var(--chart-primary)]" />Rented</span>
                 <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[var(--chart-black)]" />Cancelled</span>
                 <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[var(--chart-neutral)]" />Unused</span>
               </div>
             )}
             {mode === "cluster" && (
-              <div className="mt-3 flex flex-wrap gap-3 text-xs text-[var(--neutral-600)]">
+              <div className="mt-6 flex flex-wrap gap-3 text-xs text-[var(--neutral-600)]">
                 <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[var(--hertz-primary)]" />Conversion %</span>
                 <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[var(--neutral-300)]" />Unused %</span>
               </div>

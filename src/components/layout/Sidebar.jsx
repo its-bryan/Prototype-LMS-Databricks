@@ -137,6 +137,8 @@ export default function Sidebar() {
   const { signOut, userProfile } = useAuth();
   const { leads, gmTasks, orgMapping } = useData();
   const navItems = role ? roleNav[role] || [] : [];
+  const feedbackItem = navItems.find((item) => item.id === "feedback") ?? null;
+  const primaryNavItems = navItems.filter((item) => item.id !== "feedback");
   const isProfileActive = currentPath === staticPathForView("profile");
 
   // Outstanding actions for Meeting Prep (this week only) — leads needing comments + data mismatches
@@ -270,7 +272,7 @@ export default function Sidebar() {
 
       {/* Nav items — scrollable so Open Tasks is reachable when expanded */}
       <nav ref={navScrollRef} className="flex-1 min-h-0 overflow-y-auto px-2 space-y-0.5 min-w-0" data-onboarding="sidebar-nav">
-        {navItems.map((item, i) => {
+        {primaryNavItems.map((item, i) => {
           // BM parent/child visibility
           const isWorkChild = item.parentId === "bm-work";
           const isSummaryChild = item.parentId === "bm-dashboard";
@@ -380,6 +382,35 @@ export default function Sidebar() {
             </div>
           );
         })}
+        {feedbackItem && (
+          <div className="pt-2 mt-auto">
+            <div data-nav-id={feedbackItem.id} className="flex items-center min-w-0">
+              <motion.button
+                layout={!reduceMotion}
+                initial={false}
+                onClick={() => {
+                  const targetPath = viewPaths.feedback;
+                  if (targetPath) navigate(targetPath);
+                }}
+                whileHover={!reduceMotion ? { x: 2, transition: { duration: 0.15 } } : {}}
+                whileTap={!reduceMotion ? { scale: 0.98 } : {}}
+                className={`flex-1 flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm transition-colors cursor-pointer min-w-0 ${
+                  resolvedActive === "feedback"
+                    ? "bg-[#FFD100]/15 text-[#272425] font-semibold ring-1 ring-[#FFD100]/40"
+                    : "text-[#666666] hover:bg-white/80 hover:text-[#272425]"
+                }`}
+                title={feedbackItem.label}
+              >
+                <span className={`relative shrink-0 ${resolvedActive === "feedback" ? "text-[#FFD100]" : ""}`}>
+                  {iconMap[feedbackItem.icon]}
+                </span>
+                {!sidebarCollapsed && (
+                  <span className="truncate">{feedbackItem.label}</span>
+                )}
+              </motion.button>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Footer — user, settings, logout */}

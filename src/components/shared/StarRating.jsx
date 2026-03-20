@@ -47,10 +47,26 @@ export default function StarRating({
     >
       {Array.from({ length: max }).map((_, idx) => {
         const starValue = idx + 1;
-        const filled = starValue <= displayValue;
+        const fillAmount = Math.max(0, Math.min(1, displayValue - idx));
+        const filled = fillAmount >= 1;
         const colorClass = filled ? "text-[var(--hertz-primary)]" : "text-[var(--neutral-300)]";
 
         if (!interactive) {
+          if (fillAmount > 0 && fillAmount < 1) {
+            return (
+              <span key={starValue} className="relative inline-block">
+                <span className="text-[var(--neutral-300)]">
+                  <StarIcon filled={false} className={iconClass} />
+                </span>
+                <span
+                  className="absolute inset-y-0 left-0 overflow-hidden text-[var(--hertz-primary)]"
+                  style={{ width: `${fillAmount * 100}%` }}
+                >
+                  <StarIcon filled className={iconClass} />
+                </span>
+              </span>
+            );
+          }
           return (
             <span key={starValue} className={colorClass}>
               <StarIcon filled={filled} className={iconClass} />

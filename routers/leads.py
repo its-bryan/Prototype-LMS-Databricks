@@ -167,7 +167,7 @@ async def get_leads(
         rows = query(
             f"SELECT {_LEAD_LIST_COLS} FROM leads"
             f" WHERE {where_sql}"
-            f" ORDER BY created_at DESC"
+            f" ORDER BY COALESCE(init_dt_final, week_of) DESC NULLS LAST, created_at DESC"
             f" LIMIT %s OFFSET %s",
             tuple(paged_params),
         )
@@ -184,7 +184,7 @@ async def get_leads(
     rows = query(
         f"SELECT {_LEAD_LIST_COLS} FROM leads"
         f" WHERE {where_sql}"
-        f" ORDER BY created_at DESC",
+        f" ORDER BY COALESCE(init_dt_final, week_of) DESC NULLS LAST, created_at DESC",
         tuple(params),
     )
     t1 = _time.monotonic()

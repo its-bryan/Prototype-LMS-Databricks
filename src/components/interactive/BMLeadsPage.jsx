@@ -13,7 +13,6 @@ import { formatDateRange } from "../../utils/dashboardHelpers";
 import { usePageTransition, BMDashboardSkeleton } from "../DashboardSkeleton";
 
 const STATUS_TABS = ["All", "Cancelled", "Unused", "Rented"];
-const DEBUG_INGEST_URL = "http://127.0.0.1:7507/ingest/4cdc8682-4d34-4a46-8b0d-92860e51cbd8";
 
 export default function BMLeadsPage() {
   const { loading, fetchLeadsPage, initialDataReady } = useData();
@@ -42,29 +41,6 @@ export default function BMLeadsPage() {
   useEffect(() => {
     let cancelled = false;
     setPageLoading(true);
-    // #region agent log
-    fetch(DEBUG_INGEST_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "862807" },
-      body: JSON.stringify({
-        sessionId: "862807",
-        runId: "pre-fix",
-        hypothesisId: "H3",
-        location: "BMLeadsPage.jsx:useEffect:beforeFetch",
-        message: "BM leads paging request params",
-        data: {
-          hasBranch: !!branch,
-          statusFilter,
-          hasSearch: !!searchQuery.trim(),
-          start: dateRange?.start ?? null,
-          end: dateRange?.end ?? null,
-          offset,
-          pageSize,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
     fetchLeadsPage({
       branch,
       status: statusFilter === "All" ? null : statusFilter,
@@ -78,25 +54,6 @@ export default function BMLeadsPage() {
         if (cancelled) return;
         setPagedLeads(result?.items ?? []);
         setTotalLeads(result?.total ?? 0);
-        // #region agent log
-        fetch(DEBUG_INGEST_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "862807" },
-          body: JSON.stringify({
-            sessionId: "862807",
-            runId: "pre-fix",
-            hypothesisId: "H3",
-            location: "BMLeadsPage.jsx:useEffect:afterFetch",
-            message: "BM leads paging response mapped to state",
-            data: {
-              itemsLength: (result?.items ?? []).length,
-              total: result?.total ?? 0,
-              offset,
-            },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {});
-        // #endregion
       })
       .catch(() => {
         if (cancelled) return;
@@ -173,6 +130,30 @@ export default function BMLeadsPage() {
           />
         </div>
 
+        <div className="flex items-center justify-between text-xs text-[var(--neutral-600)] px-1">
+          <span>
+            {totalLeads === 0 ? "0 results" : `Showing ${offset + 1}-${Math.min(offset + pageSize, totalLeads)} of ${totalLeads}`}
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setOffset((prev) => Math.max(0, prev - pageSize))}
+              disabled={offset === 0 || pageLoading}
+              className="px-2.5 py-1 rounded border border-[var(--neutral-200)] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--neutral-50)]"
+            >
+              Prev
+            </button>
+            <button
+              type="button"
+              onClick={() => setOffset((prev) => prev + pageSize)}
+              disabled={pageLoading || offset + pageSize >= totalLeads}
+              className="px-2.5 py-1 rounded border border-[var(--neutral-200)] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--neutral-50)]"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+
         <div className="border border-[var(--neutral-200)] rounded-xl overflow-hidden">
           <table className="w-full text-sm">
             <thead>
@@ -222,29 +203,6 @@ export default function BMLeadsPage() {
               ))}
             </tbody>
           </table>
-        </div>
-        <div className="flex items-center justify-between text-xs text-[var(--neutral-600)] px-1">
-          <span>
-            {totalLeads === 0 ? "0 results" : `Showing ${offset + 1}-${Math.min(offset + pageSize, totalLeads)} of ${totalLeads}`}
-          </span>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setOffset((prev) => Math.max(0, prev - pageSize))}
-              disabled={offset === 0 || pageLoading}
-              className="px-2.5 py-1 rounded border border-[var(--neutral-200)] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--neutral-50)]"
-            >
-              Prev
-            </button>
-            <button
-              type="button"
-              onClick={() => setOffset((prev) => prev + pageSize)}
-              disabled={pageLoading || offset + pageSize >= totalLeads}
-              className="px-2.5 py-1 rounded border border-[var(--neutral-200)] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--neutral-50)]"
-            >
-              Next
-            </button>
-          </div>
         </div>
       </div>
     </div>
