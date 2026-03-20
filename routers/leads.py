@@ -146,6 +146,15 @@ async def get_leads(
             params.extend(statuses)
 
     if bm_name and bm_name != "All":
+        # #region agent log
+        if branch_list:
+            _sample = query(
+                "SELECT DISTINCT bm_name FROM leads WHERE archived = false AND branch = %s LIMIT 10",
+                (branch_list[0],),
+            )
+            _vals = [r["bm_name"] for r in _sample]
+            print(f"[leads-api][DEBUG-862807] bm_name filter='{bm_name}' | DB samples for branch={branch_list[0]}: {_vals}", flush=True)
+        # #endregion
         where.append("bm_name = %s")
         params.append(bm_name)
 
