@@ -29,6 +29,7 @@ const {
   fetchObservatorySnapshot: apiFetchObservatorySnapshot,
   fetchLeadById: apiFetchLeadById,
   fetchLeadsPage: apiFetchLeadsPage,
+  fetchGMMeetingPrepStats: apiFetchGMMeetingPrepStats,
   fetchUploadSummary,
   fetchAllConfig: apiFetchAllConfig,
   fetchOrgMapping: apiFetchOrgMapping,
@@ -256,6 +257,19 @@ export function DataProvider({ children }) {
       return apiFetchLeadById(leadId);
     },
     [USE_LIVE_API, leads]
+  );
+
+  const fetchGMMeetingPrepStats = useCallback(
+    async (params = {}) => {
+      if (USE_LIVE_API) return apiFetchGMMeetingPrepStats(params);
+      return {
+        leadsToReviewTotal: 0,
+        leadsReviewed: 0,
+        meetingPrepData: { branchChecklist: [], totalOutstanding: 0, branchesComplete: 0, totalBranches: 0 },
+        unreachableStats: { count: 0, pct: 0, total: 0, branchBreakdown: [], leads: [] },
+      };
+    },
+    [USE_LIVE_API]
   );
 
   const refetchOrgMapping = useCallback(async () => {
@@ -669,6 +683,7 @@ export function DataProvider({ children }) {
     insertGmDirective,
     fetchLeadActivities,
     fetchLeadsPage,
+    fetchGMMeetingPrepStats,
     fetchLeadById,
     fetchTasksForBranch,
     fetchTasksForBranchPage,

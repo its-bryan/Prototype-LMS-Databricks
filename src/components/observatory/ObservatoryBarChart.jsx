@@ -26,6 +26,7 @@ export default function ObservatoryBarChart({
   );
 
   const yTicks = yAxis === "percent" ? [0, 25, 50, 75, 100] : [0, Math.round(maxValue * 0.25), Math.round(maxValue * 0.5), Math.round(maxValue * 0.75), maxValue];
+  const heightDenominator = yAxis === "percent" ? 100 : maxValue;
 
   return (
     <div className="rounded-xl border border-[var(--neutral-200)] bg-white shadow-[var(--shadow-sm)]">
@@ -55,8 +56,8 @@ export default function ObservatoryBarChart({
 
                 <div className="relative h-[320px] flex items-end gap-2 px-2">
                   {points.map((p, idx) => {
-                    const singleHeight = ((p.value ?? 0) / maxValue) * CHART_HEIGHT;
-                    const unusedPercentHeight = ((p.unusedPct ?? 0) / maxValue) * CHART_HEIGHT;
+                    const singleHeight = ((p.value ?? 0) / heightDenominator) * CHART_HEIGHT;
+                    const unusedPercentHeight = ((p.unusedPct ?? 0) / heightDenominator) * CHART_HEIGHT;
                     const rentedHeight = ((p.rented ?? 0) / maxValue) * CHART_HEIGHT;
                     const cancelledHeight = ((p.cancelled ?? 0) / maxValue) * CHART_HEIGHT;
                     const unusedHeight = ((p.unused ?? 0) / maxValue) * CHART_HEIGHT;
@@ -123,37 +124,38 @@ export default function ObservatoryBarChart({
                               </div>
                             </div>
                           ) : (
-                            <div className="relative w-full rounded-t-md overflow-hidden border border-[var(--neutral-200)] border-b-0 bg-[var(--neutral-50)]">
+                            <div className="w-full">
                               <span
-                                className="absolute left-1/2 -translate-x-1/2 text-[10px] font-semibold text-[var(--neutral-700)]"
-                                style={{ bottom: `${Math.min(rentedHeight + cancelledHeight + unusedHeight + 6, CHART_HEIGHT + 6)}px` }}
+                                className="block text-center text-[10px] font-semibold text-[var(--neutral-700)] mb-1"
                               >
                                 {formatNumber(p.total ?? ((p.rented ?? 0) + (p.cancelled ?? 0) + (p.unused ?? 0)))}
                               </span>
-                              <motion.div
-                                initial={reduceMotion ? false : { height: 0 }}
-                                animate={{ height: rentedHeight }}
-                                transition={{ duration: 0.45, delay: idx * 0.02 }}
-                                className="w-full bg-[var(--chart-primary)] flex items-center justify-center"
-                              >
-                                {p.rented > 0 && rentedHeight >= 18 && <span className="text-[10px] font-bold text-white">{formatNumber(p.rented)}</span>}
-                              </motion.div>
-                              <motion.div
-                                initial={reduceMotion ? false : { height: 0 }}
-                                animate={{ height: cancelledHeight }}
-                                transition={{ duration: 0.45, delay: idx * 0.02 + 0.03 }}
-                                className="w-full bg-[var(--chart-black)] flex items-center justify-center"
-                              >
-                                {p.cancelled > 0 && cancelledHeight >= 18 && <span className="text-[10px] font-bold text-white">{formatNumber(p.cancelled)}</span>}
-                              </motion.div>
-                              <motion.div
-                                initial={reduceMotion ? false : { height: 0 }}
-                                animate={{ height: unusedHeight }}
-                                transition={{ duration: 0.45, delay: idx * 0.02 + 0.06 }}
-                                className="w-full bg-[var(--chart-neutral)] flex items-center justify-center"
-                              >
-                                {p.unused > 0 && unusedHeight >= 18 && <span className="text-[10px] font-bold text-[var(--hertz-black)]">{formatNumber(p.unused)}</span>}
-                              </motion.div>
+                              <div className="relative w-full rounded-t-md overflow-hidden border border-[var(--neutral-200)] border-b-0 bg-[var(--neutral-50)]">
+                                <motion.div
+                                  initial={reduceMotion ? false : { height: 0 }}
+                                  animate={{ height: rentedHeight }}
+                                  transition={{ duration: 0.45, delay: idx * 0.02 }}
+                                  className="w-full bg-[var(--chart-primary)] flex items-center justify-center"
+                                >
+                                  {p.rented > 0 && rentedHeight >= 18 && <span className="text-[10px] font-bold text-white">{formatNumber(p.rented)}</span>}
+                                </motion.div>
+                                <motion.div
+                                  initial={reduceMotion ? false : { height: 0 }}
+                                  animate={{ height: cancelledHeight }}
+                                  transition={{ duration: 0.45, delay: idx * 0.02 + 0.03 }}
+                                  className="w-full bg-[var(--chart-black)] flex items-center justify-center"
+                                >
+                                  {p.cancelled > 0 && cancelledHeight >= 18 && <span className="text-[10px] font-bold text-white">{formatNumber(p.cancelled)}</span>}
+                                </motion.div>
+                                <motion.div
+                                  initial={reduceMotion ? false : { height: 0 }}
+                                  animate={{ height: unusedHeight }}
+                                  transition={{ duration: 0.45, delay: idx * 0.02 + 0.06 }}
+                                  className="w-full bg-[var(--chart-neutral)] flex items-center justify-center"
+                                >
+                                  {p.unused > 0 && unusedHeight >= 18 && <span className="text-[10px] font-bold text-[var(--hertz-black)]">{formatNumber(p.unused)}</span>}
+                                </motion.div>
+                              </div>
                             </div>
                           )}
                         </div>

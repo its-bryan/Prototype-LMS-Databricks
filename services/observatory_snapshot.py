@@ -2,7 +2,7 @@
 Pre-computed Observatory Tower snapshot.
 
 Reads non-archived leads and org_mapping from Lakebase Postgres, buckets metrics
-by branch for the trailing 12 calendar months and 24 ISO weeks (Monday keys),
+by branch for the trailing 12 calendar months and 12 ISO weeks (Monday keys),
 and stores one JSONB row in observatory_snapshots.
 """
 
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 SNAPSHOT_VERSION = 1
 NUM_MONTHS = 12
-NUM_WEEKS = 24
+NUM_WEEKS = 12
 
 
 # ---------------------------------------------------------------------------
@@ -94,7 +94,7 @@ def _twelve_month_labels(anchor: date) -> list[str]:
     return list(reversed(labels_rev))
 
 
-def _twenty_four_week_mondays(anchor: date) -> list[date]:
+def _trailing_week_mondays(anchor: date) -> list[date]:
     """Oldest-first Mondays; last week is the ISO week (Monday) containing anchor."""
     end = _get_monday(anchor)
     return [end - timedelta(weeks=NUM_WEEKS - 1 - i) for i in range(NUM_WEEKS)]
@@ -229,7 +229,7 @@ def compute_observatory_snapshot() -> None:
 
     now = _get_now(leads)
     month_labels = _twelve_month_labels(now)
-    week_mondays = _twenty_four_week_mondays(now)
+    week_mondays = _trailing_week_mondays(now)
     week_labels = [m.isoformat() for m in week_mondays]
 
     month_bounds = {lab: _month_start_end(lab) for lab in month_labels}

@@ -238,7 +238,7 @@ export async function fetchDashboardSnapshot() {
   return data ?? null;
 }
 
-/** Fetch the latest pre-computed observatory snapshot (12 months / 24 weeks). */
+/** Fetch the latest pre-computed observatory snapshot (12 months / 12 weeks). */
 export async function fetchObservatorySnapshot() {
   const data = await apiGet("/observatory-snapshot");
   return data ?? null;
@@ -290,6 +290,46 @@ export async function fetchLeadsPage({
     limit: result?.limit ?? limit,
     offset: result?.offset ?? offset,
     hasNext: !!result?.has_next,
+  };
+}
+
+export async function fetchGMMeetingPrepStats({ gmName, startDate = null, endDate = null } = {}) {
+  const query = buildQuery({
+    gm_name: gmName,
+    start_date: toApiDate(startDate),
+    end_date: toApiDate(endDate),
+  });
+  const result = await apiGet(`/leads/gm-meeting-prep-stats${query}`);
+  return {
+    leadsToReviewTotal: result?.leads_to_review_total ?? 0,
+    leadsReviewed: result?.leads_reviewed ?? 0,
+    meetingPrepData: {
+      branchChecklist: (result?.meeting_prep_data?.branch_checklist ?? []).map((row) => ({
+        branch: row.branch,
+        bmName: row.bm_name,
+        total: row.total ?? 0,
+        cancelledNoBmComment: row.cancelled_no_bm_comment ?? 0,
+        unusedNoBmThisPeriod: row.unused_no_bm_this_period ?? 0,
+        missingComments: row.missing_comments ?? 0,
+        mismatchCount: row.mismatch_count ?? 0,
+        outstanding: row.outstanding ?? 0,
+        isComplete: !!row.is_complete,
+        outstandingLeads: (row.outstanding_leads ?? []).map(leadFromRow),
+        cancelledNoBmCommentLeads: (row.cancelled_no_bm_comment_leads ?? []).map(leadFromRow),
+        unusedNoBmThisPeriodLeads: (row.unused_no_bm_this_period_leads ?? []).map(leadFromRow),
+        mismatchLeads: (row.mismatch_leads ?? []).map(leadFromRow),
+      })),
+      totalOutstanding: result?.meeting_prep_data?.total_outstanding ?? 0,
+      branchesComplete: result?.meeting_prep_data?.branches_complete ?? 0,
+      totalBranches: result?.meeting_prep_data?.total_branches ?? 0,
+    },
+    unreachableStats: {
+      count: result?.unreachable_stats?.count ?? 0,
+      pct: result?.unreachable_stats?.pct ?? 0,
+      total: result?.unreachable_stats?.total ?? 0,
+      branchBreakdown: result?.unreachable_stats?.branch_breakdown ?? [],
+      leads: (result?.unreachable_stats?.leads ?? []).map(leadFromRow),
+    },
   };
 }
 

@@ -172,7 +172,7 @@ export default function InteractiveMeetingPrep() {
   }, [wlText, wlSubmitting, bmName, branch, gmName, submitWinsLearning]);
 
   const presets = useMemo(() => getDateRangePresets(), []);
-  const [selectedPresetKey, setSelectedPresetKey] = useState("this_week");
+  const [selectedPresetKey, setSelectedPresetKey] = useState("trailing_4_weeks");
   const dateRange = useMemo(() => {
     const preset = presets.find((p) => p.key === selectedPresetKey);
     return preset ? { start: preset.start, end: preset.end } : null;

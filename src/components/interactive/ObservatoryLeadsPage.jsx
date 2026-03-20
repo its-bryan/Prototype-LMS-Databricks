@@ -84,7 +84,7 @@ export default function ObservatoryLeadsPage() {
           mode="stacked"
           yAxis="count"
           title="Total Leads"
-          subtitle={granularity === "month" ? "Last 12 months" : "Last 24 weeks"}
+          subtitle={granularity === "month" ? "Last 12 months" : "Last 12 weeks"}
         />
       )}
     </div>

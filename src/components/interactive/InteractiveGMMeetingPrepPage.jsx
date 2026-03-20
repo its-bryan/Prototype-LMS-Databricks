@@ -5,21 +5,13 @@ import { useData } from "../../context/DataContext";
 import { useAuth } from "../../context/AuthContext";
 import BackButton from "../BackButton";
 import {
-  getGMDashboardStats,
-  getGMMeetingPrepData,
-  getGMLeads,
   getTasksForGMBranches,
   getGMTasksProgress,
   getDateRangePresets,
-  getComparisonDateRange,
-  getLeadById,
   getNextComplianceMeetingDate,
-  getLeadsWithOutstandingItemsForBranch,
-  getUnreachableLeadsStats,
   getWinsLearningsForGM,
   resolveGMName,
   getBranchesForGM,
-  leadInGmBranchList,
   normalizeGmName,
 } from "../../selectors/demoSelectors";
 import StatusBadge from "../StatusBadge";
@@ -60,7 +52,7 @@ function formatDueDate(dueStr) {
 }
 
 export default function InteractiveGMMeetingPrepPage() {
-  const { leads, loading, orgMapping, createComplianceTasksForBranch, winsLearnings, updateLeadDirective, markLeadReviewed, gmTasks, fetchGMTasks, fetchLeadsPage, fetchGMTasksPage, initialDataReady } = useData();
+  const { loading, orgMapping, createComplianceTasksForBranch, winsLearnings, updateLeadDirective, markLeadReviewed, gmTasks, fetchGMTasks, fetchLeadsPage, fetchGMTasksPage, fetchGMMeetingPrepStats, initialDataReady } = useData();
   const navigate = useNavigate();
   const { userProfile } = useAuth();
   const reduceMotion = useReducedMotion();
@@ -81,6 +73,21 @@ export default function InteractiveGMMeetingPrepPage() {
   const [tasksPageTotal, setTasksPageTotal] = useState(0);
   const [pagedOpenTasks, setPagedOpenTasks] = useState([]);
   const [tasksPageLoading, setTasksPageLoading] = useState(false);
+  const [meetingPrepData, setMeetingPrepData] = useState({
+    branchChecklist: [],
+    totalOutstanding: 0,
+    branchesComplete: 0,
+    totalBranches: 0,
+  });
+  const [unreachableStats, setUnreachableStats] = useState({
+    count: 0,
+    pct: 0,
+    total: 0,
+    branchBreakdown: [],
+    leads: [],
+  });
+  const [leadsToReviewTotal, setLeadsToReviewTotal] = useState(0);
+  const [leadsReviewed, setLeadsReviewed] = useState(0);
 
   const [directive, setDirective] = useState("");
   const [directiveSaved, setDirectiveSaved] = useState(false);
@@ -93,7 +100,6 @@ export default function InteractiveGMMeetingPrepPage() {
     () => (currentPreset ? { start: currentPreset.start, end: currentPreset.end } : null),
     [currentPreset],
   );
-  const comparisonRange = useMemo(() => getComparisonDateRange(selectedPresetKey), [selectedPresetKey]);
 
   const gmName = useMemo(() => {
     const name = userProfile?.displayName;
@@ -117,6 +123,72 @@ export default function InteractiveGMMeetingPrepPage() {
   useEffect(() => {
     setTasksPageOffset(0);
   }, [gmBranches.join(",")]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!gmName) {
+      setMeetingPrepData({
+        branchChecklist: [],
+        totalOutstanding: 0,
+        branchesComplete: 0,
+        totalBranches: 0,
+      });
+      setUnreachableStats({
+        count: 0,
+        pct: 0,
+        total: 0,
+        branchBreakdown: [],
+        leads: [],
+      });
+      setLeadsToReviewTotal(0);
+      setLeadsReviewed(0);
+      return;
+    }
+    fetchGMMeetingPrepStats({
+      gmName,
+      startDate: dateRange?.start ?? null,
+      endDate: dateRange?.end ?? null,
+    })
+      .then((res) => {
+        if (cancelled) return;
+        setMeetingPrepData(res?.meetingPrepData ?? {
+          branchChecklist: [],
+          totalOutstanding: 0,
+          branchesComplete: 0,
+          totalBranches: 0,
+        });
+        setUnreachableStats(res?.unreachableStats ?? {
+          count: 0,
+          pct: 0,
+          total: 0,
+          branchBreakdown: [],
+          leads: [],
+        });
+        setLeadsToReviewTotal(res?.leadsToReviewTotal ?? 0);
+        setLeadsReviewed(res?.leadsReviewed ?? 0);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setMeetingPrepData({
+          branchChecklist: [],
+          totalOutstanding: 0,
+          branchesComplete: 0,
+          totalBranches: 0,
+        });
+        setUnreachableStats({
+          count: 0,
+          pct: 0,
+          total: 0,
+          branchBreakdown: [],
+          leads: [],
+        });
+        setLeadsToReviewTotal(0);
+        setLeadsReviewed(0);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchGMMeetingPrepStats, gmName, dateRange?.start, dateRange?.end]);
 
   useEffect(() => {
     let cancelled = false;
@@ -182,41 +254,29 @@ export default function InteractiveGMMeetingPrepPage() {
     };
   }, [fetchGMTasksPage, gmBranches, tasksPageOffset]);
 
-  const gmFilteredLeads = useMemo(() => {
-    if (!gmName) return leads ?? [];
-    const myBranches = getBranchesForGM(gmName);
-    return (leads ?? []).filter((l) => leadInGmBranchList(l.branch, myBranches));
-  }, [leads, gmName]);
-  const stats = useMemo(() => getGMDashboardStats(leads, dateRange, gmName), [leads, dateRange, gmName]);
-  const prevStats = useMemo(() => (comparisonRange ? getGMDashboardStats(leads, comparisonRange, gmName) : null), [leads, comparisonRange, gmName]);
-  const prevUnreachable = useMemo(() => (comparisonRange ? getUnreachableLeadsStats(leads, comparisonRange, gmName) : null), [leads, comparisonRange, gmName]);
-  const unreachableStats = useMemo(() => getUnreachableLeadsStats(leads, dateRange, gmName), [leads, dateRange, gmName]);
-  const meetingPrepData = useMemo(() => getGMMeetingPrepData(leads, dateRange, gmName), [leads, dateRange, gmName]);
   const gmTasksLoading = gmTasks === null;
   const effectiveGmTasks = gmTasksLoading ? [] : gmTasks;
-  const openTasks = useMemo(() => getTasksForGMBranches(effectiveGmTasks, gmName, leads), [effectiveGmTasks, gmName, leads]);
-  const tasksProgress = useMemo(() => getGMTasksProgress(effectiveGmTasks, gmName, leads), [effectiveGmTasks, gmName, leads]);
-  const leadsToReview = useMemo(() => getGMLeads(leads, dateRange, {}, gmName), [leads, dateRange, gmName]);
-  const leadsReviewed = useMemo(() => leadsToReview.filter((l) => l.gmDirective).length, [leadsToReview]);
-  const leadsProgressPct = leadsToReview.length > 0 ? Math.round((leadsReviewed / leadsToReview.length) * 100) : 100;
+  const openTasks = useMemo(() => getTasksForGMBranches(effectiveGmTasks, gmName), [effectiveGmTasks, gmName]);
+  const tasksProgress = useMemo(() => getGMTasksProgress(effectiveGmTasks, gmName), [effectiveGmTasks, gmName]);
+  const leadsProgressPct = leadsToReviewTotal > 0 ? Math.round((leadsReviewed / leadsToReviewTotal) * 100) : 100;
   const { dateStr: meetingDateStr, daysLeft, date: meetingDate } = useMemo(() => getNextComplianceMeetingDate(), []);
   const meetingDueDateStr = meetingDate ? meetingDate.toISOString().slice(0, 10) : null;
 
-  const selectedLead = selectedLeadId ? getLeadById(leads, selectedLeadId) : null;
+  const selectedLead = selectedLeadId ? pagedLeadsToReview.find((l) => l.id === selectedLeadId) : null;
   const winsLearningsForGM = useMemo(() => getWinsLearningsForGM(winsLearnings ?? [], gmName), [winsLearnings, gmName]);
 
   // Freeze data snapshot when opening presentation so it can't change mid-meeting
   const handleOpenPresentation = useCallback(() => {
     setPresentationSnapshot({
-      frozenLeads: [...gmFilteredLeads],
+      frozenLeads: [...pagedLeadsToReview],
       frozenWinsLearnings: [...(winsLearnings ?? [])],
       dateRange,
-      compRange: comparisonRange,
+      compRange: null,
       meetingDateStr,
       gmName,
     });
     setShowPresentation(true);
-  }, [gmFilteredLeads, winsLearnings, dateRange, comparisonRange, meetingDateStr, gmName]);
+  }, [pagedLeadsToReview, winsLearnings, dateRange, meetingDateStr, gmName]);
 
   useEffect(() => {
     if (selectedLead && panelRef.current) {
@@ -328,15 +388,15 @@ export default function InteractiveGMMeetingPrepPage() {
               >
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-[var(--hertz-black)]">
-                    {leadsToReview.length === 0
+                    {leadsToReviewTotal === 0
                       ? "No leads to review"
-                      : `${leadsReviewed} of ${leadsToReview.length} leads reviewed`}
+                      : `${leadsReviewed} of ${leadsToReviewTotal} leads reviewed`}
                   </p>
                   <p className="text-xs text-[var(--neutral-600)] mt-0.5">
-                    {leadsToReview.length === 0
+                    {leadsToReviewTotal === 0
                       ? "No cancelled or unused leads in this period."
-                      : leadsToReview.length - leadsReviewed > 0
-                        ? `${leadsToReview.length - leadsReviewed} cancelled and unused lead${leadsToReview.length - leadsReviewed !== 1 ? "s" : ""} — add directives or review before the meeting`
+                      : leadsToReviewTotal - leadsReviewed > 0
+                        ? `${leadsToReviewTotal - leadsReviewed} cancelled and unused lead${leadsToReviewTotal - leadsReviewed !== 1 ? "s" : ""} — add directives or review before the meeting`
                         : "All leads reviewed — no outstanding items."}
                   </p>
                 </div>
@@ -614,8 +674,7 @@ export default function InteractiveGMMeetingPrepPage() {
                       <BranchChecklistRow
                         key={row.branch}
                         row={row}
-                        leads={leads}
-                        dateRange={dateRange}
+                        outstandingLeads={row.outstandingLeads ?? []}
                         meetingDueDateStr={meetingDueDateStr}
                         gmName={resolveGMName(userProfile?.displayName, userProfile?.id)}
                         gmUserId={userProfile?.id ?? null}
@@ -714,7 +773,7 @@ export default function InteractiveGMMeetingPrepPage() {
                             </thead>
                             <tbody>
                               {pagedOpenTasks.map((task) => {
-                                const lead = task.lead ?? (task.leadId ? getLeadById(leads, task.leadId) : null);
+                                const lead = task.lead ?? null;
                                 const overdue = task.dueDate && new Date(task.dueDate + "T23:59:59") < new Date();
                                 return (
                                   <tr
@@ -1001,7 +1060,6 @@ export default function InteractiveGMMeetingPrepPage() {
           <BranchComplianceDetailPane
             branchRow={selectedBranchForDetail}
             dateRange={dateRange}
-            leads={leads}
             onClose={() => setSelectedBranchForDetail(null)}
           />
         )}
@@ -1012,8 +1070,7 @@ export default function InteractiveGMMeetingPrepPage() {
 
 function BranchChecklistRow({
   row,
-  leads,
-  dateRange,
+  outstandingLeads = [],
   meetingDueDateStr,
   gmName,
   gmUserId,
@@ -1022,11 +1079,6 @@ function BranchChecklistRow({
 }) {
   const [creating, setCreating] = useState(false);
   const [createResult, setCreateResult] = useState(null);
-
-  const outstandingLeads = useMemo(
-    () => getLeadsWithOutstandingItemsForBranch(leads ?? [], dateRange, row.branch),
-    [leads, dateRange, row.branch]
-  );
 
   const canCreate = !row.isComplete && outstandingLeads.length > 0;
   const isDisabled = !canCreate || creating;

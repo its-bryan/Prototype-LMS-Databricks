@@ -76,6 +76,115 @@ def _user_from_jwt(request: Request) -> dict | None:
         return None
 
 
+def _parse_json_maybe(value, default):
+    if value is None:
+        return default
+    if isinstance(value, (dict, list)):
+        return value
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+            if isinstance(parsed, type(default)):
+                return parsed
+        except Exception:
+            return default
+    return default
+
+
+def _lead_has_bm_comment(lead: dict) -> bool:
+    enrichment = _parse_json_maybe(lead.get("enrichment"), {})
+    reason = (enrichment.get("reason") or "").strip()
+    notes = (enrichment.get("notes") or "").strip()
+    return bool(reason or notes)
+
+
+def _lead_date(lead: dict):
+    d = lead.get("init_dt_final") or lead.get("week_of")
+    if not d:
+        return None
+    s = str(d)[:10]
+    try:
+        return datetime.strptime(s, "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
+
+def _lead_in_date_range(lead: dict, start_date: str | None, end_date: str | None) -> bool:
+    if not start_date and not end_date:
+        return True
+    ld = _lead_date(lead)
+    if ld is None:
+        return False
+    if start_date:
+        sd = datetime.strptime(start_date, "%Y-%m-%d").date()
+        if ld < sd:
+            return False
+    if end_date:
+        ed = datetime.strptime(end_date, "%Y-%m-%d").date()
+        if ld > ed:
+            return False
+    return True
+
+
+def _timestamp_in_range(ts_value, start_date: str | None, end_date: str | None) -> bool:
+    if ts_value is None:
+        return False
+    try:
+        if isinstance(ts_value, (int, float)):
+            ts = datetime.fromtimestamp(float(ts_value))
+        else:
+            ts = datetime.fromisoformat(str(ts_value).replace("Z", "+00:00"))
+        d = ts.date()
+        if start_date:
+            sd = datetime.strptime(start_date, "%Y-%m-%d").date()
+            if d < sd:
+                return False
+        if end_date:
+            ed = datetime.strptime(end_date, "%Y-%m-%d").date()
+            if d > ed:
+                return False
+        return True
+    except Exception:
+        return False
+
+
+def _has_bm_activity_in_period(lead: dict, start_date: str | None, end_date: str | None) -> bool:
+    if not start_date or not end_date:
+        return _lead_has_bm_comment(lead)
+
+    enrichment_log = _parse_json_maybe(lead.get("enrichment_log"), [])
+    for entry in enrichment_log:
+        if _timestamp_in_range(entry.get("timestamp") or entry.get("time"), start_date, end_date):
+            return True
+
+    if _lead_has_bm_comment(lead) and _timestamp_in_range(lead.get("last_activity"), start_date, end_date):
+        return True
+
+    return False
+
+
+def _is_no_contact_attempt(lead: dict) -> bool:
+    contact_range = (lead.get("contact_range") or "").strip().upper()
+    if contact_range == "NO CONTACT":
+        return True
+    first_contact_by = (lead.get("first_contact_by") or "").strip().lower()
+    time_to_first_contact = lead.get("time_to_first_contact")
+    return first_contact_by == "none" and not time_to_first_contact
+
+
+def _serialize_lead_row(lead: dict) -> dict:
+    lead = dict(lead)
+    if isinstance(lead.get("init_dt_final"), datetime):
+        lead["init_dt_final"] = lead["init_dt_final"].date().isoformat()
+    elif lead.get("init_dt_final") is not None:
+        lead["init_dt_final"] = str(lead["init_dt_final"])[:10]
+    if isinstance(lead.get("week_of"), datetime):
+        lead["week_of"] = lead["week_of"].date().isoformat()
+    elif lead.get("week_of") is not None:
+        lead["week_of"] = str(lead["week_of"])[:10]
+    return lead
+
+
 @router.get("/leads")
 async def get_leads(
     request: Request,
@@ -216,6 +325,135 @@ async def get_leads(
     else:
         print(f"[leads-api] rows={len(rows)}, query={t1-t0:.2f}s", flush=True)
     return rows
+
+
+@router.get("/leads/gm-meeting-prep-stats")
+async def get_gm_meeting_prep_stats(
+    gm_name: str = Query(...),
+    start_date: str = Query(None),
+    end_date: str = Query(None),
+):
+    branches = _branches_for_gm(gm_name)
+    if not branches:
+        return {
+            "leads_to_review_total": 0,
+            "leads_reviewed": 0,
+            "meeting_prep_data": {
+                "branch_checklist": [],
+                "total_outstanding": 0,
+                "branches_complete": 0,
+                "total_branches": 0,
+            },
+            "unreachable_stats": {
+                "count": 0,
+                "pct": 0,
+                "total": 0,
+                "branch_breakdown": [],
+                "leads": [],
+            },
+        }
+
+    normalized = [re.sub(r"\s+", " ", b.strip()) for b in branches]
+    placeholders = ",".join(["%s"] * len(normalized))
+    rows = query(
+        f"SELECT {_LEAD_LIST_COLS}, enrichment_log FROM leads "
+        f"WHERE archived = false AND regexp_replace(branch, '\\s+', ' ', 'g') IN ({placeholders})",
+        tuple(normalized),
+    )
+
+    org_rows = query("SELECT branch, bm FROM org_mapping")
+    bm_by_branch = {
+        re.sub(r"\s+", " ", str(r.get("branch", "")).strip()): (r.get("bm") or "—")
+        for r in org_rows
+        if r.get("branch")
+    }
+
+    leads_in_period = [r for r in rows if _lead_in_date_range(r, start_date, end_date)]
+    leads_to_review_total = len(leads_in_period)
+    leads_reviewed = sum(
+        1 for r in leads_in_period if (r.get("gm_directive") or "").strip()
+    )
+
+    actionable = [r for r in leads_in_period if r.get("status") in ("Cancelled", "Unused")]
+    unreachable = [r for r in actionable if _is_no_contact_attempt(r)]
+    unreachable_count = len(unreachable)
+    unreachable_pct = round((unreachable_count / len(actionable)) * 100) if actionable else 0
+
+    by_branch: dict[str, list[dict]] = {}
+    for lead in unreachable:
+        by_branch.setdefault(lead.get("branch") or "—", []).append(lead)
+    branch_breakdown = [
+        {"branch": branch, "count": len(branch_leads)}
+        for branch, branch_leads in sorted(by_branch.items(), key=lambda x: len(x[1]), reverse=True)
+    ]
+
+    checklist = []
+    total_outstanding = 0
+    branches_complete = 0
+    for raw_branch in branches:
+        branch_key = re.sub(r"\s+", " ", raw_branch.strip())
+        branch_leads_all = [
+            r for r in rows if re.sub(r"\s+", " ", str(r.get("branch", "")).strip()) == branch_key
+        ]
+        branch_leads_in_range = [
+            r for r in branch_leads_all if _lead_in_date_range(r, start_date, end_date)
+        ]
+
+        cancelled_no_comment = [
+            r for r in branch_leads_all if r.get("status") == "Cancelled" and not _lead_has_bm_comment(r)
+        ]
+        unused_no_touch = [
+            r for r in branch_leads_all if r.get("status") == "Unused" and not _has_bm_activity_in_period(r, start_date, end_date)
+        ]
+        mismatch_leads = [r for r in branch_leads_all if bool(r.get("mismatch"))]
+
+        unique_outstanding = {
+            r["id"]: r for r in [*cancelled_no_comment, *unused_no_touch, *mismatch_leads]
+        }
+        outstanding = len(cancelled_no_comment) + len(unused_no_touch) + len(mismatch_leads)
+        is_complete = outstanding == 0
+        if is_complete:
+            branches_complete += 1
+        total_outstanding += outstanding
+
+        bm_name = bm_by_branch.get(branch_key) or next(
+            (r.get("bm_name") for r in branch_leads_all if r.get("bm_name")), "—"
+        )
+
+        checklist.append({
+            "branch": raw_branch,
+            "bm_name": bm_name,
+            "total": len(branch_leads_in_range),
+            "cancelled_no_bm_comment": len(cancelled_no_comment),
+            "unused_no_bm_this_period": len(unused_no_touch),
+            "missing_comments": len(cancelled_no_comment) + len(unused_no_touch),
+            "mismatch_count": len(mismatch_leads),
+            "outstanding": outstanding,
+            "is_complete": is_complete,
+            "outstanding_leads": [_serialize_lead_row(r) for r in unique_outstanding.values()],
+            "cancelled_no_bm_comment_leads": [_serialize_lead_row(r) for r in cancelled_no_comment],
+            "unused_no_bm_this_period_leads": [_serialize_lead_row(r) for r in unused_no_touch],
+            "mismatch_leads": [_serialize_lead_row(r) for r in mismatch_leads],
+        })
+
+    checklist.sort(key=lambda r: r["outstanding"], reverse=True)
+    return {
+        "leads_to_review_total": leads_to_review_total,
+        "leads_reviewed": leads_reviewed,
+        "meeting_prep_data": {
+            "branch_checklist": checklist,
+            "total_outstanding": total_outstanding,
+            "branches_complete": branches_complete,
+            "total_branches": len(branches),
+        },
+        "unreachable_stats": {
+            "count": unreachable_count,
+            "pct": unreachable_pct,
+            "total": len(actionable),
+            "branch_breakdown": branch_breakdown,
+            "leads": [_serialize_lead_row(r) for r in unreachable],
+        },
+    }
 
 @router.get("/activity-report")
 async def get_activity_report(

@@ -1779,7 +1779,7 @@ export function getUnreachableLeads(leads, dateRange = null, gmName = null) {
   filtered = filtered.filter((l) => l.status === "Cancelled" || l.status === "Unused");
   return filtered.filter(
     (l) =>
-      (l.contactRange ?? l.contact_range) === "NO CONTACT" ||
+      String(l.contactRange ?? l.contact_range ?? "").trim().toUpperCase() === "NO CONTACT" ||
       ((l.firstContactBy ?? l.first_contact_by) === "none" &&
         !(l.timeToFirstContact ?? l.time_to_first_contact))
   );
@@ -2362,8 +2362,8 @@ export function getSpotCheckData(leads, branch, dateRange = null) {
   const rented = branchLeads.filter((l) => l.status === "Rented").length;
   const conversionRate = total > 0 ? Math.round((rented / total) * 100) : 0;
   const contacted = branchLeads.filter((l) => {
-    const cr = l.contactRange ?? l.contact_range;
-    return cr && cr !== "No Contact" && cr !== "NO CONTACT";
+    const cr = String(l.contactRange ?? l.contact_range ?? "").trim().toUpperCase();
+    return cr && cr !== "NO CONTACT";
   }).length;
   const within30 = branchLeads.filter((l) => (l.contactRange ?? l.contact_range) === "(a)<30min").length;
   const pctWithin30 = total > 0 ? Math.round((within30 / total) * 100) : 0;
@@ -2375,8 +2375,8 @@ export function getSpotCheckData(leads, branch, dateRange = null) {
   // Untouched: cancelled or unused with zero contact attempt
   const untouched = branchLeads.filter((l) => {
     if (l.status !== "Cancelled" && l.status !== "Unused") return false;
-    const cr = l.contactRange ?? l.contact_range;
-    const hasContact = cr && cr !== "No Contact" && cr !== "NO CONTACT";
+    const cr = String(l.contactRange ?? l.contact_range ?? "").trim().toUpperCase();
+    const hasContact = cr && cr !== "NO CONTACT";
     const hasTranslog = (l.translog ?? []).some((t) =>
       ["Call", "Email", "SMS", "Contact Attempt"].some((k) => (t.type ?? t.detail ?? "").includes(k))
     );

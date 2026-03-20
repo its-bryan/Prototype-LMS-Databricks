@@ -104,7 +104,7 @@ function LeadTable({ leads, onLeadClick }) {
   );
 }
 
-export default function BranchComplianceDetailPane({ branchRow, dateRange, leads, onClose }) {
+export default function BranchComplianceDetailPane({ branchRow, dateRange, leads = [], onClose }) {
   const navigate = useNavigate();
   const { orgMapping } = useData();
   const [activeTab, setActiveTab] = useState("cancelledNoBmComment");
@@ -115,13 +115,39 @@ export default function BranchComplianceDetailPane({ branchRow, dateRange, leads
   );
 
   const sectionData = useMemo(() => {
+    if (branchRow?.cancelledNoBmCommentLeads || branchRow?.unusedNoBmThisPeriodLeads || branchRow?.mismatchLeads) {
+      return [
+        {
+          key: "cancelledNoBmComment",
+          label: "Cancelled — no BM comment",
+          description: "Cancelled leads with no branch manager reason or notes (any week)",
+          leads: branchRow.cancelledNoBmCommentLeads ?? [],
+          count: (branchRow.cancelledNoBmCommentLeads ?? []).length,
+        },
+        {
+          key: "unusedNoBmThisPeriod",
+          label: "Unused — no BM activity in period",
+          description:
+            "Unused leads with no enrichment activity in the selected date range (e.g. this week). Change the date preset above to match your compliance window.",
+          leads: branchRow.unusedNoBmThisPeriodLeads ?? [],
+          count: (branchRow.unusedNoBmThisPeriodLeads ?? []).length,
+        },
+        {
+          key: "mismatch",
+          label: "Data Mismatches",
+          description: "Leads with HLES vs LMS data discrepancies",
+          leads: branchRow.mismatchLeads ?? [],
+          count: (branchRow.mismatchLeads ?? []).length,
+        },
+      ];
+    }
     const sections = buildMetricSections(dateRange);
     return sections.map((s) => ({
       ...s,
       leads: branchLeadsAll.filter(s.filter),
       count: branchLeadsAll.filter(s.filter).length,
     }));
-  }, [branchLeadsAll, dateRange]);
+  }, [branchLeadsAll, dateRange, branchRow]);
 
   const zone = useMemo(() => {
     const norm = (s) => (s == null ? "" : String(s).trim().replace(/\s+/g, " "));

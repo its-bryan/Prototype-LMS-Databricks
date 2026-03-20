@@ -126,7 +126,7 @@ export default function ObservatoryConversionPage() {
   };
 
   const title = "Conversion %";
-  const subtitle = granularity === "month" ? "Last 12 months" : "Last 24 weeks";
+  const subtitle = granularity === "month" ? "Last 12 months" : "Last 12 weeks";
 
   const drillFooter =
     selectedPeriod && branchesParam ? (

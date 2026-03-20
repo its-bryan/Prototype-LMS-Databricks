@@ -13,6 +13,11 @@ import { formatDateRange } from "../../utils/dashboardHelpers";
 import { usePageTransition, BMDashboardSkeleton } from "../DashboardSkeleton";
 
 const STATUS_TABS = ["All", "Cancelled", "Unused", "Rented"];
+const truncateComment = (value) => {
+  const text = String(value ?? "").trim();
+  if (!text) return "—";
+  return text.length > 50 ? `${text.slice(0, 50)}...` : text;
+};
 
 export default function BMLeadsPage() {
   const { loading, fetchLeadsPage, initialDataReady } = useData();
@@ -166,12 +171,13 @@ export default function BMLeadsPage() {
                 <th className="text-left text-white text-xs font-semibold px-4 py-3">Status</th>
                 <th className="text-left text-white text-xs font-semibold px-4 py-3">Insurance</th>
                 <th className="text-left text-white text-xs font-semibold px-4 py-3">Contact Range</th>
+                <th className="text-left text-white text-xs font-semibold px-4 py-3">BM Comment</th>
               </tr>
             </thead>
             <tbody>
               {!pageLoading && pagedLeads.length === 0 && (
                 <tr>
-                  <td colSpan="5" className="px-4 py-12 text-center text-[var(--neutral-500)]">
+                  <td colSpan="6" className="px-4 py-12 text-center text-[var(--neutral-500)]">
                     No leads match the current filters
                   </td>
                 </tr>
@@ -184,6 +190,7 @@ export default function BMLeadsPage() {
                     <td className="px-4 py-3"><div className="h-5 w-16 rounded-full bg-[var(--neutral-200)]" /></td>
                     <td className="px-4 py-3"><div className="h-3 w-24 rounded bg-[var(--neutral-200)]" /></td>
                     <td className="px-4 py-3"><div className="h-3 w-20 rounded bg-[var(--neutral-200)]" /></td>
+                    <td className="px-4 py-3"><div className="h-3 w-32 rounded bg-[var(--neutral-200)]" /></td>
                   </tr>
                 ))}
               {pagedLeads.map((lead) => (
@@ -202,6 +209,12 @@ export default function BMLeadsPage() {
                   <td className="px-4 py-3"><StatusBadge status={lead.status} /></td>
                   <td className="px-4 py-3 text-[var(--neutral-600)]">{lead.insuranceCompany ?? "—"}</td>
                   <td className="px-4 py-3 text-[var(--neutral-600)]">{lead.contactRange ?? lead.contact_range ?? "—"}</td>
+                  <td
+                    className="px-4 py-3 text-[var(--neutral-600)] max-w-[260px] truncate"
+                    title={lead.enrichment?.reason ?? lead.enrichment?.notes ?? ""}
+                  >
+                    {truncateComment(lead.enrichment?.reason || lead.enrichment?.notes)}
+                  </td>
                 </tr>
               ))}
             </tbody>

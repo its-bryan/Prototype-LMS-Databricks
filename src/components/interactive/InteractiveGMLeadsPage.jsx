@@ -16,6 +16,11 @@ import ThreeColumnReview from "../ThreeColumnReview";
 import { GMLeadsPageSkeleton, usePageTransition } from "../DashboardSkeleton";
 
 const STATUS_TABS = ["All", "Cancelled", "Unused", "Rented"];
+const truncateComment = (value) => {
+  const text = String(value ?? "").trim();
+  if (!text) return "—";
+  return text.length > 50 ? `${text.slice(0, 50)}...` : text;
+};
 
 export default function InteractiveGMLeadsPage() {
   const { loading, orgMapping, updateLeadDirective, markLeadReviewed, fetchLeadsPage, initialDataReady } = useData();
@@ -280,12 +285,13 @@ export default function InteractiveGMLeadsPage() {
                   <th className="text-left text-white text-xs font-semibold px-4 py-3">Branch</th>
                   <th className="text-left text-white text-xs font-semibold px-4 py-3">BM</th>
                   <th className="text-left text-white text-xs font-semibold px-4 py-3">Insurance</th>
+                  <th className="text-left text-white text-xs font-semibold px-4 py-3">BM Comment</th>
                 </tr>
               </thead>
               <tbody>
                 {!pageLoading && pagedLeads.length === 0 && (
                   <tr>
-                    <td colSpan="6" className="px-4 py-8 text-center text-[var(--neutral-500)]">
+                    <td colSpan="7" className="px-4 py-8 text-center text-[var(--neutral-500)]">
                       No leads match the current filters
                     </td>
                   </tr>
@@ -299,6 +305,7 @@ export default function InteractiveGMLeadsPage() {
                       <td className="px-4 py-3"><div className="h-3 w-20 rounded bg-[var(--neutral-200)]" /></td>
                       <td className="px-4 py-3"><div className="h-3 w-20 rounded bg-[var(--neutral-200)]" /></td>
                       <td className="px-4 py-3"><div className="h-3 w-20 rounded bg-[var(--neutral-200)]" /></td>
+                      <td className="px-4 py-3"><div className="h-3 w-32 rounded bg-[var(--neutral-200)]" /></td>
                     </tr>
                   ))}
                 {pagedLeads.map((lead) => (
@@ -322,6 +329,12 @@ export default function InteractiveGMLeadsPage() {
                     <td className="px-4 py-3 text-[var(--neutral-600)]">{lead.branch}</td>
                     <td className="px-4 py-3 text-[var(--neutral-600)]">{lead.bmName ?? "—"}</td>
                     <td className="px-4 py-3 text-[var(--neutral-600)]">{lead.insuranceCompany ?? "—"}</td>
+                    <td
+                      className="px-4 py-3 text-[var(--neutral-600)] max-w-[240px] truncate"
+                      title={lead.enrichment?.reason ?? lead.enrichment?.notes ?? ""}
+                    >
+                      {truncateComment(lead.enrichment?.reason || lead.enrichment?.notes)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
