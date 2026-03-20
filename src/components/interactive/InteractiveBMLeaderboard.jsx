@@ -20,7 +20,7 @@ const METRICS = [
   { key: "conversionRate", label: "Conversion rate", suffix: "%", higherIsBetter: true },
   { key: "pctWithin30", label: "Contacted within 30 min", suffix: "%", higherIsBetter: true },
   { key: "commentRate", label: "Comment rate", suffix: "%", higherIsBetter: true },
-  { key: "branchHrdPct", label: "Branch vs HRD", suffix: "% Branch", higherIsBetter: true },
+  { key: "branchHrdPct", label: "Branch Contact %", suffix: "%", higherIsBetter: true },
 ];
 
 function getMetricValue(row, key) {

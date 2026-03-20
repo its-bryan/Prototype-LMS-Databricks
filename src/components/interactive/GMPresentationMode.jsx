@@ -564,27 +564,27 @@ const INSURER_SORT_COLUMNS = [
 ];
 
 const BRANCH_DETAIL_SORT_COLUMNS = [
+  { key: "initDtFinal", label: "Date", align: "left", getValue: (r) => (r.initDtFinal ?? r.init_dt_final ?? "") },
   { key: "customer",  label: "Customer",  align: "left", getValue: (r) => (r.customer ?? "").toLowerCase() },
   { key: "status",    label: "Status",    align: "left", getValue: (r) => r.status ?? "" },
   { key: "insurer",   label: "Insurer",   align: "left", getValue: (r) => (r.insuranceCompany ?? "").toLowerCase() },
   { key: "notes",     label: "BM Notes",  align: "left", getValue: (r) => (r.enrichment?.reason || r.enrichment?.notes || r.hlesReason || "").toLowerCase() },
-  { key: "daysOpen",  label: "Days Open", align: "left", getValue: (r) => r.daysOpen ?? 0 },
 ];
 
 const INSURER_DETAIL_SORT_COLUMNS = [
+  { key: "initDtFinal", label: "Date", align: "left", getValue: (r) => (r.initDtFinal ?? r.init_dt_final ?? "") },
   { key: "customer",  label: "Customer",  align: "left", getValue: (r) => (r.customer ?? "").toLowerCase() },
   { key: "branch",    label: "Branch",    align: "left", getValue: (r) => (r.branch ?? "").toLowerCase() },
   { key: "status",    label: "Status",    align: "left", getValue: (r) => r.status ?? "" },
   { key: "notes",     label: "BM Notes",  align: "left", getValue: (r) => (r.enrichment?.reason || r.enrichment?.notes || r.hlesReason || "").toLowerCase() },
-  { key: "daysOpen",  label: "Days Open", align: "left", getValue: (r) => r.daysOpen ?? 0 },
 ];
 
 const SPOT_CHECK_SORT_COLUMNS = [
+  { key: "initDtFinal", label: "Date", align: "left", getValue: (r) => (r.initDtFinal ?? r.init_dt_final ?? "") },
   { key: "reservationId", label: "Res #",    align: "left",   getValue: (r) => (r.reservationId ?? r.confirmNum ?? "").toLowerCase() },
   { key: "customer",  label: "Customer",  align: "left",   getValue: (r) => (r.customer ?? "").toLowerCase() },
   { key: "status",    label: "Status",    align: "center", getValue: (r) => r.status ?? "" },
   { key: "notes",     label: "BM Notes",  align: "left",   getValue: (r) => (r.enrichment?.reason || r.enrichment?.notes || r.hlesReason || "").toLowerCase() },
-  { key: "daysOpen",  label: "Days Open", align: "center", getValue: (r) => r.daysOpen ?? 0 },
 ];
 
 function SortArrow({ active, direction }) {
@@ -700,6 +700,9 @@ function BranchLeadDetailPanel({ branch, leads, leaderboardRow, onBack }) {
                 const notes = lead.enrichment?.reason || lead.enrichment?.notes || lead.hlesReason || null;
                 return (
                   <tr key={lead.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                    <td className="py-2.5 pr-3 text-white/50 text-xs whitespace-nowrap">
+                      {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
+                    </td>
                     <td className="py-2.5 pr-3 text-white font-medium truncate max-w-[160px]">{lead.customer}</td>
                     <td className="py-2.5 pr-3">
                       <span
@@ -718,7 +721,6 @@ function BranchLeadDetailPanel({ branch, leads, leaderboardRow, onBack }) {
                     <td className="py-2.5 pr-3 text-white/50 text-xs truncate max-w-[200px]">
                       {notes ?? <span className="text-white/20 italic">No notes</span>}
                     </td>
-                    <td className="py-2.5 text-white/50 text-xs">{lead.daysOpen ?? "—"}d</td>
                   </tr>
                 );
               })
@@ -954,6 +956,9 @@ function InsurerLeadDetailPanel({ insurer, leads, onBack }) {
                 const notes = lead.enrichment?.reason || lead.enrichment?.notes || lead.hlesReason || null;
                 return (
                   <tr key={lead.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                    <td className="py-2.5 pr-3 text-white/50 text-xs whitespace-nowrap">
+                      {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
+                    </td>
                     <td className="py-2.5 pr-3 text-white font-medium truncate max-w-[140px]">{lead.customer}</td>
                     <td className="py-2.5 pr-3 text-white/60">{lead.branch}</td>
                     <td className="py-2.5 pr-3">
@@ -972,7 +977,6 @@ function InsurerLeadDetailPanel({ insurer, leads, onBack }) {
                     <td className="py-2.5 pr-3 text-white/50 text-xs truncate max-w-[200px]">
                       {notes ?? <span className="text-white/20 italic">No notes</span>}
                     </td>
-                    <td className="py-2.5 text-white/50 text-xs">{lead.daysOpen ?? "—"}d</td>
                   </tr>
                 );
               })
@@ -1121,11 +1125,11 @@ const BODYSHOP_SORT_COLUMNS = [
 ];
 
 const BODYSHOP_DETAIL_SORT_COLUMNS = [
+  { key: "initDtFinal", label: "Date", align: "left", getValue: (r) => (r.initDtFinal ?? r.init_dt_final ?? "") },
   { key: "customer",  label: "Customer",  align: "left", getValue: (r) => (r.customer ?? "").toLowerCase() },
   { key: "branch",    label: "Branch",    align: "left", getValue: (r) => (r.branch ?? "").toLowerCase() },
   { key: "status",    label: "Status",    align: "left", getValue: (r) => r.status ?? "" },
   { key: "notes",     label: "BM Notes",  align: "left", getValue: (r) => (r.enrichment?.reason || r.enrichment?.notes || r.hlesReason || "").toLowerCase() },
-  { key: "daysOpen",  label: "Days Open", align: "left", getValue: (r) => r.daysOpen ?? 0 },
 ];
 
 function BodyShopLeadDetailPanel({ bodyShop, leads, onBack }) {
@@ -1228,6 +1232,9 @@ function BodyShopLeadDetailPanel({ bodyShop, leads, onBack }) {
                 const notes = lead.enrichment?.reason || lead.enrichment?.notes || lead.hlesReason || null;
                 return (
                   <tr key={lead.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                    <td className="py-2.5 pr-3 text-white/50 text-xs whitespace-nowrap">
+                      {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
+                    </td>
                     <td className="py-2.5 pr-3 text-white font-medium truncate max-w-[140px]">{lead.customer}</td>
                     <td className="py-2.5 pr-3 text-white/60">{lead.branch}</td>
                     <td className="py-2.5 pr-3">
@@ -1246,7 +1253,6 @@ function BodyShopLeadDetailPanel({ bodyShop, leads, onBack }) {
                     <td className="py-2.5 pr-3 text-white/50 text-xs truncate max-w-[200px]">
                       {notes ?? <span className="text-white/20 italic">No notes</span>}
                     </td>
-                    <td className="py-2.5 text-white/50 text-xs">{lead.daysOpen ?? "—"}d</td>
                   </tr>
                 );
               })
@@ -1462,7 +1468,7 @@ function SpotCheckLeadDetailPanel({ lead, onBack }) {
         {[
           { label: "Reservation #", value: lead.reservationId ?? lead.confirmNum ?? "—", color: "text-white" },
           { label: "Status", value: lead.status, color: lead.status === "Rented" ? "text-[#2E7D32]" : lead.status === "Cancelled" ? "text-[#C62828]" : "text-[#F4C300]" },
-          { label: "Days Open", value: lead.daysOpen != null ? `${lead.daysOpen}d` : "—", color: "text-white" },
+          { label: "Date", value: lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—", color: "text-white" },
           { label: "Insurer", value: lead.insuranceCompany ?? "—", color: "text-white" },
         ].map(({ label, value, color }) => (
           <div key={label} className="rounded-xl p-4 bg-white/5 border border-white/10">
@@ -1675,6 +1681,9 @@ function SlideSpotCheck({ frozenLeads, gmName, initialBranch }) {
                         onClick={() => setSelectedLead(lead)}
                         className="border-b border-white/5 hover:bg-white/5 cursor-pointer group transition-colors"
                       >
+                        <td className="py-2.5 pr-3 text-white/50 text-xs whitespace-nowrap">
+                          {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
+                        </td>
                         <td className="py-2.5 pr-3 text-white/50 text-xs font-mono">{lead.reservationId ?? lead.confirmNum ?? "—"}</td>
                         <td className="py-2.5 pr-3 text-white font-medium truncate max-w-[140px] group-hover:text-[#F4C300] transition-colors">
                           {lead.customer}
@@ -1696,7 +1705,6 @@ function SlideSpotCheck({ frozenLeads, gmName, initialBranch }) {
                         <td className="py-2.5 pr-3 text-white/50 text-xs truncate max-w-[180px]">
                           {notes ?? <span className="text-white/20 italic">No notes</span>}
                         </td>
-                        <td className="py-2.5 text-white/50 text-xs text-center">{lead.daysOpen ?? "—"}d</td>
                       </tr>
                     );
                   })

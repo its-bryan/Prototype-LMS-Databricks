@@ -73,7 +73,7 @@ function buildTrailingFourWeekOptions(weekLabels) {
 function LeaderboardTable({ title, rows, metricKey, showChangeColumn = false }) {
   const metricHeader = metricLabel(metricKey);
   const tooltipText = "Compared to the previous week's Trailing 4 weeks";
-  const columnCount = showChangeColumn ? 8 : 7;
+  const columnCount = showChangeColumn ? 6 : 5;
 
   return (
     <div className="rounded-xl border border-[var(--neutral-200)] bg-white shadow-[var(--shadow-sm)] overflow-hidden">
@@ -84,7 +84,7 @@ function LeaderboardTable({ title, rows, metricKey, showChangeColumn = false }) 
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-[var(--hertz-black)] text-white text-[11px] uppercase tracking-wide">
-              <th className="px-3 py-2 text-left">Ranking</th>
+              <th className="px-3 py-2 text-left">#</th>
               <th className="px-3 py-2 text-left">General Manager</th>
               <th className="px-3 py-2 text-left">Zone</th>
               <th className="px-3 py-2 text-right">{metricHeader}</th>
@@ -99,8 +99,6 @@ function LeaderboardTable({ title, rows, metricKey, showChangeColumn = false }) 
                 </th>
               )}
               <th className="px-3 py-2 text-right">Rented</th>
-              <th className="px-3 py-2 text-right">Cancelled</th>
-              <th className="px-3 py-2 text-right">Opportunity</th>
             </tr>
           </thead>
           <tbody>
@@ -122,8 +120,6 @@ function LeaderboardTable({ title, rows, metricKey, showChangeColumn = false }) 
                   <td className="px-3 py-2 text-right font-semibold">{formatPercent(row.metric)}</td>
                   {showChangeColumn && <td className="px-3 py-2 text-right">{formatDelta(row.delta)}</td>}
                   <td className="px-3 py-2 text-right">{row.rented}</td>
-                  <td className="px-3 py-2 text-right">{row.cancelled}</td>
-                  <td className="px-3 py-2 text-right">{row.opportunity}</td>
                 </tr>
               ))
             )}
@@ -200,9 +196,19 @@ export default function ObservatoryLeaderboardPage() {
             className="px-3 py-2 border border-[var(--neutral-200)] rounded-md bg-white text-sm"
           >
             <option value="conversion">Conversion %</option>
-            <option value="branchContact">% Branch First Contact</option>
+            <option value="branchContact">Branch Contact %</option>
             <option value="within30">% &lt; 30min First Contact</option>
           </select>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--neutral-600)]">Hertz Zone</span>
+          <MultiSelectFilter
+            label=""
+            options={filters.htzRegions}
+            selected={selectedHertzZones}
+            onChange={setSelectedHertzZones}
+          />
         </div>
 
         <label className="inline-flex items-center gap-2 text-sm text-[var(--neutral-700)] cursor-pointer">
@@ -214,13 +220,6 @@ export default function ObservatoryLeaderboardPage() {
           />
           Exclude GMs with &lt; 20 leads
         </label>
-
-        <MultiSelectFilter
-          label="Hertz Zone"
-          options={filters.htzRegions}
-          selected={selectedHertzZones}
-          onChange={setSelectedHertzZones}
-        />
       </div>
 
       {!observatorySnapshot ? (

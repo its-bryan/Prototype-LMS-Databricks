@@ -57,7 +57,8 @@ function deriveFirstContactBy(row) {
   const group = (row["New Contact Group"] || row.CONTACT_GROUP || "").toUpperCase();
   if (group.includes("NO CONTACT")) return "none";
   if (group.includes("HRD")) return "hrd";
-  return "branch";
+  if (group.includes("COUNTER")) return "branch";
+  return "other";
 }
 
 // ---------------------------------------------------------------------------

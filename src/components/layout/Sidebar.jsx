@@ -218,9 +218,9 @@ export default function Sidebar() {
   const workExpanded = true;
   const summaryExpanded = true;
 
-  // GM: Work sub-sections (Meeting Prep, Lead Review); Summary sub-sections (Business Metrics, Team Performance)
+  // GM: Work sub-sections (Meeting Prep, Lead Review); Summary sub-sections (Business Metrics, Team Leaderboard)
   const gmTodosChildIds = ["gm-meeting-prep", "gm-spot-check", "gm-leads"];
-  const gmOverviewChildIds = ["gm-team-performance", "gm-activity-report"];
+  const gmOverviewChildIds = ["gm-leaderboard", "gm-activity-report"];
   const hasGmOverviewChildren = role === "gm" && gmOverviewChildIds.some((id) => navItems.some((n) => n.id === id));
   const hasGmTodosChildren = role === "gm" && gmTodosChildIds.some((id) => navItems.some((n) => n.id === id));
   const inGmOverviewSection = resolvedActive === "gm-overview" || gmOverviewChildIds.includes(resolvedActive);

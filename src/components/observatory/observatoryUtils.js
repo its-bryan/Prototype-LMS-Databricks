@@ -65,7 +65,7 @@ export function buildTrendPoints({
     if (zoneFiltered && !zoneSet.has(branchData.zone)) continue;
     if (gmFiltered && !gmSet.has(branchData.gm)) continue;
     if (amFiltered && !amSet.has(branchData.am)) continue;
-    if (hertzZoneFiltered && !hertzZoneSet.has(branchData.hertzZone || "ó")) continue;
+    if (hertzZoneFiltered && !hertzZoneSet.has(branchData.hertzZone || "ù")) continue;
 
     const series = granularity === "month" ? (branchData.monthly ?? []) : (branchData.weekly ?? []);
     for (let i = 0; i < points.length; i++) {
@@ -142,8 +142,8 @@ function aggregateRows(rows) {
 
 function metricValue(metricKey, stats) {
   if (metricKey === "conversion") return safeDivide(stats.rented, stats.total);
-  if (metricKey === "branchContact") return safeDivide(stats.branchContact, stats.totalContact);
-  if (metricKey === "within30") return safeDivide(stats.within30, stats.totalContact);
+  if (metricKey === "branchContact") return safeDivide(stats.branchContact, stats.total);
+  if (metricKey === "within30") return safeDivide(stats.within30, stats.total);
   return 0;
 }
 
@@ -172,12 +172,12 @@ export function buildGMLeaderboard({
   const byGM = new Map();
 
   for (const branchData of Object.values(snapshot.branches)) {
-    if (hertzZoneFiltered && !hertzZoneSet.has(branchData.hertzZone || "ó")) continue;
-    const gm = branchData.gm && branchData.gm !== "ó" ? branchData.gm : "Unassigned";
+    if (hertzZoneFiltered && !hertzZoneSet.has(branchData.hertzZone || "ù")) continue;
+    const gm = branchData.gm && branchData.gm !== "ù" ? branchData.gm : "Unassigned";
     if (!byGM.has(gm)) {
       byGM.set(gm, {
         gm,
-        zone: branchData.zone || "ó",
+        zone: branchData.zone || "ù",
         currentRows: [],
         prevRows: [],
       });
@@ -230,7 +230,7 @@ export function buildGMLeaderboard({
 
 export function metricLabel(metricKey) {
   if (metricKey === "conversion") return "Conversion %";
-  if (metricKey === "branchContact") return "% Branch First Contact";
+  if (metricKey === "branchContact") return "Branch Contact %";
   if (metricKey === "within30") return "% < 30min First Contact";
   return "Metric";
 }

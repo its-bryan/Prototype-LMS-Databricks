@@ -226,7 +226,7 @@ def _gm_stats(filtered: list[dict]) -> dict:
     branch_contact = sum(1 for l in filtered if (l.get("first_contact_by") or "") == "branch")
     hrd_contact = sum(1 for l in filtered if (l.get("first_contact_by") or "") == "hrd")
     contact_total = branch_contact + hrd_contact
-    branch_pct = round(branch_contact / contact_total * 100) if contact_total else 0
+    branch_pct = round(branch_contact / total * 100) if total else 0
 
     actionable = [l for l in filtered if l.get("status") in ("Cancelled", "Unused")]
     with_comments = [

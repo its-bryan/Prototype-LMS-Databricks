@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import StatusBadge from "./StatusBadge";
+import { formatDateShort } from "../utils/dateTime";
 
 const NOW = new Date("2026-02-26T09:00:00");
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
@@ -71,12 +72,12 @@ export default function LeadQueue({
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-50 text-left text-xs text-[#6E6E6E] uppercase tracking-wide">
+              <th className="px-4 py-3">Date</th>
               <th className="px-4 py-3">Customer</th>
               <th className="px-4 py-3">Reservation ID</th>
               <th className="px-4 py-3">Res. Type</th>
               <th className="px-4 py-3">CDP</th>
               <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Days Open</th>
               <th className="px-4 py-3">Time to 1st Contact</th>
               <th className="px-4 py-3">Last Activity</th>
               <th className="px-4 py-3">Comments</th>
@@ -103,6 +104,9 @@ export default function LeadQueue({
                   } ${isHighlighted ? "ring-2 ring-[#FFD100] ring-inset" : ""}`}
                   onClick={() => onLeadClick?.(lead)}
                 >
+                  <td className="px-4 py-3 text-[#6E6E6E] text-xs">
+                    {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
+                  </td>
                   <td className="px-4 py-3 font-medium text-[#1A1A1A]">{lead.customer}</td>
                   <td className="px-4 py-3 text-[#6E6E6E] font-mono text-xs">{lead.reservationId}</td>
                   <td className="px-4 py-3 text-[#6E6E6E] text-xs">{lead.reservationType || "—"}</td>
@@ -120,7 +124,6 @@ export default function LeadQueue({
                       )}
                     </div>
                   </td>
-                  <td className="px-4 py-3">{lead.daysOpen}</td>
                   <td className="px-4 py-3">{lead.timeToFirstContact}</td>
                   <td className={`px-4 py-3 ${isStale ? "text-[#C62828] font-medium" : "text-[#6E6E6E]"}`}>
                     {relativeTime}

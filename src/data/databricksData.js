@@ -78,7 +78,6 @@ function leadFromRow(r) {
     enrichmentComplete: r.enrichment_complete ?? false,
     branch: r.branch,
     bmName: r.bm_name,
-    daysOpen: r.days_open ?? 0,
     mismatch: r.mismatch ?? false,
     mismatchReason: r.mismatch_reason ?? null,
     gmDirective: r.gm_directive,

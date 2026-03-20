@@ -58,7 +58,7 @@ export default function ObservatoryLandingPage() {
           >
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-4 min-w-0 flex-1">
-                <div className="shrink-0 w-12 h-12 rounded-lg bg-[var(--neutral-100)] group-hover:bg-[var(--hertz-primary)] flex items-center justify-center text-[var(--neutral-600)] group-hover:text-[var(--hertz-black)] transition-colors">
+                <div className="shrink-0 w-12 h-12 rounded-lg bg-[var(--hertz-primary)] flex items-center justify-center text-[var(--hertz-black)] transition-colors">
                   {tile.icon}
                 </div>
                 <div className="min-w-0">

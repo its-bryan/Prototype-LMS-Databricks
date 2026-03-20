@@ -32,6 +32,10 @@ def clean_hles_data(df: pd.DataFrame, org_lookup: dict | None = None) -> pd.Data
         'set_state': 'set_state',
         'cancel_reason': 'hles_reason',
         'rent_ind': 'rent_ind',
+        'cancel_id': 'cancel_id',
+        'unused_ind': 'unused_ind',
+        'contact_group': 'contact_group',
+        'new_contact_group': 'contact_group',
         'init_dt_final': 'init_dt_final',
         'week_of': 'week_of',
         'contact_range': 'contact_range',
@@ -47,16 +51,34 @@ def clean_hles_data(df: pd.DataFrame, org_lookup: dict | None = None) -> pd.Data
     if 'branch' in df.columns:
         df['rent_loc'] = df['branch']
 
-    # Map RENT_IND to status (1 = Rented, 0 = Cancelled; RES_ID not used as identifier)
-    if 'rent_ind' in df.columns:
-        df['rent_ind'] = pd.to_numeric(df['rent_ind'], errors='coerce')
-        df['status'] = df['rent_ind'].map({1: 'Rented', 0: 'Cancelled'}).fillna('Unused')
+    for ind_col in ('rent_ind', 'cancel_id', 'unused_ind'):
+        if ind_col in df.columns:
+            df[ind_col] = pd.to_numeric(df[ind_col], errors='coerce')
+
+    def _derive_status(row):
+        if row.get('rent_ind') == 1:
+            return 'Rented'
+        if row.get('cancel_id') == 1:
+            return 'Cancelled'
+        if row.get('unused_ind') == 1:
+            return 'Unused'
+        return 'Unused'
+
+    if 'rent_ind' in df.columns or 'cancel_id' in df.columns or 'unused_ind' in df.columns:
+        df['status'] = df.apply(_derive_status, axis=1)
 
     # Parse dates
     if 'init_dt_final' in df.columns:
         df['init_dt_final'] = pd.to_datetime(df['init_dt_final'], errors='coerce').dt.date
     if 'week_of' in df.columns:
         df['week_of'] = pd.to_datetime(df['week_of'], errors='coerce').dt.date
+
+    if 'contact_group' in df.columns:
+        cg = df['contact_group'].fillna('').str.upper()
+        df['first_contact_by'] = 'other'
+        df.loc[cg.str.contains('NO CONTACT', na=False), 'first_contact_by'] = 'none'
+        df.loc[cg.str.contains('HRD', na=False), 'first_contact_by'] = 'hrd'
+        df.loc[cg.str.contains('COUNTER', na=False), 'first_contact_by'] = 'branch'
 
     # Confirmation number is the business key (UUID). Ensure string, dedup, drop invalid.
     if 'confirm_num' in df.columns:

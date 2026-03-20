@@ -54,7 +54,7 @@ export const roleNav = {
   ],
   gm: [
     { id: "gm-overview", label: "Summary", icon: "grid" },
-    { id: "gm-team-performance", label: "Team Performance", icon: "users", sectionId: "team-performance", parentId: "gm-overview" },
+    { id: "gm-leaderboard", label: "Team Leaderboard", icon: "trophy", parentId: "gm-overview" },
     { id: "gm-activity-report", label: "Activity Report", icon: "activity", parentId: "gm-overview" },
     { id: "gm-todos", label: "Work", icon: "briefcase", sectionId: "todos" },
     { id: "gm-meeting-prep", label: "Meeting Prep", icon: "columns", parentId: "gm-todos" },
@@ -67,7 +67,7 @@ export const roleNav = {
   ],
   admin: [
     { id: "admin-dashboard", label: "Dashboard", icon: "grid" },
-    { id: "admin-uploads", label: "Data Uploads", icon: "upload", parentId: "admin-dashboard" },
+    { id: "admin-uploads", label: "Data Upload", icon: "upload", parentId: "admin-dashboard" },
     { id: "admin-org-mapping", label: "Org Mapping", icon: "users", parentId: "admin-dashboard" },
     { id: "admin-legend", label: "Cancellation Reasons", icon: "book", parentId: "admin-dashboard" },
     { id: "observatory", label: "Observatory Tower", icon: "bar-chart" },

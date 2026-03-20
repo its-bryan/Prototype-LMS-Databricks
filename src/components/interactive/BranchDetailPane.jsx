@@ -6,7 +6,7 @@ import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import StatusBadge from "../StatusBadge";
 import { getLeadsForBranchInRange } from "../../selectors/demoSelectors";
-import { formatDateRange } from "../../utils/dateTime";
+import { formatDateRange, formatDateShort } from "../../utils/dateTime";
 
 function formatDateRangeDisplay(dateRange) {
   return formatDateRange(dateRange?.start, dateRange?.end) || "";
@@ -101,12 +101,12 @@ export default function BranchDetailPane({ branchRow, dateRange, leads, onClose 
                   <table className="w-full text-sm">
                     <thead className="sticky top-0 z-10">
                       <tr className="bg-[var(--hertz-black)] text-white text-xs font-semibold uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left">Date</th>
                         <th className="px-4 py-3 text-left">Customer</th>
                         <th className="px-4 py-3 text-center">Confirmation #</th>
                         <th className="px-4 py-3 text-center">Status</th>
                         <th className="px-4 py-3 text-center">Contact Range</th>
                         <th className="px-4 py-3 text-center">First Contact By</th>
-                        <th className="px-4 py-3 text-center">Days Open</th>
                         <th className="px-4 py-3 text-left">Comments</th>
                       </tr>
                     </thead>
@@ -123,6 +123,9 @@ export default function BranchDetailPane({ branchRow, dateRange, leads, onClose 
                             key={lead.id}
                             className="border-t border-[var(--neutral-100)] hover:bg-[var(--neutral-50)] transition-colors"
                           >
+                            <td className="px-4 py-3 text-[var(--neutral-600)] text-xs">
+                              {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
+                            </td>
                             <td className="px-4 py-3 font-medium text-[var(--hertz-black)]">{lead.customer ?? "—"}</td>
                             <td className="px-4 py-3 text-center font-mono text-xs text-[var(--neutral-600)]">{lead.reservationId ?? "—"}</td>
                             <td className="px-4 py-3 text-center">
@@ -138,7 +141,6 @@ export default function BranchDetailPane({ branchRow, dateRange, leads, onClose 
                                   ? "HRD"
                                   : "—"}
                             </td>
-                            <td className="px-4 py-3 text-center text-[var(--neutral-600)]">{lead.daysOpen ?? "—"}</td>
                             <td className="px-4 py-3 text-[var(--neutral-600)] max-w-[180px] truncate" title={lead.enrichment?.reason ?? lead.enrichment?.notes ?? ""}>
                               {lead.enrichment?.reason ?? lead.enrichment?.notes ?? "—"}
                             </td>

@@ -13,7 +13,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import StatusBadge from "./StatusBadge";
 import StatusChangeModal, { statusChangeNeedsModal } from "./StatusChangeModal";
-import { formatDateTimeShort } from "../utils/dateTime";
+import { formatDateTimeShort, formatDateShort } from "../utils/dateTime";
 
 const COLUMNS = [
   { key: "Rented", label: "Rented", color: "border-[#2E7D32]", headerBg: "bg-[#2E7D32]/10", countColor: "text-[#2E7D32]" },
@@ -58,7 +58,9 @@ function LeadCard({ lead, org, onLeadClick, isDragging, dataOnboarding }) {
       <p className="text-xs text-[var(--neutral-600)] mt-1">{lead.branch}</p>
       <div className="flex items-center justify-between mt-2">
         <StatusBadge status={lead.status} />
-        <span className="text-[10px] text-[var(--neutral-500)]">{lead.daysOpen}d · {zone}</span>
+        <span className="text-[10px] text-[var(--neutral-500)]">
+          {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"} · {zone}
+        </span>
       </div>
       {lead.timeToFirstContact && (
         <p className="text-[10px] text-[var(--neutral-500)] mt-1">1st contact: {lead.timeToFirstContact}</p>

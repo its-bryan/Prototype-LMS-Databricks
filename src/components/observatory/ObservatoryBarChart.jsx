@@ -87,7 +87,7 @@ export default function ObservatoryBarChart({
                                 transition={{ duration: 0.45, delay: idx * 0.02 }}
                                 className="w-full bg-[var(--chart-primary)] flex items-center justify-center"
                               >
-                                {p.rented > 0 && rentedHeight >= 18 && <span className="text-[10px] font-bold text-white">{p.rented}</span>}
+                                {p.rented > 0 && rentedHeight >= 18 && <span className="text-[10px] font-bold text-white">{formatNumber(p.rented)}</span>}
                               </motion.div>
                               <motion.div
                                 initial={reduceMotion ? false : { height: 0 }}
@@ -95,7 +95,7 @@ export default function ObservatoryBarChart({
                                 transition={{ duration: 0.45, delay: idx * 0.02 + 0.03 }}
                                 className="w-full bg-[var(--chart-black)] flex items-center justify-center"
                               >
-                                {p.cancelled > 0 && cancelledHeight >= 18 && <span className="text-[10px] font-bold text-white">{p.cancelled}</span>}
+                                {p.cancelled > 0 && cancelledHeight >= 18 && <span className="text-[10px] font-bold text-white">{formatNumber(p.cancelled)}</span>}
                               </motion.div>
                               <motion.div
                                 initial={reduceMotion ? false : { height: 0 }}
@@ -103,7 +103,7 @@ export default function ObservatoryBarChart({
                                 transition={{ duration: 0.45, delay: idx * 0.02 + 0.06 }}
                                 className="w-full bg-[var(--chart-neutral)] flex items-center justify-center"
                               >
-                                {p.unused > 0 && unusedHeight >= 18 && <span className="text-[10px] font-bold text-[var(--hertz-black)]">{p.unused}</span>}
+                                {p.unused > 0 && unusedHeight >= 18 && <span className="text-[10px] font-bold text-[var(--hertz-black)]">{formatNumber(p.unused)}</span>}
                               </motion.div>
                             </div>
                           )}

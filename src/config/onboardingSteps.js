@@ -137,10 +137,10 @@ export const GM_ONBOARDING_STEPS = [
     actionType: null,
   },
   {
-    id: "gm-team-performance",
-    target: "[data-onboarding=gm-team-performance]",
+    id: "gm-leaderboard",
+    target: "[data-onboarding=gm-leaderboard]",
     requiredView: "gm-overview",
-    title: "Team performance",
+    title: "Team Leaderboard",
     content: "Leaderboard rankings, activity reports, and compliance scores — everything you need to coach your BMs.",
     actionType: null,
   },
@@ -149,7 +149,7 @@ export const GM_ONBOARDING_STEPS = [
     target: "[data-onboarding=sidebar-nav]",
     requiredView: "gm-overview",
     title: "Navigate your view",
-    content: "Work, Summary, and Team Performance — your main sections, always one click away in the sidebar.",
+    content: "Work, Summary, and Team Leaderboard — your main sections, always one click away in the sidebar.",
     actionType: null,
   },
   {

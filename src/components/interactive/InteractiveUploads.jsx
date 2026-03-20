@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useBlocker } from "react-router-dom";
 import { parseHlesCsv } from "../../utils/csvParsers";
 import { reconcileHlesUpload, buildCommitPlan } from "../../utils/reconciliation";
 import { leads as mockLeads } from "../../data/mockData";
@@ -596,6 +596,19 @@ export default function InteractiveUploads() {
   const [historyLoading, setHistoryLoading] = useState(true);
   const [historyExpandedId, setHistoryExpandedId] = useState(null);
 
+  const isUploadInProgress = step !== "select" && step !== "summary";
+
+  const blocker = useBlocker(isUploadInProgress);
+
+  useEffect(() => {
+    if (!isUploadInProgress) return;
+    const handler = (e) => {
+      e.preventDefault();
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isUploadInProgress]);
+
   // Load upload history on mount and when returning to the page
   const loadUploadHistory = useCallback(async () => {
     setHistoryLoading(true);
@@ -627,6 +640,8 @@ export default function InteractiveUploads() {
     setValidateProgress({ phase: "Preparing…", pct: 5 });
     setStep("validate");
 
+    const parseStartTs = Date.now();
+
     await new Promise((r) => requestAnimationFrame(r));
     await new Promise((r) => requestAnimationFrame(r));
 
@@ -646,6 +661,9 @@ export default function InteractiveUploads() {
       console.error("Parse error:", err);
       setValidateProgress({ phase: "Validation failed", pct: 100 });
     }
+
+    const elapsed = Date.now() - parseStartTs;
+    if (elapsed < 1500) await new Promise((r) => setTimeout(r, 1500 - elapsed));
 
     setParsing(false);
     setValidateStarting(false);
@@ -785,8 +803,34 @@ export default function InteractiveUploads() {
   // ---- Render ----
   return (
     <div className="max-w-4xl">
+      {blocker.state === "blocked" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm mx-4">
+            <h3 className="text-base font-semibold text-[var(--hertz-black)] mb-2">Cancel file upload?</h3>
+            <p className="text-sm text-[var(--neutral-600)] mb-5">
+              Do you want to cancel your file upload and move to a new page?
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => blocker.reset()}
+                className="px-4 py-2 text-sm font-medium rounded-lg border border-[var(--neutral-200)] text-[var(--hertz-black)] hover:bg-[var(--neutral-50)]"
+              >
+                No
+              </button>
+              <button
+                type="button"
+                onClick={() => blocker.proceed()}
+                className="px-4 py-2 text-sm font-medium rounded-lg bg-[var(--hertz-primary)] text-[var(--hertz-black)] hover:opacity-90"
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="mb-6">
-        <h2 className="text-xl font-bold text-[var(--hertz-black)]">Data Uploads</h2>
+        <h2 className="text-xl font-bold text-[var(--hertz-black)]">Data Upload</h2>
         <p className="text-sm text-[var(--neutral-500)] mt-1">
           Upload HLES CSV files to refresh lead data. The system will validate,
           detect conflicts with enriched data, and let you resolve them before committing.
@@ -1147,9 +1191,11 @@ export default function InteractiveUploads() {
                     const isExpanded = historyExpandedId === row.id;
                     const dateStr =
                       row.createdAt != null
-                        ? new Date(row.createdAt).toLocaleString(undefined, {
+                        ? new Date(row.createdAt).toLocaleString("en-US", {
                             dateStyle: "short",
                             timeStyle: "short",
+                            timeZone: "America/Los_Angeles",
+                            timeZoneName: "short",
                           })
                         : "—";
                     const statusLabel =

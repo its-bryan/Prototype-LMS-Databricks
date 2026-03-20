@@ -39,6 +39,7 @@ import {
   getTimeOfDayGreeting,
   formatDateRange,
 } from "../../utils/dashboardHelpers";
+import { formatDateShort } from "../../utils/dateTime";
 import { BMDashboardSkeleton, GMDashboardSkeleton } from "../DashboardSkeleton";
 
 
@@ -337,7 +338,7 @@ export function BMDashboard({ navigateTo }) {
             >
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-4 min-w-0 flex-1">
-                  <div className="shrink-0 w-12 h-12 rounded-lg bg-[var(--neutral-100)] group-hover:bg-[var(--hertz-primary)] flex items-center justify-center text-[var(--neutral-600)] group-hover:text-[var(--hertz-black)] transition-colors">
+                  <div className="shrink-0 w-12 h-12 rounded-lg bg-[var(--hertz-primary)] flex items-center justify-center text-[var(--hertz-black)] transition-colors">
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                     </svg>
@@ -366,7 +367,7 @@ export function BMDashboard({ navigateTo }) {
             >
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-4 min-w-0 flex-1">
-                  <div className="shrink-0 w-12 h-12 rounded-lg bg-[var(--neutral-100)] group-hover:bg-[var(--hertz-primary)] flex items-center justify-center text-[var(--neutral-600)] group-hover:text-[var(--hertz-black)] transition-colors">
+                  <div className="shrink-0 w-12 h-12 rounded-lg bg-[var(--hertz-primary)] flex items-center justify-center text-[var(--hertz-black)] transition-colors">
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
@@ -408,11 +409,11 @@ export function BMDashboardInbox({ navigateTo }) {
         <table className="w-full text-sm min-w-[600px]">
           <thead>
             <tr className="bg-[var(--hertz-black)] text-left text-xs text-white font-semibold uppercase tracking-wider">
+              <th className="px-4 py-3">Date</th>
               <th className="px-4 py-3">Customer</th>
               <th className="px-4 py-3">Reservation ID</th>
               <th className="px-4 py-3">Branch</th>
               <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Days Open</th>
               <th className="px-4 py-3">GM Directive</th>
             </tr>
           </thead>
@@ -441,11 +442,13 @@ export function BMDashboardInbox({ navigateTo }) {
                   onClick={() => handleClick(lead)}
                   className="border-t border-[var(--neutral-200)] cursor-pointer hover:bg-[var(--neutral-50)] transition-colors duration-150"
                 >
+                  <td className="px-4 py-3 text-sm text-[var(--neutral-600)]">
+                    {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
+                  </td>
                   <td className="px-4 py-3 text-sm font-semibold text-[var(--hertz-black)]">{lead.customer}</td>
                   <td className="px-4 py-3 text-sm font-mono text-[var(--neutral-600)]">{lead.reservationId}</td>
                   <td className="px-4 py-3 text-sm text-[var(--neutral-600)]">{lead.branch}</td>
                   <td className="px-4 py-3"><StatusBadge status={lead.status} /></td>
-                  <td className="px-4 py-3 text-sm text-[var(--neutral-600)]">{lead.daysOpen}d</td>
                   <td className="px-4 py-3 text-sm text-[var(--neutral-600)] min-w-[200px] max-w-[320px] break-words whitespace-normal">{lead.gmDirective}</td>
                 </motion.tr>
               ))
@@ -700,9 +703,9 @@ export function GMDashboardPage({ navigateTo }) {
         </div>
       </div>
 
-      {/* Section 3: Team Performance */}
-      <div id="team-performance" className="scroll-mt-4 mb-8" data-onboarding="gm-team-performance">
-        <SectionHeader title="Team Performance" subtitle="Leaderboard rankings and activity across branches." />
+      {/* Section 3: Team Leaderboard */}
+      <div id="team-leaderboard" className="scroll-mt-4 mb-8" data-onboarding="gm-leaderboard">
+        <SectionHeader title="Team Leaderboard" subtitle="Leaderboard rankings and activity across branches." />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <GMLeaderboardModule
             navigateTo={navigateTo}
@@ -727,7 +730,7 @@ export function GMDashboardPage({ navigateTo }) {
 export function AdminDashboard({ navigateTo }) {
   const cards = [
     {
-      label: "Data Uploads",
+      label: "Data Upload",
       desc: "Upload HLES and TRANSLOG CSV files to refresh lead data",
       view: "/admin/uploads",
       icon: (
@@ -802,7 +805,7 @@ const BM_SECTION_MAP = {
 const GM_SECTION_MAP = {
   "gm-overview": "home",
   "gm-todos": "todos",
-  "gm-team-performance": "team-performance",
+  "gm-leaderboard": "team-leaderboard",
 };
 
 // Reverse: sectionId -> viewId for scroll-based highlight

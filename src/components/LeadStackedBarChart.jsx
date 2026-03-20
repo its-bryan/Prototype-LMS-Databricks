@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import StatusBadge from "./StatusBadge";
-import { formatDateOnly } from "../utils/dateTime";
+import { formatDateShort } from "../utils/dateTime";
 
 const BAR_HEIGHT = 48;
 const SEGMENTS = [
@@ -10,9 +10,6 @@ const SEGMENTS = [
   { key: "unused", label: "Unused", color: "var(--chart-neutral)" },
 ];
 
-function formatDate(isoStr) {
-  return formatDateOnly(isoStr);
-}
 
 export default function LeadStackedBarChart({ total, rented, cancelled, unused, leads = [] }) {
   const reduceMotion = useReducedMotion();
@@ -34,7 +31,7 @@ export default function LeadStackedBarChart({ total, rented, cancelled, unused, 
     const statusOrder = { Rented: 0, Cancelled: 1, Unused: 2 };
     const diff = (statusOrder[a.status] ?? 3) - (statusOrder[b.status] ?? 3);
     if (diff !== 0) return diff;
-    return (b.daysOpen ?? 0) - (a.daysOpen ?? 0);
+    return (a.initDtFinal ?? "").localeCompare(b.initDtFinal ?? "");
   });
 
   const viewBtn = (mode, label, icon) => (
@@ -125,11 +122,10 @@ export default function LeadStackedBarChart({ total, rented, cancelled, unused, 
               <table className="w-full text-sm">
                 <thead className="sticky top-0 z-10">
                   <tr className="bg-[var(--hertz-black)] text-xs text-white font-semibold uppercase tracking-wider">
+                    <th className="px-3 py-2.5 text-left">Date</th>
                     <th className="px-3 py-2.5 text-left">Customer</th>
                     <th className="px-3 py-2.5 text-left">Reservation</th>
                     <th className="px-3 py-2.5 text-center">Status</th>
-                    <th className="px-3 py-2.5 text-center">Days Open</th>
-                    <th className="px-3 py-2.5 text-left">Received</th>
                     <th className="px-3 py-2.5 text-left">Insurance</th>
                     <th className="px-3 py-2.5 text-left">Time to Contact</th>
                   </tr>
@@ -137,7 +133,7 @@ export default function LeadStackedBarChart({ total, rented, cancelled, unused, 
                 <tbody>
                   {sortedLeads.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-3 py-8 text-center text-sm text-[var(--neutral-600)]">
+                      <td colSpan={6} className="px-3 py-8 text-center text-sm text-[var(--neutral-600)]">
                         No leads match the current date range.
                       </td>
                     </tr>
@@ -150,11 +146,12 @@ export default function LeadStackedBarChart({ total, rented, cancelled, unused, 
                         transition={{ delay: i * 0.02 }}
                         className="border-t border-[var(--neutral-100)] hover:bg-[var(--neutral-50)] transition-colors"
                       >
+                        <td className="px-3 py-2 text-[var(--neutral-600)] text-xs whitespace-nowrap">
+                          {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
+                        </td>
                         <td className="px-3 py-2 font-semibold text-[var(--hertz-black)] whitespace-nowrap">{lead.customer}</td>
                         <td className="px-3 py-2 font-mono text-xs text-[var(--neutral-600)]">{lead.reservationId}</td>
                         <td className="px-3 py-2 text-center"><StatusBadge status={lead.status} /></td>
-                        <td className="px-3 py-2 text-center text-[var(--neutral-600)]">{lead.daysOpen ?? "—"}</td>
-                        <td className="px-3 py-2 text-[var(--neutral-600)] whitespace-nowrap">{formatDate(lead.initDtFinal)}</td>
                         <td className="px-3 py-2 text-[var(--neutral-600)]">{lead.insuranceCompany ?? "—"}</td>
                         <td className="px-3 py-2 text-[var(--neutral-600)]">{lead.timeToFirstContact ?? "—"}</td>
                       </motion.tr>

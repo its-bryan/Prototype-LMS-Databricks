@@ -19,6 +19,16 @@ export function formatDateShort(d, includeYear = false) {
   }));
 }
 
+/** Whole calendar days from init date (YYYY-MM-DD) to `asOf`, using noon on the init date to avoid TZ boundary shifts. Returns null if missing/invalid. */
+export function daysSinceInitDateString(isoDateStr, asOf = new Date()) {
+  if (!isoDateStr || typeof isoDateStr !== "string") return null;
+  const start = new Date(`${isoDateStr}T12:00:00`);
+  if (isNaN(start.getTime())) return null;
+  const end = asOf instanceof Date ? asOf : new Date(asOf);
+  if (isNaN(end.getTime())) return null;
+  return Math.floor((end - start) / 86400000);
+}
+
 /** Format date with year: "Feb 22, 2026" */
 export function formatDate(d) {
   if (!d) return "—";

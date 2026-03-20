@@ -1,4 +1,4 @@
-import { formatDateRange as formatDateRangePST, formatDateOnly } from "./dateTime";
+import { formatDateRange as formatDateRangePST, formatDateOnly, daysSinceInitDateString } from "./dateTime";
 
 export const easeOut = [0.4, 0, 0.2, 1];
 
@@ -50,7 +50,7 @@ export function leadToHlesRow(lead, org) {
     COMMENTS: lead.enrichment?.reason ?? lead.enrichment?.notes ?? "—",
     AREA_MGR: org?.am ?? "—",
     GENERAL_MGR: org?.gm ?? "—",
-    DAYS_OPEN: lead.daysOpen ?? "—",
+    DAYS_OPEN: daysSinceInitDateString(lead.initDtFinal ?? lead.init_dt_final) ?? "—",
     DT_FROM_ALPHA1: formatDateDisplay(lead.dtFromAlpha1),
     TIME_TO_CONTACT: lead.timeToFirstContact ?? "—",
   };

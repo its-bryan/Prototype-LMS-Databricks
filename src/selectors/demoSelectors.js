@@ -4,7 +4,7 @@ import {
   orgMapping as defaultOrgMapping,
   tasks as defaultTasks,
 } from "../data/mockData";
-import { formatDateShort, formatWeekday, formatMonthYear } from "../utils/dateTime";
+import { formatDateShort, formatWeekday, formatMonthYear, daysSinceInitDateString } from "../utils/dateTime";
 
 /** Module-level data — updated by DataContext when Supabase provides real data. */
 export let orgMapping = [...defaultOrgMapping];
@@ -78,6 +78,16 @@ export function setNowFromDate(isoDateStr) {
   NOW = d;
 }
 
+function leadDaysSinceInit(lead) {
+  const d = lead?.initDtFinal ?? lead?.init_dt_final;
+  return daysSinceInitDateString(d, NOW);
+}
+
+/** Unused leads whose init date is more than 5 calendar days before NOW (shared with metric drilldown). */
+export function isUnusedOpenOverFiveDays(lead) {
+  return lead.status === "Unused" && (leadDaysSinceInit(lead) ?? 0) > 5;
+}
+
 const TREND_TIMEFRAME_WEEKS = { this_week: 1, trailing_4_weeks: 4, this_month: 5, this_year: 13 };
 
 function getMonday(date) {
@@ -104,8 +114,8 @@ export function getNextComplianceMeetingDate() {
 
 export function getDateRangePresets() {
   const thisMonday = getMonday(NOW);
-  const thisMonthStart = new Date(thisMonday.getFullYear(), thisMonday.getMonth(), 1);
-  const thisYearStart = new Date(NOW.getFullYear(), 0, 1);
+  const thisMonthStart = new Date(NOW.getFullYear(), NOW.getMonth(), 1, 12, 0, 0);
+  const thisYearStart = new Date(NOW.getFullYear(), 0, 1, 12, 0, 0);
 
   // Trailing 4 weeks always ends on the most recent Sunday (clean Mon–Sun boundaries)
   const nowDate = new Date(NOW.getFullYear(), NOW.getMonth(), NOW.getDate());
@@ -475,7 +485,7 @@ export function getBMStats(leads, dateRange = null, branch = null) {
 export function getGMStats(leads) {
   const list = leads ?? [];
   const cancelledUnreviewed = list.filter((l) => l.status === "Cancelled" && !l.archived && !l.gmDirective).length;
-  const unusedOverdue = list.filter((l) => l.status === "Unused" && l.daysOpen > 5).length;
+  const unusedOverdue = list.filter(isUnusedOpenOverFiveDays).length;
   const enriched = list.filter((l) => l.enrichmentComplete).length;
   const total = list.length;
   return {
@@ -1253,10 +1263,10 @@ export function getAverageDaysOpen(leads, dateRange = null, branch = null) {
   if (dateRange?.start || dateRange?.end) {
     filtered = filtered.filter((l) => leadInDateRange(l, dateRange.start, dateRange.end));
   }
-  const withDays = filtered.filter((l) => (l.daysOpen ?? 0) >= 0);
-  if (withDays.length === 0) return null;
-  const sum = withDays.reduce((s, l) => s + (l.daysOpen ?? 0), 0);
-  return Math.round((sum / withDays.length) * 10) / 10;
+  const dayValues = filtered.map((l) => leadDaysSinceInit(l)).filter((v) => v != null && v >= 0);
+  if (dayValues.length === 0) return null;
+  const sum = dayValues.reduce((s, v) => s + v, 0);
+  return Math.round((sum / dayValues.length) * 10) / 10;
 }
 
 /** Average time to first contact for leads (filtered by date range and branch). Returns formatted string. */
@@ -1355,9 +1365,8 @@ function computeBranchMetrics(leads, branch, dateRange) {
   const conversionRate = total ? Math.round((rented / total) * 100) : null;
 
   const pctWithin30 = getPctContactedWithin30Min(filtered);
-  const { branch: branchContact, hrd: hrdContact } = getBranchVsHrdSplit(filtered);
-  const branchHrdTotal = branchContact + hrdContact;
-  const branchHrdPct = branchHrdTotal ? Math.round((branchContact / branchHrdTotal) * 100) : null;
+  const { branch: branchContact } = getBranchVsHrdSplit(filtered);
+  const branchHrdPct = total ? Math.round((branchContact / total) * 100) : null;
 
   const enriched = filtered.filter((l) => l.enrichmentComplete).length;
   const commentRate = total > 0 ? Math.round((enriched / total) * 100) : null;
@@ -1737,14 +1746,14 @@ export function getGMDashboardStats(leads, dateRange = null, gmName = null) {
   const branchContact = filtered.filter((l) => (l.firstContactBy ?? l.first_contact_by) === "branch").length;
   const hrdContact = filtered.filter((l) => (l.firstContactBy ?? l.first_contact_by) === "hrd").length;
   const contactTotal = branchContact + hrdContact;
-  const branchPct = contactTotal ? Math.round((branchContact / contactTotal) * 100) : 0;
+  const branchPct = total ? Math.round((branchContact / total) * 100) : 0;
 
   const actionable = filtered.filter((l) => l.status === "Cancelled" || l.status === "Unused");
   const withComments = actionable.filter((l) => l.enrichment?.reason || l.enrichment?.notes);
   const commentCompliance = actionable.length ? Math.round((withComments.length / actionable.length) * 100) : (total > 0 ? 100 : 0);
 
   const cancelledUnreviewed = filtered.filter((l) => l.status === "Cancelled" && !l.archived && !l.gmDirective).length;
-  const unusedOverdue = filtered.filter((l) => l.status === "Unused" && (l.daysOpen ?? 0) > 5).length;
+  const unusedOverdue = filtered.filter(isUnusedOpenOverFiveDays).length;
 
   return {
     total,
@@ -1895,7 +1904,7 @@ export function getGMMetricTrendByWeek(leads, opts = {}) {
       return weekLeads.filter((l) => l.status === "Cancelled" && !l.archived && !l.gmDirective).length;
     }
     if (metricKey === "unused_overdue") {
-      return weekLeads.filter((l) => l.status === "Unused" && (l.daysOpen ?? 0) > 5).length;
+      return weekLeads.filter(isUnusedOpenOverFiveDays).length;
     }
     return null;
   };
@@ -2013,12 +2022,12 @@ export function getGMBranchLeaderboard(leads, dateRange, sortMetric = "conversio
       const prevWithComments = prevActionable.filter((l) => l.enrichment?.reason || l.enrichment?.notes);
       row.prevCommentRate = prevActionable.length > 0 ? Math.round((prevWithComments.length / prevActionable.length) * 100) : (prevTotal > 0 ? 100 : null);
       row.prevCancelledUnreviewed = prevLeads.filter((l) => l.status === "Cancelled" && !l.archived && !l.gmDirective).length;
-      row.prevUnusedOverdue = prevLeads.filter((l) => l.status === "Unused" && (l.daysOpen ?? 0) > 5).length;
+      row.prevUnusedOverdue = prevLeads.filter(isUnusedOpenOverFiveDays).length;
       row.prevConversionRate = prevConversion;
       row.cancelledUnreviewed = branchData.find((b) => leadBranchMatches(b.branch, row.branch))
         ? (leads ?? []).filter((l) => leadBranchMatches(l.branch, row.branch) && leadInDateRange(l, dateRange.start, dateRange.end) && l.status !== "Reviewed" && l.status === "Cancelled" && !l.archived && !l.gmDirective).length
         : 0;
-      row.unusedOverdue = (leads ?? []).filter((l) => leadBranchMatches(l.branch, row.branch) && leadInDateRange(l, dateRange.start, dateRange.end) && l.status !== "Reviewed" && l.status === "Unused" && (l.daysOpen ?? 0) > 5).length;
+      row.unusedOverdue = (leads ?? []).filter((l) => leadBranchMatches(l.branch, row.branch) && leadInDateRange(l, dateRange.start, dateRange.end) && l.status !== "Reviewed" && isUnusedOpenOverFiveDays(l)).length;
     }
   } else {
     for (const row of branchData) {
@@ -2143,7 +2152,7 @@ export function getGMMeetingPrepData(leads, dateRange = null, gmName = "D. Willi
       cancelledNoBmComment,
       unusedNoBmThisPeriod,
       cancelledUnreviewed: branchLeadsAll.filter((l) => l.status === "Cancelled" && !l.archived && !l.gmDirective).length,
-      unusedOverdue: branchLeadsAll.filter((l) => l.status === "Unused" && (l.daysOpen ?? 0) > 5).length,
+      unusedOverdue: branchLeadsAll.filter(isUnusedOpenOverFiveDays).length,
       missingComments: cancelledNoBmComment + unusedNoBmThisPeriod,
       mismatchCount,
       outstanding,
@@ -2181,7 +2190,7 @@ export function getGMLeadsToReviewCount(leads, dateRange = null, gmName = null) 
     filtered = filtered.filter((l) => leadInDateRange(l, dateRange.start, dateRange.end));
   }
   const cancelled = filtered.filter((l) => l.status === "Cancelled" && !l.archived && !l.gmDirective).length;
-  const unusedOverdue = filtered.filter((l) => l.status === "Unused" && (l.daysOpen ?? 0) > 5).length;
+  const unusedOverdue = filtered.filter(isUnusedOpenOverFiveDays).length;
   return cancelled + unusedOverdue;
 }
 

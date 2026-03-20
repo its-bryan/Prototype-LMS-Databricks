@@ -73,10 +73,6 @@ export default function LeadDetail({ lead, enrichmentSlot, contactSlot, contactB
               <p className="font-medium">{lead.insuranceCompany ?? "—"}</p>
             </div>
             <div>
-              <p className="text-[#6E6E6E] text-xs uppercase">Days Open</p>
-              <p className="font-medium">{lead.daysOpen ?? "—"}</p>
-            </div>
-            <div>
               <p className="text-[#6E6E6E] text-xs uppercase">Time to 1st Contact</p>
               <div className="flex items-center gap-2">
                 <p className="font-medium">{lead.timeToFirstContact ?? "—"}</p>

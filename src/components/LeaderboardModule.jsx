@@ -6,7 +6,7 @@ const LEADERBOARD_METRICS = [
   { key: "conversionRate", label: "Conversion rate" },
   { key: "pctWithin30", label: "Contacted within 30 min" },
   { key: "commentRate", label: "Comment rate" },
-  { key: "branchHrdPct", label: "Branch vs HRD" },
+  { key: "branchHrdPct", label: "Branch Contact %" },
 ];
 
 const cardAnim = (i, reduced = false) => ({

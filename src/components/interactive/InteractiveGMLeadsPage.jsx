@@ -13,6 +13,7 @@ import {
   normalizeGmName,
 } from "../../selectors/demoSelectors";
 import { formatDateRange } from "../../utils/dashboardHelpers";
+import { formatDateShort } from "../../utils/dateTime";
 import StatusBadge from "../StatusBadge";
 import ThreeColumnReview from "../ThreeColumnReview";
 import { GMLeadsPageSkeleton, usePageTransition } from "../DashboardSkeleton";
@@ -192,12 +193,12 @@ export default function InteractiveGMLeadsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-[var(--hertz-black)]">
+                  <th className="text-left text-white text-xs font-semibold px-4 py-3">Date</th>
                   <th className="text-left text-white text-xs font-semibold px-4 py-3">Customer's last name</th>
                   <th className="text-left text-white text-xs font-semibold px-4 py-3">Status</th>
                   <th className="text-left text-white text-xs font-semibold px-4 py-3">Branch</th>
                   <th className="text-left text-white text-xs font-semibold px-4 py-3">BM</th>
                   <th className="text-left text-white text-xs font-semibold px-4 py-3">Insurance</th>
-                  <th className="text-left text-white text-xs font-semibold px-4 py-3">Days Open</th>
                 </tr>
               </thead>
               <tbody>
@@ -218,6 +219,9 @@ export default function InteractiveGMLeadsPage() {
                         : "hover:bg-[var(--neutral-50)]"
                     }`}
                   >
+                    <td className="px-4 py-3 text-[var(--neutral-600)] text-xs">
+                      {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
+                    </td>
                     <td className="px-4 py-3 font-medium text-[var(--hertz-black)]">
                       <div className="flex items-center gap-1.5">
                         {lead.customer}
@@ -233,7 +237,6 @@ export default function InteractiveGMLeadsPage() {
                     <td className="px-4 py-3 text-[var(--neutral-600)]">{lead.branch}</td>
                     <td className="px-4 py-3 text-[var(--neutral-600)]">{lead.bmName ?? "—"}</td>
                     <td className="px-4 py-3 text-[var(--neutral-600)]">{lead.insuranceCompany ?? "—"}</td>
-                    <td className="px-4 py-3 text-[var(--neutral-600)]">{lead.daysOpen ?? "—"}</td>
                   </tr>
                 ))}
               </tbody>

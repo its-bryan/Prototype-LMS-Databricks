@@ -393,10 +393,10 @@ export default function InteractiveGMMeetingPrepPage() {
                         <table className="w-full text-sm">
                           <thead>
                             <tr className="bg-[var(--hertz-black)] text-xs text-white font-semibold uppercase tracking-wider">
+                              <th className="px-4 py-3 text-left">Date</th>
                               <th className="px-4 py-3 text-left">Customer</th>
                               <th className="px-4 py-3 text-left">Status</th>
                               <th className="px-4 py-3 text-left">Branch</th>
-                              <th className="px-4 py-3 text-center">Days Open</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -409,10 +409,12 @@ export default function InteractiveGMMeetingPrepPage() {
                                   onClick={() => { setSelectedLeadId(lead.id); setDirective(""); setDirectiveSaved(false); }}
                                   className={`border-t border-[var(--neutral-100)] cursor-pointer transition-colors ${selectedLeadId === lead.id ? "bg-[var(--hertz-primary-subtle)]" : "hover:bg-[var(--neutral-50)]"}`}
                                 >
+                                  <td className="px-4 py-3 text-[var(--neutral-600)] text-xs">
+                                    {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
+                                  </td>
                                   <td className="px-4 py-3 font-semibold text-[var(--hertz-black)]">{lead.customer}</td>
                                   <td className="px-4 py-3"><StatusBadge status={lead.status} /></td>
                                   <td className="px-4 py-3 text-[var(--neutral-600)]">{lead.branch}</td>
-                                  <td className="px-4 py-3 text-center text-[var(--neutral-600)]">{lead.daysOpen ?? "—"}d</td>
                                 </tr>
                               ))
                             )}
@@ -845,11 +847,11 @@ export default function InteractiveGMMeetingPrepPage() {
                           <table className="w-full text-sm">
                             <thead>
                               <tr className="bg-[var(--hertz-black)] text-xs text-white font-semibold uppercase tracking-wider">
+                                <th className="px-4 py-3 text-left">Date</th>
                                 <th className="px-4 py-3 text-left">Customer</th>
                                 <th className="px-4 py-3 text-left">Status</th>
                                 <th className="px-4 py-3 text-left">Branch</th>
                                 <th className="px-4 py-3 text-left">BM</th>
-                                <th className="px-4 py-3 text-center">Days Open</th>
                                 <th className="px-4 py-3 text-left">HLES Reason</th>
                               </tr>
                             </thead>
@@ -860,6 +862,9 @@ export default function InteractiveGMMeetingPrepPage() {
                                   onClick={() => handleViewLead(lead.id)}
                                   className="border-t border-[var(--neutral-100)] cursor-pointer transition-colors hover:bg-[var(--neutral-50)] group"
                                 >
+                                  <td className="px-4 py-3 text-[var(--neutral-600)] text-xs">
+                                    {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
+                                  </td>
                                   <td className="px-4 py-3">
                                     <div className="font-semibold text-[var(--hertz-black)]">{lead.customer}</div>
                                     {lead.reservationId && (
@@ -869,9 +874,6 @@ export default function InteractiveGMMeetingPrepPage() {
                                   <td className="px-4 py-3"><StatusBadge status={lead.status} /></td>
                                   <td className="px-4 py-3 text-[var(--neutral-600)]">{lead.branch}</td>
                                   <td className="px-4 py-3 text-[var(--neutral-600)]">{lead.bmName ?? "—"}</td>
-                                  <td className="px-4 py-3 text-center text-[var(--neutral-600)]">
-                                    {lead.daysOpen != null ? `${lead.daysOpen}d` : "—"}
-                                  </td>
                                   <td className="px-4 py-3 text-[var(--neutral-500)] text-xs max-w-[200px] truncate" title={lead.hlesReason ?? ""}>
                                     {lead.hlesReason ?? "—"}
                                   </td>

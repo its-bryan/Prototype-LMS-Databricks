@@ -18,6 +18,7 @@ import {
   leadBranchMatches,
 } from "../../selectors/demoSelectors";
 import MetricDrilldownModal from "../MetricDrilldownModal";
+import { formatDateShort } from "../../utils/dateTime";
 import { SpotCheckSkeleton, usePageTransition } from "../DashboardSkeleton";
 
 const easeOut = [0.4, 0, 0.2, 1];
@@ -248,9 +249,9 @@ export default function InteractiveGMSpotCheckPage() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="bg-[var(--hertz-black)] text-xs text-white font-semibold uppercase tracking-wider">
+                          <th className="px-4 py-3 text-left">Date</th>
                           <th className="px-4 py-3 text-left">Customer</th>
                           <th className="px-4 py-3 text-left">Status</th>
-                          <th className="px-4 py-3 text-center">Days Open</th>
                           <th className="px-4 py-3 text-left">HLES Reason</th>
                         </tr>
                       </thead>
@@ -263,9 +264,11 @@ export default function InteractiveGMSpotCheckPage() {
                               selectedLeadId === lead.id ? "bg-[var(--hertz-primary-subtle)]" : "hover:bg-[var(--neutral-50)]"
                             }`}
                           >
+                            <td className="px-4 py-3 text-[var(--neutral-600)] text-xs">
+                              {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
+                            </td>
                             <td className="px-4 py-3 font-semibold text-[var(--hertz-black)]">{lead.customer}</td>
                             <td className="px-4 py-3"><StatusBadge status={lead.status} /></td>
-                            <td className="px-4 py-3 text-center text-[var(--neutral-600)]">{lead.daysOpen ?? "—"}d</td>
                             <td className="px-4 py-3 text-[var(--neutral-500)] text-xs truncate max-w-[180px]" title={lead.hlesReason ?? ""}>{lead.hlesReason ?? "—"}</td>
                           </tr>
                         ))}

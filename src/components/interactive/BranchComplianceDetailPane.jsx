@@ -12,7 +12,7 @@ import {
   leadBranchMatches,
 } from "../../selectors/demoSelectors";
 import { useData } from "../../context/DataContext";
-import { formatDateRange } from "../../utils/dateTime";
+import { formatDateRange, formatDateShort } from "../../utils/dateTime";
 
 function formatDateRangeDisplay(dateRange) {
   return formatDateRange(dateRange?.start, dateRange?.end) || "";
@@ -51,10 +51,10 @@ function LeadTable({ leads, onLeadClick }) {
         <table className="w-full text-sm">
           <thead className="sticky top-0 z-10">
             <tr className="bg-[var(--hertz-black)] text-white text-xs font-semibold uppercase tracking-wider">
+              <th className="px-4 py-3 text-left">Date</th>
               <th className="px-4 py-3 text-left">Customer</th>
               <th className="px-4 py-3 text-center">Confirmation #</th>
               <th className="px-4 py-3 text-center">Status</th>
-              <th className="px-4 py-3 text-center">Days Open</th>
               <th className="px-4 py-3 text-left">Cancel Reason</th>
               <th className="px-4 py-3 text-left">Comments</th>
             </tr>
@@ -75,6 +75,9 @@ function LeadTable({ leads, onLeadClick }) {
                     onLeadClick ? "cursor-pointer hover:bg-[var(--neutral-50)]" : ""
                   }`}
                 >
+                  <td className="px-4 py-3 text-[var(--neutral-600)] text-xs">
+                    {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
+                  </td>
                   <td className="px-4 py-3 font-medium text-[var(--hertz-black)]">{lead.customer ?? "—"}</td>
                   <td className="px-4 py-3 text-center font-mono text-xs text-[var(--neutral-600)]">
                     {lead.reservationId ?? "—"}
@@ -82,7 +85,6 @@ function LeadTable({ leads, onLeadClick }) {
                   <td className="px-4 py-3 text-center">
                     <StatusBadge status={lead.status} />
                   </td>
-                  <td className="px-4 py-3 text-center text-[var(--neutral-600)]">{lead.daysOpen ?? "—"}</td>
                   <td className="px-4 py-3 text-[var(--neutral-600)] max-w-[150px] truncate">
                     {lead.hlesReason ?? lead.enrichment?.reason ?? "—"}
                   </td>

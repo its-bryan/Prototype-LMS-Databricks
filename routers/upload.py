@@ -74,6 +74,7 @@ def _row_to_tuple(row, confirm_num):
         _val(row, "htz_region"), _val(row, "set_state"), _val(row, "zone"),
         _val(row, "area_mgr"), _val(row, "general_mgr"), _val(row, "rent_loc"),
         _val(row, "week_of"), _val(row, "contact_range"),
+        _val(row, "first_contact_by"),
     )
 
 
@@ -87,6 +88,7 @@ def _row_to_update_tuple(row, confirm_num):
         _val(row, "htz_region"), _val(row, "set_state"), _val(row, "zone"),
         _val(row, "area_mgr"), _val(row, "general_mgr"), _val(row, "rent_loc"),
         _val(row, "week_of"), _val(row, "contact_range"),
+        _val(row, "first_contact_by"),
     )
 
 
@@ -237,13 +239,13 @@ async def upload_hles(
             # 3) Batch INSERT
             cols = (
                 "customer, reservation_id, status, branch, bm_name, insurance_company, hles_reason, init_dt_final, "
-                "confirm_num, knum, body_shop, cdp_name, htz_region, set_state, zone, area_mgr, general_mgr, rent_loc, week_of, contact_range"
+                "confirm_num, knum, body_shop, cdp_name, htz_region, set_state, zone, area_mgr, general_mgr, rent_loc, week_of, contact_range, first_contact_by"
             )
             for i in range(0, len(to_insert), HLES_INSERT_BATCH):
                 batch = to_insert[i : i + HLES_INSERT_BATCH]
                 values_tuples = [_row_to_tuple(r, c) for c, r in batch]
                 n = len(values_tuples)
-                one = "(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+                one = "(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
                 placeholders = ",".join([one] * n)
                 sql = f"INSERT INTO leads ({cols}) VALUES {placeholders}"
                 cur.execute(sql, tuple(x for t in values_tuples for x in t))
@@ -254,7 +256,7 @@ async def upload_hles(
                 batch = to_update[i : i + HLES_UPDATE_BATCH]
                 values_tuples = [_row_to_update_tuple(r, c) for c, r in batch]
                 n = len(values_tuples)
-                one = "(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+                one = "(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
                 placeholders = ",".join([one] * n)
                 sql = f"""UPDATE leads SET
                     customer = v.customer, status = v.status, branch = v.branch, bm_name = v.bm_name,
@@ -262,8 +264,8 @@ async def upload_hles(
                     confirm_num = v.confirm_num, reservation_id = v.reservation_id, knum = v.knum, body_shop = v.body_shop,
                     cdp_name = v.cdp_name, htz_region = v.htz_region, set_state = v.set_state,
                     zone = v.zone, area_mgr = v.area_mgr, general_mgr = v.general_mgr, rent_loc = v.rent_loc,
-                    week_of = v.week_of, contact_range = v.contact_range, updated_at = now()
-                FROM (VALUES {placeholders}) AS v(confirm_num, customer, status, branch, bm_name, insurance_company, hles_reason, init_dt_final, confirm_num2, reservation_id, knum, body_shop, cdp_name, htz_region, set_state, zone, area_mgr, general_mgr, rent_loc, week_of, contact_range)
+                    week_of = v.week_of, contact_range = v.contact_range, first_contact_by = v.first_contact_by, updated_at = now()
+                FROM (VALUES {placeholders}) AS v(confirm_num, customer, status, branch, bm_name, insurance_company, hles_reason, init_dt_final, confirm_num2, reservation_id, knum, body_shop, cdp_name, htz_region, set_state, zone, area_mgr, general_mgr, rent_loc, week_of, contact_range, first_contact_by)
                 WHERE leads.confirm_num = v.confirm_num"""
                 cur.execute(sql, tuple(x for t in values_tuples for x in t))
                 stats["updated"] += n

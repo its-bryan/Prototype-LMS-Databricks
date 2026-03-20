@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useData } from "../../context/DataContext";
 import { getAllLeads } from "../../selectors/demoSelectors";
+import { formatDateShort } from "../../utils/dateTime";
 import StatusBadge from "../StatusBadge";
 
 export default function InteractiveInbox() {
@@ -74,7 +75,9 @@ export default function InteractiveInbox() {
               <div className="flex items-center justify-between mt-3 pt-2 border-t border-[#E6E6E6]">
                 <div className="flex items-center gap-4 text-xs text-[#6E6E6E]">
                   <span>{lead.branch}</span>
-                  <span>{lead.daysOpen}d open</span>
+                  <span>
+                    {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
+                  </span>
                   {lead.reservationType && <span>{lead.reservationType}</span>}
                 </div>
                 <span className="text-xs text-[#FFD100] font-medium opacity-0 group-hover:opacity-100 transition-opacity">

@@ -1,10 +1,10 @@
 /**
  * Meeting Prep Lead Queue — 8 columns, priority-sorted.
- * Columns: Customer | Status | Confirmation # | Insurance | Contact Source | Time to Contact | Lead Received | Comment Status
+ * Columns: Date | Customer | Status | Confirmation # | Insurance | Contact Source | Time to Contact | Comment Status
  */
 import { motion } from "framer-motion";
 import StatusBadge from "./StatusBadge";
-import { formatDateOnly } from "../utils/dateTime";
+import { formatDateShort } from "../utils/dateTime";
 
 export default function MeetingPrepLeadQueue({
   leads,
@@ -30,10 +30,6 @@ export default function MeetingPrepLeadQueue({
           {leads.map((lead, i) => {
             const hasComment = !!(lead.enrichment?.reason || lead.enrichment?.notes);
             const contactSource = lead.firstContactBy === "branch" ? "Branch" : lead.firstContactBy === "hrd" ? "HRD" : "—";
-            const leadReceived = lead.initDtFinal ?? lead.init_dt_final ?? "—";
-            const leadReceivedFormatted = typeof leadReceived === "string" && leadReceived !== "—"
-              ? formatDateOnly(leadReceived)
-              : leadReceived;
             return (
               <motion.tr
                 key={lead.id}
@@ -45,13 +41,15 @@ export default function MeetingPrepLeadQueue({
                 }`}
                 onClick={() => onLeadClick?.(lead)}
               >
+                <td className="px-4 py-3 text-[var(--neutral-600)] text-xs">
+                  {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
+                </td>
                 <td className="px-4 py-3 font-medium text-[var(--hertz-black)]">{lead.customer}</td>
                 <td className="px-4 py-3"><StatusBadge status={lead.status} /></td>
                 <td className="px-4 py-3 text-[var(--neutral-600)] font-mono text-xs">{lead.reservationId}</td>
                 <td className="px-4 py-3 text-[var(--neutral-600)]">{lead.insuranceCompany ?? "—"}</td>
                 <td className="px-4 py-3 text-[var(--neutral-600)]">{contactSource}</td>
                 <td className="px-4 py-3 text-[var(--neutral-600)]">{lead.timeToFirstContact ?? "—"}</td>
-                <td className="px-4 py-3 text-[var(--neutral-600)]">{leadReceivedFormatted}</td>
                 <td className="px-4 py-3">
                   {hasComment ? (
                     <span className="text-[var(--color-success)]">✓</span>

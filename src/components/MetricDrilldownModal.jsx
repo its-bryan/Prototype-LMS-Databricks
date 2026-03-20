@@ -11,11 +11,12 @@ import {
   getLeadById,
   getBranchVsHrdSplit,
   getConversionBreakdown,
+  isUnusedOpenOverFiveDays,
 } from "../selectors/demoSelectors";
 import StatusBadge from "./StatusBadge";
 import GroupBySelector from "./GroupBySelector";
 import ConversionBreakdownTable from "./ConversionBreakdownTable";
-import { formatDateRange } from "../utils/dateTime";
+import { formatDateRange, formatDateShort } from "../utils/dateTime";
 
 function formatRange(range) {
   return formatDateRange(range?.start, range?.end) || "—";
@@ -161,11 +162,9 @@ const METRIC_CONFIG = {
     label: "Unused Overdue",
     type: "leads",
     description: "Unused leads open more than 5 days",
-    getValue: (leads) =>
-      (leads ?? []).filter((l) => l.status === "Unused" && (l.daysOpen ?? 0) > 5).length,
+    getValue: (leads) => (leads ?? []).filter(isUnusedOpenOverFiveDays).length,
     format: (v) => `${v ?? 0}`,
-    getRelevant: (leads) =>
-      (leads ?? []).filter((l) => l.status === "Unused" && (l.daysOpen ?? 0) > 5),
+    getRelevant: (leads) => (leads ?? []).filter(isUnusedOpenOverFiveDays),
     lowerIsBetter: true,
   },
 };
@@ -233,10 +232,10 @@ function LeadTable({ leads, config, allLeads }) {
           <thead className="sticky top-0 z-10">
             <tr className="bg-[#272425] text-xs text-white font-semibold uppercase tracking-wider">
               {showHighlight && <th className="px-3 py-3 text-center w-[60px]">{config.numeratorLabel}</th>}
+              <th className="px-3 py-3 text-left">Date</th>
               <th className="px-3 py-3 text-left">Customer</th>
               <th className="px-3 py-3 text-center">Confirmation #</th>
               <th className="px-3 py-3 text-center">Status</th>
-              <th className="px-3 py-3 text-center">Days Open</th>
               <th className="px-3 py-3 text-center">Time to Contact</th>
               {extraCol && <th className="px-3 py-3 text-center">{extraCol.label}</th>}
               <th className="px-3 py-3 text-left">Cancel Reason</th>
@@ -273,10 +272,12 @@ function LeadTable({ leads, config, allLeads }) {
                         )}
                       </td>
                     )}
+                    <td className="px-3 py-3 text-[var(--neutral-600)] text-xs">
+                      {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
+                    </td>
                     <td className="px-3 py-3 font-semibold text-[var(--hertz-black)]">{lead.customer ?? "—"}</td>
                     <td className="px-3 py-3 text-center font-mono text-xs text-[var(--neutral-600)]">{lead.reservationId ?? "—"}</td>
                     <td className="px-3 py-3 text-center"><StatusBadge status={lead.status} /></td>
-                    <td className="px-3 py-3 text-center text-[var(--neutral-600)]">{lead.daysOpen ?? "—"}</td>
                     <td className="px-3 py-3 text-center text-[var(--neutral-600)]">{lead.timeToFirstContact ?? "—"}</td>
                     {extraCol && (
                       <td className="px-3 py-3 text-center text-[var(--neutral-600)]">{extraCol.getValue(lead)}</td>

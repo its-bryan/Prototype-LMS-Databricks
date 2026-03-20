@@ -64,7 +64,7 @@ export default function InteractiveGMActivityReportPage() {
 
   return (
     <div className="space-y-6">
-      <BackButton onClick={() => navigate("/gm/overview")} label="Back to Team Performance" />
+      <BackButton onClick={() => navigate("/gm/overview")} label="Back to Team Leaderboard" />
 
       <div className="flex items-end justify-between">
         <div>
