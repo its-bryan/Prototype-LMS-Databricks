@@ -198,12 +198,13 @@ pip install databricks-cli
 # Configure with workspace URL + token
 databricks configure --token
 
-# Sync files (from the app root directory)
-databricks sync --watch . /Workspace/Users/<your-email>/hertz-lms
+# Update Databricks workspace repo to latest main
+databricks repos update 3889324859208374 --branch main -p DanSiaoAuth
 
-# Deploy
-databricks apps deploy hertz-lms \
-  --source-code-path /Workspace/Users/<your-email>/hertz-lms
+# Deploy from Databricks Repos path (canonical)
+databricks apps deploy hertz-leo-leadsmgmtsystem \
+  --source-code-path "/Workspace/Repos/nh136948@hertz.net/Prototype-LMS-Databricks" \
+  -p DanSiaoAuth
 ```
 
 ### Step 8: Verify Deployment
