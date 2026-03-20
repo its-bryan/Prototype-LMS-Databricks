@@ -85,6 +85,21 @@ function buildQuery(params = {}) {
   return query ? `?${query}` : "";
 }
 
+function toApiDate(value) {
+  if (!value) return null;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+    const parsed = new Date(trimmed);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, "0")}-${String(parsed.getDate()).padStart(2, "0")}`;
+  }
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
+  }
+  return null;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Row transformers  (snake_case → camelCase)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -267,6 +282,8 @@ export async function fetchLeadsPage({
   startDate = null,
   endDate = null,
 } = {}) {
+  const startDateParam = toApiDate(startDate);
+  const endDateParam = toApiDate(endDate);
   // #region agent log
   debugLog({
     runId: "pre-fix",
@@ -283,8 +300,12 @@ export async function fetchLeadsPage({
       hasBmName: !!bmName,
       hasInsurance: !!insurance,
       hasSearch: !!search,
-      startDate,
-      endDate,
+      startDateRaw: startDate,
+      endDateRaw: endDate,
+      startDateRawType: typeof startDate,
+      endDateRawType: typeof endDate,
+      startDateParam,
+      endDateParam,
     },
   });
   // #endregion
@@ -299,8 +320,8 @@ export async function fetchLeadsPage({
     bm_name: bmName,
     insurance,
     search,
-    start_date: startDate,
-    end_date: endDate,
+    start_date: startDateParam,
+    end_date: endDateParam,
   });
   const result = await apiGet(`/leads${query}`);
   // #region agent log
