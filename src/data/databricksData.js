@@ -12,6 +12,7 @@
  */
 
 const API_BASE = "/api";
+const DEBUG_INGEST_URL = "http://127.0.0.1:7507/ingest/4cdc8682-4d34-4a46-8b0d-92860e51cbd8";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -19,6 +20,24 @@ const API_BASE = "/api";
 
 function _getToken() {
   try { return sessionStorage.getItem("leo_token"); } catch { return null; }
+}
+
+function debugLog({ runId, hypothesisId, location, message, data }) {
+  // #region agent log
+  fetch(DEBUG_INGEST_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "862807" },
+    body: JSON.stringify({
+      sessionId: "862807",
+      runId,
+      hypothesisId,
+      location,
+      message,
+      data,
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
 }
 
 async function apiFetch(path, options = {}) {
@@ -248,6 +267,27 @@ export async function fetchLeadsPage({
   startDate = null,
   endDate = null,
 } = {}) {
+  // #region agent log
+  debugLog({
+    runId: "pre-fix",
+    hypothesisId: "H1",
+    location: "databricksData.js:fetchLeadsPage:beforeApiGet",
+    message: "Leads page request query params",
+    data: {
+      limit,
+      offset,
+      hasBranches: !!branches,
+      hasBranch: !!branch,
+      hasGmName: !!gmName,
+      status,
+      hasBmName: !!bmName,
+      hasInsurance: !!insurance,
+      hasSearch: !!search,
+      startDate,
+      endDate,
+    },
+  });
+  // #endregion
   const query = buildQuery({
     paged: 1,
     limit,
@@ -263,6 +303,23 @@ export async function fetchLeadsPage({
     end_date: endDate,
   });
   const result = await apiGet(`/leads${query}`);
+  // #region agent log
+  debugLog({
+    runId: "pre-fix",
+    hypothesisId: "H2",
+    location: "databricksData.js:fetchLeadsPage:afterApiGet",
+    message: "Leads page raw API envelope",
+    data: {
+      hasItemsArray: Array.isArray(result?.items),
+      itemsLength: Array.isArray(result?.items) ? result.items.length : null,
+      total: result?.total ?? null,
+      limit: result?.limit ?? null,
+      offset: result?.offset ?? null,
+      hasNext: result?.has_next ?? null,
+      rawType: typeof result,
+    },
+  });
+  // #endregion
   return {
     items: (result?.items ?? []).map(leadFromRow),
     total: result?.total ?? 0,
