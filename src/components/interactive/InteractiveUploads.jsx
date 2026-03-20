@@ -6,7 +6,7 @@ import { reconcileHlesUpload, buildCommitPlan } from "../../utils/reconciliation
 import { leads as mockLeads } from "../../data/mockData";
 import { useData } from "../../context/DataContext";
 import { useAuth } from "../../context/AuthContext";
-import { uploadHlesFile, fetchUploadHistory } from "../../data/databricksData";
+import { uploadHlesFile, fetchUploadHistory, fetchUploadIngestionStatus } from "../../data/databricksData";
 
 // ---------------------------------------------------------------------------
 // CSV export helper
@@ -85,6 +85,16 @@ function StepIndicator({ currentStep }) {
       })}
     </div>
   );
+}
+
+function ingestionBadge(status) {
+  if (status === "in_progress") {
+    return { label: "In progress", className: "bg-blue-100 text-blue-800" };
+  }
+  if (status === "failed") {
+    return { label: "Failed", className: "bg-red-100 text-red-800" };
+  }
+  return { label: "Success", className: "bg-emerald-100 text-emerald-800" };
 }
 
 // ---------------------------------------------------------------------------
@@ -565,6 +575,7 @@ export default function InteractiveUploads() {
   // Parse results
   const [hlesParsed, setHlesParsed] = useState(null);
   const [parsing, setParsing] = useState(false);
+  const [validateStarting, setValidateStarting] = useState(false);
   const [validateProgress, setValidateProgress] = useState({ phase: "", pct: 0 });
 
   // Reconciliation
@@ -609,6 +620,7 @@ export default function InteractiveUploads() {
 
   // ---- Step: Validate ----
   const handleValidate = useCallback(async () => {
+    setValidateStarting(true);
     setHlesParsed(null);
     setHlesReconciliation(null);
     setParsing(true);
@@ -617,7 +629,6 @@ export default function InteractiveUploads() {
 
     await new Promise((r) => requestAnimationFrame(r));
     await new Promise((r) => requestAnimationFrame(r));
-    await new Promise((r) => setTimeout(r, 250));
 
     try {
       setValidateProgress({ phase: "Reading and parsing HLES file…", pct: 15 });
@@ -637,6 +648,7 @@ export default function InteractiveUploads() {
     }
 
     setParsing(false);
+    setValidateStarting(false);
   }, [hlesFile, existingLeads]);
 
   // ---- Step: Commit ----
@@ -660,7 +672,6 @@ export default function InteractiveUploads() {
         const result = await uploadHlesFile(hlesFile, {
           uploadedBy: userProfile?.displayName ?? undefined,
         });
-        loadUploadHistory();
         setCommitResult({
           hles: {
             inserted: result.newLeads ?? 0,
@@ -671,13 +682,17 @@ export default function InteractiveUploads() {
             archived: 0,
             skipped: 0,
           },
+          ingestion: {
+            uploadId: result.uploadId ?? null,
+            state: result.ingestion_status ?? "in_progress",
+            error: null,
+          },
           translog: null,
           orgMapping: null,
         });
         refetchLeads?.();
         refetchOrgMapping?.();
         refetchDataAsOfDate?.();
-        refetchSnapshot?.({ poll: true });
         setStep("summary");
       } catch (err) {
         setCommitError(err?.message ?? "Upload failed");
@@ -695,6 +710,58 @@ export default function InteractiveUploads() {
     setConflictResolutions((prev) => ({ ...prev, [idx]: resolution }));
   }, []);
 
+  useEffect(() => {
+    const uploadId = commitResult?.ingestion?.uploadId;
+    const state = commitResult?.ingestion?.state;
+    if (!uploadId || state !== "in_progress") return;
+
+    let isCancelled = false;
+    let attempts = 0;
+    const maxAttempts = 40;
+
+    const poll = async () => {
+      attempts += 1;
+      try {
+        const status = await fetchUploadIngestionStatus(uploadId);
+        if (isCancelled) return;
+        setCommitResult((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            ingestion: {
+              ...(prev.ingestion ?? {}),
+              uploadId,
+              state: status.state,
+              error: status.error ?? null,
+              startedAt: status.startedAt ?? null,
+              updatedAt: status.updatedAt ?? null,
+            },
+          };
+        });
+        if (status.state === "success") {
+          loadUploadHistory();
+          refetchSnapshot?.({ poll: true });
+          return;
+        }
+        if (status.state === "failed") {
+          loadUploadHistory();
+          return;
+        }
+      } catch {
+        // Keep polling quietly; upload summary will still reflect final status.
+      }
+
+      if (!isCancelled && attempts < maxAttempts) {
+        setTimeout(poll, 3000);
+      }
+    };
+
+    poll();
+    return () => {
+      isCancelled = true;
+    };
+  }, [commitResult?.ingestion?.uploadId, commitResult?.ingestion?.state, loadUploadHistory, refetchSnapshot]);
+
   const allConflictsResolved =
     !hlesReconciliation?.conflicts?.length ||
     hlesReconciliation.conflicts.every((_, i) => conflictResolutions[i]);
@@ -704,6 +771,7 @@ export default function InteractiveUploads() {
   const handleReset = useCallback(() => {
     setStep("select");
     setValidateProgress({ phase: "", pct: 0 });
+    setValidateStarting(false);
     setHlesFile(null);
     setHlesParsed(null);
     setHlesReconciliation(null);
@@ -725,104 +793,6 @@ export default function InteractiveUploads() {
         </p>
       </div>
 
-      {/* Upload history: past files, date, who, status, metadata */}
-      <section className="mb-8">
-        <h3 className="text-sm font-semibold text-[var(--hertz-black)] mb-3">Upload history</h3>
-        {historyLoading ? (
-          <p className="text-sm text-[var(--neutral-500)]">Loading history…</p>
-        ) : uploadHistory.length === 0 ? (
-          <p className="text-sm text-[var(--neutral-500)]">No uploads yet.</p>
-        ) : (
-          <div className="border border-[var(--neutral-200)] rounded-lg overflow-hidden">
-            <div className="overflow-x-auto max-h-[280px] overflow-y-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-[var(--neutral-100)] sticky top-0">
-                  <tr>
-                    <th className="text-left py-2 px-3 font-medium text-[var(--neutral-600)]">Date</th>
-                    <th className="text-left py-2 px-3 font-medium text-[var(--neutral-600)]">File</th>
-                    <th className="text-left py-2 px-3 font-medium text-[var(--neutral-600)]">Uploaded by</th>
-                    <th className="text-left py-2 px-3 font-medium text-[var(--neutral-600)]">Status</th>
-                    <th className="text-left py-2 px-3 font-medium text-[var(--neutral-600)] w-8" aria-label="Expand" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {uploadHistory.map((row) => {
-                    const isExpanded = historyExpandedId === row.id;
-                    const dateStr =
-                      row.createdAt != null
-                        ? new Date(row.createdAt).toLocaleString(undefined, {
-                            dateStyle: "short",
-                            timeStyle: "short",
-                          })
-                        : "—";
-                    const statusLabel =
-                      row.status === "success"
-                        ? "Success"
-                        : row.status === "partial"
-                          ? "Partial"
-                          : "Failed";
-                    const statusClass =
-                      row.status === "success"
-                        ? "bg-emerald-100 text-emerald-800"
-                        : row.status === "partial"
-                          ? "bg-amber-100 text-amber-800"
-                          : "bg-red-100 text-red-800";
-                    const m = row.metadata ?? {};
-                    return (
-                      <React.Fragment key={row.id}>
-                        <tr className="border-t border-[var(--neutral-200)] hover:bg-[var(--neutral-50)]">
-                          <td className="py-2 px-3 text-[var(--neutral-700)]">{dateStr}</td>
-                          <td className="py-2 px-3 text-[var(--hertz-black)]">{row.filename}</td>
-                          <td className="py-2 px-3 text-[var(--neutral-700)]">{row.uploadedBy}</td>
-                          <td className="py-2 px-3">
-                            <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${statusClass}`}>
-                              {statusLabel}
-                            </span>
-                          </td>
-                          <td className="py-2 px-3">
-                            <button
-                              type="button"
-                              onClick={() => setHistoryExpandedId(isExpanded ? null : row.id)}
-                              className="text-[var(--neutral-500)] hover:text-[var(--hertz-black)] p-1 rounded"
-                              aria-expanded={isExpanded}
-                            >
-                              {isExpanded ? (
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                </svg>
-                              ) : (
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                </svg>
-                              )}
-                            </button>
-                          </td>
-                        </tr>
-                        {isExpanded && (
-                          <tr key={`detail-${row.id}`} className="border-t border-[var(--neutral-200)] bg-[var(--neutral-50)]">
-                            <td colSpan={5} className="px-3 py-3 text-sm">
-                              <p className="font-medium text-[var(--hertz-black)] mb-2">Metadata &amp; logs</p>
-                              <ul className="space-y-1 text-[var(--neutral-700)]">
-                                <li>Rows parsed: {Number(m.rowsParsed ?? 0).toLocaleString()}</li>
-                                <li>New leads: {Number(m.newLeads ?? 0).toLocaleString()}</li>
-                                <li>Updated: {Number(m.updated ?? 0).toLocaleString()}</li>
-                                <li>Skipped / failed: {Number(m.failed ?? 0).toLocaleString()}</li>
-                                {row.dataAsOfDate && <li>Data as of: {row.dataAsOfDate}</li>}
-                                {row.landedPath && <li className="truncate" title={row.landedPath}>Landed: {row.landedPath}</li>}
-                              </ul>
-                            </td>
-                          </tr>
-                        )}
-                      </React.Fragment>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-      </section>
-
       <StepIndicator currentStep={step} />
 
       <AnimatePresence mode="wait">
@@ -841,10 +811,17 @@ export default function InteractiveUploads() {
             <div className="flex justify-end">
               <button
                 onClick={handleValidate}
-                disabled={!hlesFile}
+                disabled={!hlesFile || validateStarting}
                 className="px-5 py-2.5 bg-[var(--hertz-primary)] text-[var(--hertz-black)] rounded-lg text-sm font-semibold hover:bg-[#E6BC00] transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                Upload & Validate
+                {validateStarting ? (
+                  <span className="inline-flex items-center gap-2">
+                    <span className="w-3.5 h-3.5 border-2 border-[var(--hertz-black)] border-t-transparent rounded-full animate-spin" />
+                    Uploading...
+                  </span>
+                ) : (
+                  "Upload & Validate"
+                )}
               </button>
             </div>
           </motion.div>
@@ -1009,17 +986,57 @@ export default function InteractiveUploads() {
         )}
         {step === "summary" && commitResult && (
           <motion.div key="summary" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <div className="text-center mb-8">
-              <div className="w-16 h-16 rounded-full bg-[#E8F5E9] flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-[#2E7D32]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-bold text-[var(--hertz-black)]">Upload Complete</h3>
-              <p className="text-sm text-[var(--neutral-500)] mt-1">
-                Data has been processed and committed successfully. It is now visible across all views.
-              </p>
-            </div>
+            {(() => {
+              const ingestion = commitResult.ingestion ?? { state: "success" };
+              const badge = ingestionBadge(ingestion.state);
+              const title =
+                ingestion.state === "in_progress"
+                  ? "Upload accepted"
+                  : ingestion.state === "failed"
+                    ? "Upload complete with ingestion errors"
+                    : "Upload complete";
+              const subtitle =
+                ingestion.state === "in_progress"
+                  ? "File upload succeeded. Data ingestion jobs are still running in the background."
+                  : ingestion.state === "failed"
+                    ? "File upload succeeded, but one or more downstream ingestion jobs failed."
+                    : "Data has been processed and committed successfully. It is now visible across all views.";
+
+              return (
+                <div className="text-center mb-8">
+                  <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                    ingestion.state === "failed" ? "bg-[#FFEBEE]" : "bg-[#E8F5E9]"
+                  }`}>
+                    {ingestion.state === "failed" ? (
+                      <svg className="w-8 h-8 text-[#C62828]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    ) : ingestion.state === "in_progress" ? (
+                      <div className="w-8 h-8 border-2 border-[var(--hertz-primary)] border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <svg className="w-8 h-8 text-[#2E7D32]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </div>
+                  <h3 className="text-lg font-bold text-[var(--hertz-black)]">{title}</h3>
+                  <p className="text-sm text-[var(--neutral-500)] mt-1">{subtitle}</p>
+
+                  <div className="mt-4 inline-flex items-center gap-2 rounded-lg border border-[var(--neutral-200)] bg-white px-3 py-2">
+                    <span className="text-xs font-semibold text-[var(--neutral-600)] uppercase tracking-wide">Data ingestion status</span>
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${badge.className}`}>
+                      {ingestion.state === "in_progress" && (
+                        <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
+                      )}
+                      {badge.label}
+                    </span>
+                  </div>
+                  {ingestion.error && (
+                    <p className="text-xs text-[#C62828] mt-2">{ingestion.error}</p>
+                  )}
+                </div>
+              );
+            })()}
 
             {commitResult.hles && (
               <div className="border border-[var(--neutral-200)] rounded-lg p-5 mb-8 max-w-md">
@@ -1103,6 +1120,115 @@ export default function InteractiveUploads() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Upload history: placed below the upload workflow */}
+      <section className="mt-10">
+        <h3 className="text-sm font-semibold text-[var(--hertz-black)] mb-3">Upload history</h3>
+        {historyLoading ? (
+          <p className="text-sm text-[var(--neutral-500)]">Loading history…</p>
+        ) : uploadHistory.length === 0 ? (
+          <p className="text-sm text-[var(--neutral-500)]">No uploads yet.</p>
+        ) : (
+          <div className="border border-[var(--neutral-200)] rounded-lg overflow-hidden">
+            <div className="overflow-x-auto max-h-[280px] overflow-y-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-[var(--neutral-100)] sticky top-0">
+                  <tr>
+                    <th className="text-left py-2 px-3 font-medium text-[var(--neutral-600)]">Date</th>
+                    <th className="text-left py-2 px-3 font-medium text-[var(--neutral-600)]">File</th>
+                    <th className="text-left py-2 px-3 font-medium text-[var(--neutral-600)]">Uploaded by</th>
+                    <th className="text-left py-2 px-3 font-medium text-[var(--neutral-600)]">Upload status</th>
+                    <th className="text-left py-2 px-3 font-medium text-[var(--neutral-600)]">Data ingestion</th>
+                    <th className="text-left py-2 px-3 font-medium text-[var(--neutral-600)] w-8" aria-label="Expand" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {uploadHistory.map((row) => {
+                    const isExpanded = historyExpandedId === row.id;
+                    const dateStr =
+                      row.createdAt != null
+                        ? new Date(row.createdAt).toLocaleString(undefined, {
+                            dateStyle: "short",
+                            timeStyle: "short",
+                          })
+                        : "—";
+                    const statusLabel =
+                      row.status === "success"
+                        ? "Success"
+                        : row.status === "partial"
+                          ? "Partial"
+                          : "Failed";
+                    const statusClass =
+                      row.status === "success"
+                        ? "bg-emerald-100 text-emerald-800"
+                        : row.status === "partial"
+                          ? "bg-amber-100 text-amber-800"
+                          : "bg-red-100 text-red-800";
+                    const ingestion = ingestionBadge(row.ingestionStatus);
+                    const m = row.metadata ?? {};
+                    return (
+                      <React.Fragment key={row.id}>
+                        <tr className="border-t border-[var(--neutral-200)] hover:bg-[var(--neutral-50)]">
+                          <td className="py-2 px-3 text-[var(--neutral-700)]">{dateStr}</td>
+                          <td className="py-2 px-3 text-[var(--hertz-black)]">{row.filename}</td>
+                          <td className="py-2 px-3 text-[var(--neutral-700)]">{row.uploadedBy}</td>
+                          <td className="py-2 px-3">
+                            <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${statusClass}`}>
+                              {statusLabel}
+                            </span>
+                          </td>
+                          <td className="py-2 px-3">
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${ingestion.className}`}>
+                              {row.ingestionStatus === "in_progress" && (
+                                <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
+                              )}
+                              {ingestion.label}
+                            </span>
+                          </td>
+                          <td className="py-2 px-3">
+                            <button
+                              type="button"
+                              onClick={() => setHistoryExpandedId(isExpanded ? null : row.id)}
+                              className="text-[var(--neutral-500)] hover:text-[var(--hertz-black)] p-1 rounded"
+                              aria-expanded={isExpanded}
+                            >
+                              {isExpanded ? (
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                              ) : (
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                </svg>
+                              )}
+                            </button>
+                          </td>
+                        </tr>
+                        {isExpanded && (
+                          <tr key={`detail-${row.id}`} className="border-t border-[var(--neutral-200)] bg-[var(--neutral-50)]">
+                            <td colSpan={6} className="px-3 py-3 text-sm">
+                              <p className="font-medium text-[var(--hertz-black)] mb-2">Metadata &amp; logs</p>
+                              <ul className="space-y-1 text-[var(--neutral-700)]">
+                                <li>Rows parsed: {Number(m.rowsParsed ?? 0).toLocaleString()}</li>
+                                <li>New leads: {Number(m.newLeads ?? 0).toLocaleString()}</li>
+                                <li>Updated: {Number(m.updated ?? 0).toLocaleString()}</li>
+                                <li>Skipped / failed: {Number(m.failed ?? 0).toLocaleString()}</li>
+                                {row.dataAsOfDate && <li>Data as of: {row.dataAsOfDate}</li>}
+                                {row.landedPath && <li className="truncate" title={row.landedPath}>Landed: {row.landedPath}</li>}
+                                {row.ingestionError && <li className="text-[#C62828]">Ingestion error: {row.ingestionError}</li>}
+                              </ul>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </section>
     </div>
   );
 }

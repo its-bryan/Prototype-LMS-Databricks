@@ -57,17 +57,28 @@ export default function ObservatoryBarChart({
                     const rentedHeight = ((p.rented ?? 0) / maxValue) * CHART_HEIGHT;
                     const cancelledHeight = ((p.cancelled ?? 0) / maxValue) * CHART_HEIGHT;
                     const unusedHeight = ((p.unused ?? 0) / maxValue) * CHART_HEIGHT;
+                    const percentLabel = `${Math.round(p.value ?? 0)}%`;
 
                     return (
                       <div key={p.label} className="flex-1 min-w-[34px] h-full flex flex-col items-center justify-end">
                         <div className="w-full max-w-[48px] flex items-end justify-center" title={p.tooltip}>
                           {mode === "single" ? (
-                            <motion.div
-                              initial={reduceMotion ? false : { height: 0 }}
-                              animate={{ height: singleHeight }}
-                              transition={{ duration: 0.45, delay: idx * 0.02 }}
-                              className="w-full rounded-t-md bg-[var(--hertz-primary)]"
-                            />
+                            <div className="relative w-full flex items-end justify-center">
+                              {yAxis === "percent" && (
+                                <span
+                                  className="absolute text-[10px] font-semibold text-[var(--neutral-700)]"
+                                  style={{ bottom: `${Math.min(singleHeight + 6, CHART_HEIGHT + 6)}px` }}
+                                >
+                                  {percentLabel}
+                                </span>
+                              )}
+                              <motion.div
+                                initial={reduceMotion ? false : { height: 0 }}
+                                animate={{ height: singleHeight }}
+                                transition={{ duration: 0.45, delay: idx * 0.02 }}
+                                className="w-full rounded-t-md bg-[var(--hertz-primary)]"
+                              />
+                            </div>
                           ) : (
                             <div className="w-full rounded-t-md overflow-hidden border border-[var(--neutral-200)] border-b-0 bg-[var(--neutral-50)]">
                               <motion.div

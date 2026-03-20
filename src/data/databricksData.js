@@ -253,12 +253,15 @@ export async function fetchUploadHistory() {
         : failed > 0
           ? "partial"
           : "success";
+    const ingestionStatus = hles.ingestion_status ?? hles.ingestionStatus ?? "success";
     return {
       id: r.id,
       createdAt: r.created_at,
       filename: hles.filename ?? hles.landedPath ?? "—",
       uploadedBy: hles.uploaded_by ?? hles.uploadedBy ?? "—",
       status,
+      ingestionStatus,
+      ingestionError: hles.ingestion_error ?? null,
       metadata: {
         rowsParsed: hles.rows_parsed ?? hles.rowsParsed ?? 0,
         newLeads: hles.new_leads ?? hles.newLeads ?? 0,
@@ -271,10 +274,21 @@ export async function fetchUploadHistory() {
   });
 }
 
+export async function fetchUploadIngestionStatus(uploadId) {
+  if (!uploadId) return { state: "unknown" };
+  const row = await apiGet(`/upload/ingestion-status/${encodeURIComponent(uploadId)}`);
+  return {
+    state: row?.state ?? "unknown",
+    startedAt: row?.startedAt ?? null,
+    updatedAt: row?.updatedAt ?? null,
+    error: row?.error ?? null,
+  };
+}
+
 /**
  * Upload HLES Excel file via backend. File is landed in the UC Volume
  * (datalabs.lab_lms_prod.hles_landing_prod) then ETL runs into Lakebase Postgres.
- * Returns { rowsParsed, newLeads, updated, failed, landedPath? }.
+ * Returns { rowsParsed, newLeads, updated, failed, landedPath?, uploadId, ingestion_status }.
  */
 /**
  * @param {File} file - HLES file to upload

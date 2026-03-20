@@ -148,12 +148,19 @@ def _accumulate(bucket: dict, lead: dict) -> None:
 
 def _branch_meta(branch: str, org_by_branch: dict[str, dict], branch_leads: list[dict]) -> dict:
     row = org_by_branch.get(branch)
+    hertz_zone = "—"
+    for lead in branch_leads:
+        value = (lead.get("htz_region") or lead.get("htzRegion") or "").strip()
+        if value:
+            hertz_zone = value
+            break
     if row:
         return {
             "zone": (row.get("zone") or "").strip() or "—",
             "gm": (row.get("gm") or "").strip() or "—",
             "am": (row.get("am") or "").strip() or "—",
             "bm": (row.get("bm") or "").strip() or "—",
+            "hertzZone": hertz_zone,
         }
     gm, am, zone, bm = "—", "—", "—", "—"
     for lead in branch_leads:
@@ -167,7 +174,7 @@ def _branch_meta(branch: str, org_by_branch: dict[str, dict], branch_leads: list
             bm = str(lead["bm_name"]).strip() or "—"
         if gm != "—" and am != "—" and zone != "—" and bm != "—":
             break
-    return {"zone": zone, "gm": gm, "am": am, "bm": bm}
+    return {"zone": zone, "gm": gm, "am": am, "bm": bm, "hertzZone": hertz_zone}
 
 
 def _collect_branches(org_rows: list[dict], leads: list[dict]) -> list[str]:
@@ -275,6 +282,7 @@ def compute_observatory_snapshot() -> None:
     filter_zones: set[str] = set()
     filter_gms: set[str] = set()
     filter_ams: set[str] = set()
+    filter_htz_regions: set[str] = set()
 
     for b in sorted(branch_monthly.keys()):
         meta = _branch_meta(b, org_by_branch, leads_by_branch.get(b, []))
@@ -283,6 +291,7 @@ def compute_observatory_snapshot() -> None:
             "gm": meta["gm"],
             "am": meta["am"],
             "bm": meta["bm"],
+            "hertzZone": meta["hertzZone"],
             "monthly": branch_monthly[b],
             "weekly": branch_weekly[b],
         }
@@ -292,6 +301,8 @@ def compute_observatory_snapshot() -> None:
             filter_gms.add(meta["gm"])
         if meta["am"] != "—":
             filter_ams.add(meta["am"])
+        if meta["hertzZone"] != "—":
+            filter_htz_regions.add(meta["hertzZone"])
 
     snapshot = {
         "version": SNAPSHOT_VERSION,
@@ -304,6 +315,7 @@ def compute_observatory_snapshot() -> None:
             "zones": sorted(filter_zones),
             "gms": sorted(filter_gms),
             "ams": sorted(filter_ams),
+            "htzRegions": sorted(filter_htz_regions),
         },
     }
 

@@ -122,6 +122,32 @@ def _upsert_org_mapping_from_hles(rows_to_process, cur):
         cur.execute(sql, (bm, branch, am, gm, zone))
 
 
+def _set_ingestion_status(upload_id, state: str, error: str | None = None):
+    rows = query("SELECT hles FROM upload_summary WHERE id = %s", (str(upload_id),))
+    if not rows:
+        return
+    hles = dict(rows[0].get("hles") or {})
+    hles["ingestion_status"] = state
+    hles["ingestion_updated_at"] = datetime.utcnow().isoformat()
+    if error:
+        hles["ingestion_error"] = error
+    else:
+        hles.pop("ingestion_error", None)
+    execute("UPDATE upload_summary SET hles = %s::jsonb WHERE id = %s", (json.dumps(hles), str(upload_id)))
+
+
+def _run_post_upload_jobs(upload_id):
+    try:
+        compute_and_store_snapshot()
+        compute_observatory_snapshot()
+        refresh_days_open()
+        _set_ingestion_status(upload_id, "success")
+        print(f"[upload] post-upload ingestion succeeded for {upload_id}", flush=True)
+    except Exception as exc:
+        _set_ingestion_status(upload_id, "failed", str(exc))
+        print(f"[upload] post-upload ingestion failed for {upload_id}: {exc}", flush=True)
+
+
 @router.get("/upload/history")
 def get_upload_history():
     """Return all upload_summary rows for the upload history UI (date, who, status, metadata)."""
@@ -129,6 +155,21 @@ def get_upload_history():
         "SELECT id, created_at, hles, translog, data_as_of_date FROM upload_summary ORDER BY created_at DESC LIMIT 200"
     )
     return rows or []
+
+
+@router.get("/upload/ingestion-status/{upload_id}")
+def get_ingestion_status(upload_id: str):
+    rows = query("SELECT hles FROM upload_summary WHERE id = %s", (upload_id,))
+    if not rows:
+        return {"state": "unknown"}
+    hles = rows[0].get("hles") or {}
+    state = hles.get("ingestion_status") or "success"
+    return {
+        "state": state,
+        "startedAt": hles.get("ingestion_started_at"),
+        "updatedAt": hles.get("ingestion_updated_at"),
+        "error": hles.get("ingestion_error"),
+    }
 
 
 @router.post("/upload/hles")
@@ -152,6 +193,8 @@ async def upload_hles(
         stats["filename"] = file.filename
     if uploaded_by:
         stats["uploaded_by"] = uploaded_by
+    stats["ingestion_status"] = "in_progress"
+    stats["ingestion_started_at"] = datetime.utcnow().isoformat()
 
     # Build list of (confirm_num, row) for valid rows
     rows_to_process = []
@@ -163,6 +206,9 @@ async def upload_hles(
         rows_to_process.append((confirm_num, row))
 
     if not rows_to_process:
+        stats["ingestion_status"] = "failed"
+        stats["ingestion_error"] = "No valid rows to ingest."
+        stats["ingestion_updated_at"] = datetime.utcnow().isoformat()
         execute(
             "INSERT INTO upload_summary (hles, translog, data_as_of_date) VALUES (%s::jsonb, %s::jsonb, %s)",
             (json.dumps(stats), "{}", str(pd.Timestamp.now().date())),
@@ -225,15 +271,21 @@ async def upload_hles(
             # 5) Sync org_mapping from HLES (branch -> bm, am, gm, zone) so GM view and org mapping UI stay in sync
             _upsert_org_mapping_from_hles(rows_to_process, cur)
 
-    execute(
-        "INSERT INTO upload_summary (hles, translog, data_as_of_date) VALUES (%s::jsonb, %s::jsonb, %s)",
+    inserted = query(
+        "INSERT INTO upload_summary (hles, translog, data_as_of_date) VALUES (%s::jsonb, %s::jsonb, %s) RETURNING id",
         (json.dumps(stats), "{}", str(pd.Timestamp.now().date())),
     )
-    background_tasks.add_task(compute_and_store_snapshot)
-    background_tasks.add_task(compute_observatory_snapshot)
-    background_tasks.add_task(refresh_days_open)
-    print(f"[upload] HLES ETL done — snapshot + observatory + days_open background tasks queued", flush=True)
-    return stats
+    upload_id = inserted[0]["id"] if inserted else None
+    if upload_id:
+        background_tasks.add_task(_run_post_upload_jobs, upload_id)
+        print(f"[upload] HLES ETL done — ingestion background task queued for {upload_id}", flush=True)
+    else:
+        # Fallback if id cannot be fetched for any reason.
+        background_tasks.add_task(compute_and_store_snapshot)
+        background_tasks.add_task(compute_observatory_snapshot)
+        background_tasks.add_task(refresh_days_open)
+        print("[upload] HLES ETL done — fallback background tasks queued", flush=True)
+    return {**stats, "uploadId": upload_id}
 
 @router.post("/upload/translog")
 async def upload_translog(file: UploadFile = File(...)):
