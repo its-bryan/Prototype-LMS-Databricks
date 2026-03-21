@@ -1,1 +1,28 @@
-command: ['sh', '-c', 'pip install -r requirements.txt && uvicorn main:app --host 0.0.0.0 --port 8000']
+command:
+  - sh
+  - -c
+  - |
+    set -eu
+
+    case "${DATABRICKS_APP_NAME:-}" in
+      hertz-leo-lms-staging)
+        export APP_ENV=databricks
+        export APP_TIER=staging
+        export PGDATABASE=lms_staging
+        ;;
+      hertz-leo-leadsmgmtsystem)
+        export APP_ENV=databricks
+        export APP_TIER=prod
+        export PGDATABASE=databricks_postgres
+        ;;
+      *)
+        echo "Unknown DATABRICKS_APP_NAME=${DATABRICKS_APP_NAME:-unset}; refusing to start."
+        exit 1
+        ;;
+    esac
+
+    pip install -r requirements.txt
+    uvicorn main:app --host 0.0.0.0 --port 8000
+env:
+  - name: ENDPOINT_NAME
+    value: "projects/lms-leo/branches/production/endpoints/primary"

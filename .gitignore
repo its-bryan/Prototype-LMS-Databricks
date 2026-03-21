@@ -12,6 +12,8 @@ dist-ssr
 *.local
 .env
 .env.local
+.env.staging
+local-uploads/
 
 # Editor directories and files
 .vscode/*
@@ -36,11 +38,13 @@ twilio-mcp/
 supabase/
 SUPABASE_SETUP.md
 
-# Dev-only scripts
-scripts/
+# Dev scripts are tracked in this repository
 
 # Sample data (real HLES/TRANSLOG — don't push to public repos)
 data/samples/
+
+# Local upload profiles (large Excel files for portal upload testing)
+profiles/
 
 # Python bytecode
 __pycache__/

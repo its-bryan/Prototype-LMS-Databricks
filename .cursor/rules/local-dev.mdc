@@ -1,0 +1,44 @@
+---
+description: Three-environment workflow for LMS (local, staging, prod)
+alwaysApply: false
+---
+
+# LMS Three-Environment Rule
+
+## Environment model
+
+- `APP_ENV=local` + `APP_TIER=local` -> local PostgreSQL (password auth)
+- `APP_ENV=databricks` + `APP_TIER=staging` -> Lakebase DB `lms_staging`
+- `APP_ENV=databricks` + `APP_TIER=prod` -> Lakebase DB `databricks_postgres`
+
+Staging and prod share the same Lakebase host/endpoint. Isolation is by `PGDATABASE`.
+
+## Safety guardrails
+
+- Never set staging `PGDATABASE` to `databricks_postgres`.
+- Do not add `PGDATABASE` to prod `app.yaml` unless explicitly required.
+- Run migration promotion in strict order: local -> staging -> prod.
+- Rollback policy is forward-fix only for schema migrations.
+
+## Local startup
+
+1. Copy `.env.local.example` to `.env.local`
+2. `createdb lms_leo`
+3. `psql -d lms_leo -f scripts/setup_local_db.sql`
+4. `python scripts/seed_local_data.py prodfiles/MainChaddata.xlsx --target local`
+5. `./scripts/start_local.ps1`
+
+## Deploy commands
+
+- Staging: `./scripts/deploy_staging.ps1 -BaseUrl https://<staging-url>`
+- Prod: `./scripts/deploy_prod.ps1 -BaseUrl https://<prod-url>`
+
+## File landing paths
+
+- Local: `./local-uploads/`
+- Staging/Prod: Unity Catalog volume paths from app env vars
+
+## Agent behavior
+
+- Keep code environment-aware; never hardcode a single environment.
+- Prefer `scripts/check_schema_drift.py` and `scripts/smoke_test.py` for verification.

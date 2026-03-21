@@ -3,6 +3,7 @@ import DemoTopBar from "./DemoTopBar";
 import Sidebar from "./Sidebar";
 import OnboardingTour from "../OnboardingTour";
 import DataBanner from "./DataBanner";
+import StagingBanner from "../StagingBanner";
 import { useAuth } from "../../context/AuthContext";
 import { useApp } from "../../context/AppContext";
 import { BM_ONBOARDING_STEPS, GM_ONBOARDING_STEPS } from "../../config/onboardingSteps";
@@ -74,6 +75,7 @@ export default function AppLayout({ children }) {
   return (
     <div className="h-full flex flex-col">
       <DemoTopBar onHelpClick={role === "bm" || role === "gm" ? handleHelpClick : undefined} />
+      <StagingBanner />
       <DataBanner />
       <div className="flex-1 flex overflow-hidden">
         <Sidebar />

@@ -1,0 +1,16 @@
+# REFERENCE ONLY
+# This file documents the expected staging environment variables.
+# Databricks Apps deploy reads app.yaml from the repo; staging-specific
+# values should be configured in the Databricks Apps UI/API.
+command: ['sh', '-c', 'pip install -r requirements.txt && uvicorn main:app --host 0.0.0.0 --port 8000']
+env:
+  - name: ENDPOINT_NAME
+    value: "projects/lms-leo/branches/production/endpoints/primary"
+  - name: PGDATABASE
+    value: "lms_staging"
+  - name: APP_TIER
+    value: "staging"
+  - name: HLES_LANDING_VOLUME_PATH
+    value: "/Volumes/datalabs/lab_lms_staging/hles_landing_staging"
+  - name: TRANSLOG_LANDING_VOLUME_PATH
+    value: "/Volumes/datalabs/lab_lms_staging/translog_landing_staging"
