@@ -249,19 +249,18 @@ def test_gm(page):
     screenshot(page, role, 3, "G2")
     log("PASS" if rows > 0 else "FAIL", "G2", "GM Leads Table", f"rows={rows}", tti)
 
-    # G3: Spot Check
-    tti = measure_navigation(page, lambda: click_sidebar(page, "Spot Check"))
+    # G3: Team Leaderboard
+    tti = measure_navigation(page, lambda: click_sidebar(page, "Team Leaderboard") or click_sidebar(page, "Leaderboard"))
     page.wait_for_timeout(2000)
     wait_for_content(page)
-    tiles = (
-        page.locator("[class*='card'], [class*='tile'], [class*='spot']").count()
-        or page.locator("text=/Conversion Rate|Contact/i").count()
+    has_leaderboard = (
+        page.locator("text=/Rank|Branch|Conversion/i").count() > 0
+        or page.locator("table tbody tr").count() > 0
     )
-    has_delta = page.locator("text=/vs zone|vs\\./i").count()
     screenshot(page, role, 4, "G3")
     log(
-        "PASS" if tiles > 0 else "FAIL", "G3", "GM Spot Check",
-        f"tiles={tiles}, delta_metrics={has_delta} (should be 0)", tti,
+        "PASS" if has_leaderboard else "FAIL", "G3", "GM Team Leaderboard",
+        f"leaderboard_visible={has_leaderboard}", tti,
     )
 
     # G4: Meeting Prep

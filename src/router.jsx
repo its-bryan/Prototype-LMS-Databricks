@@ -3,6 +3,7 @@ import { Navigate, Outlet, createBrowserRouter } from "react-router-dom";
 import AppLayout from "./components/layout/AppLayout";
 import LoginScreen from "./components/LoginScreen";
 import LoadingScreen from "./components/LoadingScreen";
+import RouteErrorFallback from "./components/RouteErrorFallback";
 import { useApp } from "./context/AppContext";
 import { useAuth } from "./context/AuthContext";
 
@@ -18,7 +19,6 @@ const InteractiveTaskDetail = lazy(() => import("./components/interactive/Intera
 const InteractiveMeetingPrepPage = lazy(() => import("./components/interactive/InteractiveMeetingPrepPage"));
 const InteractiveLeaderboardPage = lazy(() => import("./components/interactive/InteractiveLeaderboardPage"));
 const InteractiveGMMeetingPrepPage = lazy(() => import("./components/interactive/InteractiveGMMeetingPrepPage"));
-const InteractiveGMSpotCheckPage = lazy(() => import("./components/interactive/InteractiveGMSpotCheckPage"));
 const InteractiveGMActivityReportPage = lazy(() => import("./components/interactive/InteractiveGMActivityReportPage"));
 const InteractiveGMLeaderboardPage = lazy(() => import("./components/interactive/InteractiveGMLeaderboardPage"));
 const InteractiveGMLeadsPage = lazy(() => import("./components/interactive/InteractiveGMLeadsPage"));
@@ -119,10 +119,11 @@ function RoleDefaultRedirect() {
 }
 
 export const router = createBrowserRouter([
-  { path: "/login", element: <LoginRoute /> },
-  { path: "/", element: <RoleDefaultRedirect /> },
+  { path: "/login", element: <LoginRoute />, errorElement: <RouteErrorFallback /> },
+  { path: "/", element: <RoleDefaultRedirect />, errorElement: <RouteErrorFallback /> },
   {
     element: <AuthenticatedLayout />,
+    errorElement: <RouteErrorFallback />,
     children: [
       { path: "/bm/summary", element: <AppViewRoute role="bm" Component={BMSummaryPage} /> },
       { path: "/bm/work", element: <AppViewRoute role="bm" Component={BMWorkPage} /> },
@@ -135,7 +136,6 @@ export const router = createBrowserRouter([
       { path: "/gm/overview", element: <AppViewRoute role="gm" Component={GMOverviewPage} /> },
       { path: "/gm/work", element: <AppViewRoute role="gm" Component={GMWorkPage} /> },
       { path: "/gm/meeting-prep", element: <AppViewRoute role="gm" Component={InteractiveGMMeetingPrepPage} /> },
-      { path: "/gm/spot-check", element: <AppViewRoute role="gm" Component={InteractiveGMSpotCheckPage} /> },
       { path: "/gm/activity-report", element: <AppViewRoute role="gm" Component={InteractiveGMActivityReportPage} /> },
       { path: "/gm/leaderboard", element: <AppViewRoute role="gm" Component={InteractiveGMLeaderboardPage} /> },
       { path: "/gm/leads", element: <AppViewRoute role="gm" Component={InteractiveGMLeadsPage} /> },
@@ -153,5 +153,5 @@ export const router = createBrowserRouter([
       { path: "/observatory/leaderboard", element: <AppViewRoute Component={ObservatoryLeaderboardPage} /> },
     ],
   },
-  { path: "*", element: <RoleDefaultRedirect /> },
+  { path: "*", element: <RoleDefaultRedirect />, errorElement: <RouteErrorFallback /> },
 ]);

@@ -6,7 +6,7 @@
  *   1. Conversion by Branch   — stacked bar chart + leaderboard table
  *   2. Conversion by Insurer  — stacked bar chart + insurer table (State Farm highlighted)
  *   3. Wins & Learnings       — two-column BM submissions
- *   4. Spot Check             — live branch selector + stats + leads table
+ *   4. Wins & Learnings       — two-column BM submissions
  *
  * Keyboard: ArrowLeft / ArrowRight to navigate, Escape to close.
  */
@@ -38,7 +38,6 @@ const SLIDES = [
   { id: "insurer",   title: "Conversion Rate % by Insurer" },
   { id: "bodyshop",  title: "Conversion Rate % by Body Shop" },
   { id: "wins",      title: "Wins & Learnings" },
-  { id: "spotcheck", title: "Spot Check: Branch Deep Dive" },
 ];
 
 // ─── Shared slide components ──────────────────────────────────────────────────
@@ -732,7 +731,7 @@ function BranchLeadDetailPanel({ branch, leads, leaderboardRow, onBack }) {
   );
 }
 
-function SlideBranch({ frozenLeads, dateRange, compRange, gmName, onBranchClick }) {
+function SlideBranch({ frozenLeads, dateRange, compRange, gmName }) {
   const leaderboardRaw = useMemo(
     () => getConversionByBranch(frozenLeads, dateRange, compRange, gmName),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1731,7 +1730,6 @@ export default function GMPresentationMode({
 }) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [direction, setDirection] = useState(1);
-  const [spotCheckBranch, setSpotCheckBranch] = useState(null);
   const reduceMotion = useReducedMotion();
 
   const goNext = useCallback(() => {
@@ -1755,12 +1753,6 @@ export default function GMPresentationMode({
     },
     [currentSlide]
   );
-
-  const handleBranchClick = useCallback((branch) => {
-    setSpotCheckBranch(branch);
-    setDirection(1);
-    setCurrentSlide(4);
-  }, []);
 
   // Keyboard navigation
   useEffect(() => {
@@ -1850,7 +1842,7 @@ export default function GMPresentationMode({
             className="absolute inset-0 overflow-y-auto px-10 py-5"
           >
             {currentSlide === 0 && (
-              <SlideBranch frozenLeads={frozenLeads} dateRange={dateRange} compRange={compRange} gmName={gmName} onBranchClick={handleBranchClick} />
+              <SlideBranch frozenLeads={frozenLeads} dateRange={dateRange} compRange={compRange} gmName={gmName} />
             )}
             {currentSlide === 1 && (
               <SlideInsurer frozenLeads={frozenLeads} dateRange={dateRange} compRange={compRange} gmName={gmName} />
@@ -1860,9 +1852,6 @@ export default function GMPresentationMode({
             )}
             {currentSlide === 3 && (
               <SlideWinsLearnings frozenWinsLearnings={frozenWinsLearnings} gmName={gmName} />
-            )}
-            {currentSlide === 4 && (
-              <SlideSpotCheck frozenLeads={frozenLeads} gmName={gmName} initialBranch={spotCheckBranch} />
             )}
           </motion.div>
         </AnimatePresence>

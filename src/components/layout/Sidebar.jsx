@@ -129,7 +129,6 @@ export default function Sidebar() {
 
   const meetingPrepOutstanding = 0;
   const gmMeetingPrepOutstanding = 0;
-  const gmSpotCheckFlags = 0;
   const gmLeadReviewCount = 0;
 
   const resolvedActive = useMemo(() => {
@@ -149,7 +148,7 @@ export default function Sidebar() {
 
     if (matchedView === "bm-task-detail") return "bm-todo";
     if (matchedView === "bm-lead-detail") return "bm-leads";
-    if (matchedView === "gm-lead-detail") return "gm-spot-check";
+    if (matchedView === "gm-lead-detail") return "gm-leads";
     if (matchedView === "gm-task-detail") return "gm-todos";
     return matchedView;
   }, [currentPath]);
@@ -164,9 +163,9 @@ export default function Sidebar() {
   const workExpanded = true;
   const summaryExpanded = true;
 
-  // GM: Work sub-sections (Meeting Prep, Lead Review); Summary sub-sections (Business Metrics, Team Leaderboard)
-  const gmTodosChildIds = ["gm-meeting-prep", "gm-spot-check", "gm-leads"];
-  const gmOverviewChildIds = ["gm-leaderboard", "gm-activity-report"];
+  // GM: Work sub-sections (Meeting Prep, My Leads, Team Leaderboard, Activity Report)
+  const gmTodosChildIds = ["gm-meeting-prep", "gm-leads", "gm-leaderboard", "gm-activity-report"];
+  const gmOverviewChildIds = [];
   const hasGmOverviewChildren = role === "gm" && gmOverviewChildIds.some((id) => navItems.some((n) => n.id === id));
   const hasGmTodosChildren = role === "gm" && gmTodosChildIds.some((id) => navItems.some((n) => n.id === id));
   const inGmOverviewSection = resolvedActive === "gm-overview" || gmOverviewChildIds.includes(resolvedActive);
@@ -237,15 +236,12 @@ export default function Sidebar() {
             item.id === "bm-meeting-prep" && meetingPrepOutstanding > 0;
           const showGmMeetingPrepBadge =
             item.id === "gm-meeting-prep" && gmMeetingPrepOutstanding > 0;
-          const showGmSpotCheckBadge =
-            item.id === "gm-spot-check" && gmSpotCheckFlags > 0;
           const showGmLeadReviewBadge =
             item.id === "gm-lead-review" && gmLeadReviewCount > 0;
 
           const badgeCount =
             showMeetingPrepBadge ? meetingPrepOutstanding
             : showGmMeetingPrepBadge ? gmMeetingPrepOutstanding
-            : showGmSpotCheckBadge ? gmSpotCheckFlags
             : showGmLeadReviewBadge ? gmLeadReviewCount
             : 0;
           const badgeTitle =
@@ -257,7 +253,7 @@ export default function Sidebar() {
                 ? `${badgeCount} leads needing review`
                 : `${badgeCount} actions needed before your meeting`;
 
-          const showBadge = showMeetingPrepBadge || showGmMeetingPrepBadge || showGmSpotCheckBadge || showGmLeadReviewBadge;
+          const showBadge = showMeetingPrepBadge || showGmMeetingPrepBadge || showGmLeadReviewBadge;
 
           // Parent items with chevrons
           const isWorkParent = item.id === "bm-work" && hasWorkChildren;

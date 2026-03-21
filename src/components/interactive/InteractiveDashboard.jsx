@@ -18,13 +18,11 @@ import {
   normalizeBranchKey,
 } from "../../selectors/demoSelectors";
 import { roleMeta, roleUsers, roleDefaults } from "../../config/navigation";
+import { OBSERVATORY_TILES } from "../../config/observatoryTiles";
 import StatusBadge from "../StatusBadge";
 import MeetingPrepModule from "../MeetingPrepModule";
 import LeaderboardModule from "../LeaderboardModule";
-import GMLeaderboardModule from "../GMLeaderboardModule";
 import GMMeetingPrepModule from "../GMMeetingPrepModule";
-import GMSpotCheckModule from "../GMSpotCheckModule";
-import ActivityReportModule from "../ActivityReportModule";
 import MetricDrilldownModal from "../MetricDrilldownModal";
 import GMMetricDrilldownModal from "../GMMetricDrilldownModal";
 import SummaryExportModal from "../SummaryExportModal";
@@ -78,6 +76,41 @@ function SectionHeader({ title, subtitle, action }) {
         {action}
       </div>
     </motion.div>
+  );
+}
+
+function ObservatoryTileGrid({ navigateTo }) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {OBSERVATORY_TILES.map((tile) => (
+        <motion.button
+          key={tile.id}
+          onClick={() => navigateTo(tile.path)}
+          whileHover={{ scale: 1.005 }}
+          whileTap={{ scale: 0.995 }}
+          className="w-full text-left border-2 rounded-xl p-5 transition-all duration-200 cursor-pointer group border-[var(--neutral-200)] hover:border-[var(--hertz-primary)] hover:shadow-[var(--shadow-lg)] bg-white hover:bg-[var(--hertz-primary-subtle)]"
+        >
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4 min-w-0 flex-1">
+              <div className="shrink-0 w-12 h-12 rounded-lg bg-[var(--hertz-primary)] flex items-center justify-center text-[var(--hertz-black)] transition-colors">
+                {tile.icon}
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-lg font-extrabold text-[var(--hertz-black)] tracking-tight leading-snug">{tile.title}</h2>
+                <p className="text-sm text-[var(--neutral-600)] mt-0.5">{tile.description}</p>
+              </div>
+            </div>
+            <div className="flex items-center shrink-0">
+              <span className="text-[var(--neutral-400)] group-hover:text-[var(--hertz-black)] transition-colors">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </span>
+            </div>
+          </div>
+        </motion.button>
+      ))}
+    </div>
   );
 }
 
@@ -396,6 +429,11 @@ export function BMDashboard({ navigateTo }) {
         </div>
       </div>
 
+      <div id="observatory-summary" className="scroll-mt-4 mb-4">
+        <SectionHeader title="Observatory Tower" subtitle="Company-wide trend and leaderboard views." />
+        <ObservatoryTileGrid navigateTo={navigateTo} />
+      </div>
+
     </div>
   );
 }
@@ -690,20 +728,17 @@ export function GMDashboardPage({ navigateTo }) {
         </div>
       </div>
 
+      <div id="observatory-summary-gm" className="scroll-mt-4 mb-8">
+        <SectionHeader title="Observatory Tower" subtitle="Company-wide trend and leaderboard views." />
+        <ObservatoryTileGrid navigateTo={navigateTo} />
+      </div>
+
       {/* Section 2: Work (formerly To Dos) */}
       <div id="todos" className="scroll-mt-4 mb-8" data-onboarding="gm-work">
-        <SectionHeader title="Work" subtitle="Meeting prep and branch health checks at a glance." />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <SectionHeader title="Work" subtitle="Meeting prep, lead review, rankings, and activity in one place." />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div data-onboarding="gm-meeting-prep">
             <GMMeetingPrepModule
-              navigateTo={navigateTo}
-              leads={[]}
-              dateRange={dateRange}
-              reduceMotion={reduceMotion}
-            />
-          </div>
-          <div data-onboarding="gm-spot-check">
-            <GMSpotCheckModule
               navigateTo={navigateTo}
               leads={[]}
               dateRange={dateRange}
@@ -739,28 +774,67 @@ export function GMDashboardPage({ navigateTo }) {
               </div>
             </motion.button>
           </motion.div>
+          <motion.div {...cardAnim(3, reduceMotion)} className="h-full">
+            <motion.button
+              onClick={() => navigateTo("/gm/leaderboard")}
+              whileHover={!reduceMotion ? { scale: 1.005 } : {}}
+              whileTap={!reduceMotion ? { scale: 0.995 } : {}}
+              className="w-full h-full text-left border-2 rounded-xl p-5 transition-all duration-200 cursor-pointer group border-[var(--neutral-200)] hover:border-[var(--hertz-primary)] hover:shadow-[var(--shadow-lg)] bg-white hover:bg-[var(--hertz-primary-subtle)]"
+            >
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4 min-w-0 flex-1">
+                  <div className="shrink-0 w-12 h-12 rounded-lg bg-[var(--hertz-primary)] flex items-center justify-center text-[var(--hertz-black)] transition-colors">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3h14M9 3v2a3 3 0 003 3v0a3 3 0 003-3V3M5 3a2 2 0 00-2 2v1a4 4 0 004 4h0M19 3a2 2 0 012 2v1a4 4 0 01-4 4h0M7 10v1a5 5 0 005 5v0a5 5 0 005-5v-1M9 21h6M12 16v5" />
+                    </svg>
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-lg font-extrabold text-[var(--hertz-black)] tracking-tight leading-snug">Team Leaderboard</h3>
+                    <p className="text-sm text-[var(--neutral-600)] mt-0.5">Compare branch rankings and conversion trends</p>
+                  </div>
+                </div>
+                <div className="flex items-center shrink-0">
+                  <span className="text-[var(--neutral-400)] group-hover:text-[var(--hertz-black)] transition-colors">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </span>
+                </div>
+              </div>
+            </motion.button>
+          </motion.div>
+          <motion.div {...cardAnim(4, reduceMotion)} className="h-full">
+            <motion.button
+              onClick={() => navigateTo("/gm/activity-report")}
+              whileHover={!reduceMotion ? { scale: 1.005 } : {}}
+              whileTap={!reduceMotion ? { scale: 0.995 } : {}}
+              className="w-full h-full text-left border-2 rounded-xl p-5 transition-all duration-200 cursor-pointer group border-[var(--neutral-200)] hover:border-[var(--hertz-primary)] hover:shadow-[var(--shadow-lg)] bg-white hover:bg-[var(--hertz-primary-subtle)]"
+            >
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4 min-w-0 flex-1">
+                  <div className="shrink-0 w-12 h-12 rounded-lg bg-[var(--hertz-primary)] flex items-center justify-center text-[var(--hertz-black)] transition-colors">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-3m3 3V7m3 10v-5m3 9H6a2 2 0 01-2-2V5a2 2 0 012-2h12a2 2 0 012 2v14a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-lg font-extrabold text-[var(--hertz-black)] tracking-tight leading-snug">Activity Report</h3>
+                    <p className="text-sm text-[var(--neutral-600)] mt-0.5">Review contact activity and coaching opportunities</p>
+                  </div>
+                </div>
+                <div className="flex items-center shrink-0">
+                  <span className="text-[var(--neutral-400)] group-hover:text-[var(--hertz-black)] transition-colors">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </span>
+                </div>
+              </div>
+            </motion.button>
+          </motion.div>
         </div>
       </div>
 
-      {/* Section 3: Team Leaderboard */}
-      <div id="team-leaderboard" className="scroll-mt-4 mb-8" data-onboarding="gm-leaderboard">
-        <SectionHeader title="Team Leaderboard" subtitle="Leaderboard rankings and activity across branches." />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <GMLeaderboardModule
-            navigateTo={navigateTo}
-            leads={[]}
-            dateRange={dateRange}
-            reduceMotion={reduceMotion}
-            snapshotLeaderboard={snapshot?.leaderboard}
-            gmName={gmName}
-            loading={loading}
-          />
-          <ActivityReportModule
-            navigateTo={navigateTo}
-            reduceMotion={reduceMotion}
-          />
-        </div>
-      </div>
     </div>
   );
 }
@@ -843,7 +917,6 @@ const BM_SECTION_MAP = {
 const GM_SECTION_MAP = {
   "gm-overview": "home",
   "gm-todos": "todos",
-  "gm-leaderboard": "team-leaderboard",
 };
 
 // Reverse: sectionId -> viewId for scroll-based highlight

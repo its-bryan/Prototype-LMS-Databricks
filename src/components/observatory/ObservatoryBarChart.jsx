@@ -16,7 +16,7 @@ export default function ObservatoryBarChart({
 }) {
   const reduceMotion = useReducedMotion();
 
-  const maxValue = Math.max(
+  const dataMax = Math.max(
     1,
     ...points.map((p) => {
       if (mode === "stacked") return p.total ?? 0;
@@ -24,6 +24,7 @@ export default function ObservatoryBarChart({
       return p.value ?? 0;
     })
   );
+  const maxValue = yAxis === "percent" ? 100 : Math.ceil(dataMax * 1.1);
 
   const yTicks = yAxis === "percent" ? [0, 25, 50, 75, 100] : [0, Math.round(maxValue * 0.25), Math.round(maxValue * 0.5), Math.round(maxValue * 0.75), maxValue];
   const heightDenominator = yAxis === "percent" ? 100 : maxValue;

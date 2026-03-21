@@ -117,7 +117,7 @@ export const GM_ONBOARDING_STEPS = [
     target: "[data-onboarding=gm-work]",
     requiredView: "gm-overview",
     title: "Your weekly work",
-    content: "Meeting Prep and Spot Check — the two things you need every week. Start here before your branch meetings.",
+    content: "Meeting Prep, Team Leaderboard, and Activity Report are your weekly action areas. Start here before your branch meetings.",
     actionType: null,
   },
   {
@@ -126,14 +126,6 @@ export const GM_ONBOARDING_STEPS = [
     requiredView: "gm-overview",
     title: "Meeting Prep",
     content: "Review each branch's performance before your weekly meeting. Outstanding items show what still needs attention.",
-    actionType: null,
-  },
-  {
-    id: "gm-spot-check",
-    target: "[data-onboarding=gm-spot-check]",
-    requiredView: "gm-overview",
-    title: "Spot Check",
-    content: "Randomly sample leads across branches to verify data quality and BM follow-through.",
     actionType: null,
   },
   {
@@ -149,7 +141,7 @@ export const GM_ONBOARDING_STEPS = [
     target: "[data-onboarding=sidebar-nav]",
     requiredView: "gm-overview",
     title: "Navigate your view",
-    content: "Work, Summary, and Team Leaderboard — your main sections, always one click away in the sidebar.",
+    content: "Summary and Work are your main sections, always one click away in the sidebar.",
     actionType: null,
   },
   {
