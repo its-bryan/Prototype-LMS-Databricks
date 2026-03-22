@@ -1,64 +1,103 @@
 ---
-description: Full Databricks deploy pipeline — commit, push, sync, deploy, verify
+description: Full Databricks deploy pipeline — three environments: local → staging → prod. Never skip staging.
 alwaysApply: false
 ---
 
-# Databricks Deploy Pipeline
+# Databricks Deploy Pipeline (Local → Staging → Prod)
 
-Use this when the user says "deploy", "redeploy", or "push to production".
+Use this when the user says "deploy", "redeploy", "push to staging", "push to production", or "promote to prod".
+
+## CRITICAL: Three-Environment Promotion Rule
+
+**There are three environments: Local, Staging, and Production. Promotion is strictly one-way and sequential.**
+
+```
+Local dev  →  git push  →  Staging (hertz-leo-lms-staging)  →  Prod (hertz-leo-leadsmgmtsystem)
+```
+
+- **NEVER deploy directly to prod.** Prod requires a staging pass artifact for the same commit SHA.
+- **NEVER skip staging**, even for "small" or "safe" changes.
+- **NEVER run `databricks apps deploy hertz-leo-leadsmgmtsystem` directly** — always use `deploy_prod.ps1` which enforces the gate.
+- If the user asks to "deploy" without specifying a target, **ask them to clarify: staging or prod?** Default to staging if ambiguous.
 
 ## Learnings (for agents)
 
-- **Deployment machine is Databricks.** The app runs on Databricks Apps; there is no separate "Hertz laptop" deploy. Code flows: local → `git push origin main` → **Databricks workspace repo** (Git clone in workspace) → **apps deploy** (builds and runs from that folder).
-- **This repo** (`Prototype-LMS-Databricks`) is the canonical Git repo. Push to `origin main` (e.g. GitHub). The workspace path `/Workspace/Repos/nh136948@hertz.net/Prototype-LMS-Databricks` is a **Databricks Repo** linked to the same GitHub repo; it does not auto-pull. You must run **repos update** to pull the latest commit into the workspace, then **apps deploy** so the app runs from the updated code.
-- **`dist/` is committed to git.** The Vite build output (`dist/`) is tracked in version control. The `app.yaml` command also runs `npm run build` before starting uvicorn as a safety net, but the committed `dist/` ensures the git-synced copy always has valid frontend assets. When making frontend changes, always run `npm run build` and commit the updated `dist/` alongside your source changes.
+- **Deployment machine is Databricks.** The app runs on Databricks Apps. Code flows: local → `git push origin main` → **Databricks workspace repo** (Git clone in workspace) → **apps deploy**.
+- **Two Databricks apps exist**: staging (`hertz-leo-lms-staging`) and prod (`hertz-leo-leadsmgmtsystem`). They share the same workspace repo and database host/endpoint. The isolation boundary is `PGDATABASE`:
+  - `hertz-leo-lms-staging` → `APP_TIER=staging`, `PGDATABASE=lms_staging`
+  - `hertz-leo-leadsmgmtsystem` → `APP_TIER=prod`, `PGDATABASE=databricks_postgres`
+- **`app.yaml` runtime branching** is authoritative for environment targeting — the app name determines which database it connects to.
+- **Staging gate**: `deploy_staging.ps1` writes `release/staging_passed_<sha>.json` on success. `deploy_prod.ps1` checks for this file and aborts if it is missing. **Never create or copy this file manually.**
+- **The deploy scripts are the single source of truth** for what each deploy does. Use them; do not reconstruct their steps manually.
+- **`dist/` is committed to git.** Vite build output is tracked. Both scripts run `npm run build` to keep it fresh. When making frontend changes, always run `npm run build` and commit the updated `dist/` alongside source changes.
 - **Profile:** Use `-p DanSiaoAuth` (or the user's configured profile) for all `databricks` CLI commands.
-- **Lakebase migrations and GRANTs** cannot be run from the CLI unless `psql` is installed locally. Use the **Lakebase SQL Editor** in the Databricks UI (Lakebase project `lms-leo`, branch `production`) to run `docs/lakebase-migrations/*.sql`. After adding tables or columns, re-run GRANTs for the app's client ID (see Step 5b below). If `psql` is on PATH: `databricks psql --project lms-leo --branch production -p DanSiaoAuth -- -f docs/lakebase-migrations/004_add_lead_columns_and_grants.sql`.
-
-## Pipeline overview
-0. **Deploy guard** — abort if another deploy is already in progress
-1. Pre-deploy validation (testing rule)
-2. Merge feature branch into `main`, push
-3. Pull latest into Databricks workspace repo (repos update)
-4. Deploy app (apps deploy)
-5. Post-deploy: verify app; run migrations/GRANTs in Lakebase if needed
+- **Lakebase migrations and GRANTs** cannot be run from the CLI unless `psql` is installed locally. Use the **Lakebase SQL Editor** in the Databricks UI (Lakebase project `lms-leo`, branch `production`) to run scripts from `docs/lakebase-migrations/`. See Step 5b below.
+- **The user's local workflow:** changes are developed locally, pushed to GitHub, and then the staging deploy is triggered. Prod only follows after staging is verified.
 
 ## Constants
-- **App name**: `hertz-leo-leadsmgmtsystem`
+
+| | Staging | Production |
+|---|---|---|
+| **App name** | `hertz-leo-lms-staging` | `hertz-leo-leadsmgmtsystem` |
+| **PGDATABASE** | `lms_staging` | `databricks_postgres` |
+| **App URL** | (confirm with user — not hardcoded) | `https://hertz-leo-leadsmgmtsystem-1957546315544672.aws.databricksapps.com/` |
+| **Deploy script** | `./scripts/deploy_staging.ps1` | `./scripts/deploy_prod.ps1` |
+
+Shared constants (both environments use the same workspace repo):
 - **Databricks Repo ID**: `3889324859208374`
 - **Source path**: `/Workspace/Repos/nh136948@hertz.net/Prototype-LMS-Databricks`
-- **App URL**: `https://hertz-leo-leadsmgmtsystem-1957546315544672.aws.databricksapps.com/`
 - **Branch**: `main`
 - **CLI profile**: `DanSiaoAuth` (use `-p DanSiaoAuth`)
 
-## Step 0 — Deploy guard (MANDATORY)
+## Pipeline Overview
 
-Before doing anything else, check whether a deploy is already in progress:
+### Phase 1 — Staging Deploy
+
+0. Deploy guard (staging app)
+1. Pre-deploy validation
+2. Push to `main` on GitHub
+3. Run `deploy_staging.ps1` (syncs repo, deploys staging app, runs smoke tests, writes gate artifact)
+4. Verify staging
+
+### Phase 2 — Prod Deploy (only after Phase 1 passes)
+
+0. Deploy guard (prod app)
+1. Verify staging gate artifact exists for current SHA
+2. Run `deploy_prod.ps1` (validates gate, requires "PROD" confirmation, syncs repo, deploys prod app, runs read-only smoke tests)
+3. Verify prod
+
+---
+
+## Phase 1: Staging Deploy
+
+### Step 0 — Deploy guard (staging)
+
+Before anything, check if staging already has a deploy in progress:
 ```powershell
-databricks apps get hertz-leo-leadsmgmtsystem -p DanSiaoAuth --output json
+databricks apps get hertz-leo-lms-staging -p DanSiaoAuth --output json
 ```
-Parse the JSON output and check `active_deployment.status.state`.
 
 | State | Action |
 |-------|--------|
-| `IN_PROGRESS` or `PENDING` | **STOP.** Tell the user: "A deployment is already in progress. Your changes have been committed and pushed to your feature branch but deployment is deferred until the current one finishes." Do NOT proceed. |
-| `SUCCEEDED` or `FAILED` | Safe to proceed with the deploy pipeline. |
+| `IN_PROGRESS` or `PENDING` | **STOP.** Tell the user staging deploy is already in progress. Do NOT proceed. |
+| `SUCCEEDED` or `FAILED` | Safe to proceed. |
 
-**If you cannot determine the state** (e.g. CLI error, auth failure), **do NOT deploy**. Report the error and stop.
+**If you cannot determine the state** (CLI error, auth failure), **do NOT proceed**. Report and stop.
 
-## Step 1 — Pre-deploy validation
-Follow the `pre-deploy-check` rule. Run ReadLints on all changed files. Stop if critical issues found.
+### Step 1 — Pre-deploy validation
 
-## Step 2 — Merge feature branch into `main` and push
+Follow the `pre-deploy-check` rule. Run lints on all changed files. Stop if critical issues found.
 
-Agents work on **feature branches** (see `git-workflow` rule). At deploy time, merge into `main`:
+### Step 2 — Push to GitHub
+
+Agents work on **feature branches** (see `git-workflow` rule). Merge into `main` first:
 ```powershell
 git checkout main
 git pull origin main
 git merge <your-feature-branch> --no-edit
 git push origin main
 ```
-If the merge has conflicts, **do NOT force-push**. Report the conflicts to the user and stop.
+If the merge has conflicts, **do NOT force-push**. Report conflicts and stop.
 
 After pushing, delete the merged feature branch:
 ```powershell
@@ -66,58 +105,136 @@ git branch -d <your-feature-branch>
 git push origin --delete <your-feature-branch>
 ```
 
-## Step 3 — Pull latest into Databricks workspace repo
-Pull the latest commit from GitHub into the workspace repo (so the app deploy uses up-to-date code):
-```powershell
-databricks repos update 3889324859208374 --branch main -p DanSiaoAuth
-```
-Verify sync:
-```powershell
-databricks repos get 3889324859208374 -p DanSiaoAuth
-```
-Confirm `head_commit_id` matches the commit you just pushed.
+### Step 3 — Run staging deploy script
 
-## Step 4 — Deploy app
 ```powershell
-databricks apps deploy hertz-leo-leadsmgmtsystem --source-code-path "/Workspace/Repos/nh136948@hertz.net/Prototype-LMS-Databricks" -p DanSiaoAuth
+./scripts/deploy_staging.ps1 -BaseUrl https://<staging-app-url>
 ```
-This triggers Databricks to: install npm deps, install pip deps, then run the `app.yaml` command (`npm run build && uvicorn`). The build step in `app.yaml` ensures `dist/` is always fresh even if the committed copy is stale.
-Wait for deployment to complete (default timeout 20m). Source path must be the **full workspace path** (including `/Workspace/`).
 
-## Step 5 — Post-deploy verification
+This script does, in order:
+1. `npm run build`
+2. `python -m compileall .` (scoped to `db.py main.py routers services scripts etl` if Windows transient permission errors occur)
+3. `python scripts/check_schema_drift.py --target staging`
+4. `git push origin main`
+5. `databricks repos update 3889324859208374 --branch main -p DanSiaoAuth`
+6. `databricks apps deploy hertz-leo-lms-staging --source-code-path /Workspace/Repos/nh136948@hertz.net/Prototype-LMS-Databricks -p DanSiaoAuth`
+7. `python scripts/smoke_test.py --target staging --base-url <BaseUrl>`
+8. Writes `release/staging_passed_<sha>.json`
+
+**Do not reconstruct these steps manually.** The script is the source of truth.
+
+### Step 4 — Verify staging
+
+```powershell
+databricks apps get hertz-leo-lms-staging -p DanSiaoAuth
+```
+- Confirm `app_status.state` = `RUNNING`
+- Confirm `active_deployment.status.state` = `SUCCEEDED`
+- Confirm `release/staging_passed_<sha>.json` was written (check `release/` directory)
+- Report the staging app URL to the user
+
+---
+
+## Phase 2: Prod Deploy
+
+**Do not start Phase 2 unless Phase 1 completed successfully for the same commit SHA.**
+
+### Step 0 — Deploy guard (prod)
+
+```powershell
+databricks apps get hertz-leo-leadsmgmtsystem -p DanSiaoAuth --output json
+```
+
+| State | Action |
+|-------|--------|
+| `IN_PROGRESS` or `PENDING` | **STOP.** A prod deploy is already in progress. Do NOT proceed. |
+| `SUCCEEDED` or `FAILED` | Safe to proceed. |
+
+### Step 1 — Verify staging gate artifact
+
+```powershell
+$sha = (git rev-parse HEAD).Trim()
+Test-Path "release/staging_passed_${sha}.json"
+```
+
+If this returns `False`, **STOP.** Do not proceed to prod. Tell the user:
+> "No staging pass artifact found for commit `<sha>`. Deploy to staging first and confirm smoke tests pass before promoting to prod."
+
+### Step 2 — Run prod deploy script
+
+```powershell
+./scripts/deploy_prod.ps1 -BaseUrl https://<prod-app-url>
+```
+
+This script does, in order:
+1. Validates `release/staging_passed_<sha>.json` exists (aborts if missing)
+2. Prompts for operator confirmation — **you must type `PROD`** to proceed
+3. `npm run build`
+4. `python -m compileall .`
+5. `python scripts/check_schema_drift.py --target prod`
+6. `python scripts/compare_migration_state.py`
+7. `git push origin main`
+8. `databricks repos update 3889324859208374 --branch main -p DanSiaoAuth`
+9. `databricks apps deploy hertz-leo-leadsmgmtsystem --source-code-path /Workspace/Repos/nh136948@hertz.net/Prototype-LMS-Databricks -p DanSiaoAuth`
+10. `python scripts/smoke_test.py --target prod --read-only --base-url <BaseUrl>`
+
+**Do not reconstruct these steps manually.** The script is the source of truth.
+
+### Step 3 — Verify prod
+
 ```powershell
 databricks apps get hertz-leo-leadsmgmtsystem -p DanSiaoAuth
 ```
 - Confirm `app_status.state` = `RUNNING`
 - Confirm `active_deployment.status.state` = `SUCCEEDED`
-- Report the app URL to the user
+- Report the prod app URL to the user
 
-### Step 5b — Lakebase migrations and GRANTs (when schema changed)
-If you added or changed tables/columns (e.g. new migration in `docs/lakebase-migrations/`):
+### Step 3b — Lakebase migrations and GRANTs (when schema changed)
+
+If you added or changed tables/columns (new migration in `docs/lakebase-migrations/`):
 1. Open **Lakebase** in Databricks UI → project `lms-leo`, branch `production` → **SQL Editor**.
-2. Run the migration script (e.g. `004_add_lead_columns.sql` or `004_add_lead_columns_and_grants.sql`).
-3. Re-GRANT so the app can access objects:  
-   `GRANT USAGE ON SCHEMA public TO "<APP_CLIENT_ID>";`  
-   `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "<APP_CLIENT_ID>";`  
-   Get `<APP_CLIENT_ID>` from `databricks apps get hertz-leo-leadsmgmtsystem -p DanSiaoAuth` (e.g. `service_principal_client_id` or the Lakebase role name used by the app).
+2. Run the migration script (e.g. `004_add_lead_columns_and_grants.sql`).
+3. Re-GRANT so the app can access objects:
+   ```sql
+   GRANT USAGE ON SCHEMA public TO "<APP_CLIENT_ID>";
+   GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "<APP_CLIENT_ID>";
+   ```
+   Get `<APP_CLIENT_ID>` from `databricks apps get hertz-leo-leadsmgmtsystem -p DanSiaoAuth`.
 
-## On failure — check app logs
-If deploy fails or `active_deployment.status.state` is not `SUCCEEDED`, immediately pull the app logs:
+Migration governance:
+- Promotion order is strict: local → staging → prod.
+- Migration rollback is forward-fix only.
+- **Never run destructive manual schema operations in prod.**
+
+---
+
+## On Failure — Check App Logs
+
+For staging:
+```powershell
+databricks apps logs hertz-leo-lms-staging --profile DanSiaoAuth --tail-lines 200
+```
+
+For prod:
 ```powershell
 databricks apps logs hertz-leo-leadsmgmtsystem --profile DanSiaoAuth --tail-lines 200
 ```
-- Look for `[APP]` lines with Python tracebacks or startup errors
-- Look for `[SYSTEM]` lines with build failures (npm/pip install, vite build)
-- Use `--search "ERROR"` to filter:
-  ```powershell
-  databricks apps logs hertz-leo-leadsmgmtsystem --profile DanSiaoAuth --tail-lines 500 --search "ERROR"
-  ```
-- To stream logs in real time during a deploy:
-  ```powershell
-  databricks apps logs hertz-leo-leadsmgmtsystem --profile DanSiaoAuth --follow
-  ```
 
-Report the relevant error lines to the user before attempting a fix.
+Filter for errors:
+```powershell
+databricks apps logs hertz-leo-leadsmgmtsystem --profile DanSiaoAuth --tail-lines 500 --search "ERROR"
+```
+
+Stream in real time:
+```powershell
+databricks apps logs hertz-leo-leadsmgmtsystem --profile DanSiaoAuth --follow
+```
+
+- Look for `[APP]` lines: Python tracebacks or startup errors
+- Look for `[SYSTEM]` lines: build failures (npm/pip install, vite build)
+
+Report relevant error lines before attempting a fix.
 
 ## Rollback
-The previous deployment remains active until the new one succeeds.
+
+The previous deployment remains active until the new one succeeds. If a prod deploy fails, staging still holds the last known-good state. Fix forward — do not run destructive schema operations to roll back.

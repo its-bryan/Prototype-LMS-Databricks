@@ -42,6 +42,7 @@ SUPABASE_SETUP.md
 
 # Sample data (real HLES/TRANSLOG — don't push to public repos)
 data/samples/
+prodfiles/
 
 # Local upload profiles (large Excel files for portal upload testing)
 profiles/

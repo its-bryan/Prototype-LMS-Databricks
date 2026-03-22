@@ -294,11 +294,14 @@ def _weekly_chart_data(
     period_map = {p["key"]: p for p in periods}
 
     for lead in filtered:
-        ld = _lead_date(lead)
-        if ld is None:
-            continue
-        pk = _get_monday(ld).isoformat()
-        if pk in period_map:
+        # Use week_of (HLES-defined Sat–Fri week, stored as Monday label) when available
+        # so chart buckets align with the HLES week definition instead of Mon–Sun boundaries.
+        wk = _to_date(lead.get("week_of"))
+        pk = wk.isoformat() if wk else None
+        if pk is None:
+            ld = _lead_date(lead)
+            pk = _get_monday(ld).isoformat() if ld else None
+        if pk and pk in period_map:
             period_map[pk]["leads"].append(lead)
 
     branch_tasks = [
@@ -315,11 +318,12 @@ def _weekly_chart_data(
         lead = lead_by_id.get(t.get("lead_id"))
         if not lead:
             continue
-        ld = _lead_date(lead)
-        if ld is None:
-            continue
-        pk = _get_monday(ld).isoformat()
-        if pk in task_period_map:
+        wk = _to_date(lead.get("week_of"))
+        pk = wk.isoformat() if wk else None
+        if pk is None:
+            ld = _lead_date(lead)
+            pk = _get_monday(ld).isoformat() if ld else None
+        if pk and pk in task_period_map:
             task_period_map[pk].append(t)
 
     result = []
@@ -329,6 +333,8 @@ def _weekly_chart_data(
         if total == 0:
             continue
         rented = sum(1 for l in p_leads if l.get("status") == "Rented")
+        cancelled = sum(1 for l in p_leads if l.get("status") == "Cancelled")
+        unused = sum(1 for l in p_leads if l.get("status") == "Unused")
         enriched = sum(1 for l in p_leads if l.get("enrichment_complete"))
         conversion_rate = round(rented / total * 100) if total else 0
         comment_rate = round(enriched / total * 100) if total else 0
@@ -351,6 +357,8 @@ def _weekly_chart_data(
             "label": p["label"],
             "totalLeads": total,
             "rented": rented,
+            "cancelled": cancelled,
+            "unused": unused,
             "conversionRate": conversion_rate,
             "commentRate": comment_rate,
             "openTasks": open_tasks,
