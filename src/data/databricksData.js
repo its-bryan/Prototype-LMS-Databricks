@@ -11,7 +11,6 @@
  * response into the camelCase shape the React components expect.
  */
 
-import { maybeTriggerAuthRedirect, parseApiErrorResponse } from "../utils/apiErrors";
 const API_BASE = "/api";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -30,7 +29,6 @@ async function apiFetch(path, options = {}) {
     finalPath = `${path}${sep}_token=${encodeURIComponent(token)}`;
   }
   const url = `${API_BASE}${finalPath}`;
-  const method = options.method ?? "GET";
   const headers = { "Content-Type": "application/json", ...options.headers };
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
@@ -38,9 +36,8 @@ async function apiFetch(path, options = {}) {
   }
   const res = await fetch(url, { headers, ...options });
   if (!res.ok) {
-    const err = await parseApiErrorResponse(res, method, url);
-    maybeTriggerAuthRedirect(err);
-    throw err;
+    const text = await res.text().catch(() => "");
+    throw new Error(`API ${options.method ?? "GET"} ${url} → ${res.status}: ${text}`);
   }
   // 204 No Content
   if (res.status === 204) return null;

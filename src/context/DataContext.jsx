@@ -292,7 +292,6 @@ export function DataProvider({ children }) {
   const refetchSnapshot = useCallback(async ({ poll = false } = {}) => {
     if (!USE_LIVE_API) return;
     const maxAttempts = poll ? 8 : 1;
-    let resolved = false;
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       if (attempt > 0) await new Promise(r => setTimeout(r, 5000));
       bumpPending(1);
@@ -303,7 +302,6 @@ export function DataProvider({ children }) {
           writeCache("snapshot", data);
           if (data.now) setNowFromDate(data.now);
           setLoading(false);
-          resolved = true;
           return;
         }
       } catch (err) {
@@ -312,8 +310,6 @@ export function DataProvider({ children }) {
         bumpPending(-1);
       }
     }
-    // Avoid a permanent skeleton when snapshot is not available yet.
-    if (!resolved) setLoading(false);
   }, []);
 
   const refetchObservatorySnapshot = useCallback(async ({ poll = false } = {}) => {

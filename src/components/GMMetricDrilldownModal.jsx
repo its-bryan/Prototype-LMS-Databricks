@@ -60,26 +60,6 @@ const GM_METRIC_CONFIG = {
     isRate: false,
     lowerIsBetter: true,
   },
-  no_contact_attempt: {
-    label: "No Contact Attempt",
-    description: "Actionable leads with no contact attempt recorded.",
-    format: (v) => `${v ?? 0}`,
-    suffix: "",
-    branchKey: "noContactAttempt",
-    prevBranchKey: "prevNoContactAttempt",
-    isRate: false,
-    lowerIsBetter: true,
-  },
-};
-
-const INVALID_GM_METRIC_CONFIG = {
-  label: "Unsupported metric",
-  description: "No drilldown is available for this metric.",
-  format: () => "—",
-  suffix: "",
-  branchKey: "noMetric",
-  prevBranchKey: "prevNoMetric",
-  isRate: false,
 };
 
 function TrendChart({ data, config }) {
@@ -292,9 +272,8 @@ export default function GMMetricDrilldownModal({
 }) {
   const [branchSort, setBranchSort] = useState("highToLow");
 
-  const rawConfig = GM_METRIC_CONFIG[metricKey];
-  const config = rawConfig ?? INVALID_GM_METRIC_CONFIG;
-  const hasValidConfig = !!rawConfig;
+  const config = GM_METRIC_CONFIG[metricKey];
+  if (!config) return null;
 
   const relChangeVal = useMemo(() => {
     if (previousValue == null || previousValue === 0 || currentValue == null) return null;
@@ -338,8 +317,6 @@ export default function GMMetricDrilldownModal({
   }, [leaderboardRows, config.branchKey]);
 
   const formatRange = (r) => formatDateRange(r?.start, r?.end);
-
-  if (!hasValidConfig) return null;
 
   return (
     <motion.div

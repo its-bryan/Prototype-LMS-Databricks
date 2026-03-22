@@ -171,16 +171,6 @@ const METRIC_CONFIG = {
   },
 };
 
-const INVALID_METRIC_CONFIG = {
-  label: "Unsupported metric",
-  type: "invalid",
-  description: "No drilldown is available for this metric.",
-  format: () => "—",
-  getValue: () => 0,
-  getRelevant: () => [],
-  getRelevantTasks: () => [],
-};
-
 function ComparisonCards({ config, currentValue, previousValue, currentRange, previousRange, currentCount, previousCount }) {
   const fmtCurrent = config.format(currentValue);
   const fmtPrevious = config.format(previousValue);
@@ -395,9 +385,8 @@ export default function MetricDrilldownModal({
   const [currentLeadsPage, setCurrentLeadsPage] = useState({ items: [], total: 0, hasNext: false, loading: false });
   const [previousLeadsPage, setPreviousLeadsPage] = useState({ items: [], total: 0, hasNext: false, loading: false });
 
-  const rawConfig = METRIC_CONFIG[metricKey];
-  const config = rawConfig ?? INVALID_METRIC_CONFIG;
-  const hasValidConfig = !!rawConfig;
+  const config = METRIC_CONFIG[metricKey];
+  if (!config) return null;
 
   const isLeadMetric = config.type === "leads";
 
@@ -533,8 +522,6 @@ export default function MetricDrilldownModal({
 
   const showConversionBreakdown = false;
   const conversionBreakdown = { rows: [], zoneBenchmark: null };
-
-  if (!hasValidConfig) return null;
 
   return (
     <motion.div
