@@ -2,6 +2,11 @@
 
 Use this when local DB drift or corrupted state causes inconsistent behavior.
 
+Related docs:
+
+- `docs/LOCAL-DEV-SETUP.md` (full local bring-up)
+- `docs/DEPLOYMENT-WORKFLOW.md` (promotion gates)
+
 ## Full reset
 
 ```powershell
@@ -38,3 +43,5 @@ What it does:
 - `python scripts/check_schema_drift.py --target local` returns clean
 - `/api/health/runtime` returns `env=local`, `tier=local`
 - Login works and BM/GM dashboards load data
+
+If this checklist fails repeatedly, return to `docs/LOCAL-DEV-SETUP.md` and re-validate `.env.local`, Postgres service status, and seed source file.

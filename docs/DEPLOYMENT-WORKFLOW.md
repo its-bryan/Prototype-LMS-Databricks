@@ -31,6 +31,8 @@ Runs:
 
 1. `npm run build`
 2. `python -m compileall .`
+   - If Windows reports transient permission errors under `.tmp-localappdata/...`, use scoped compile instead:
+   - `python -m compileall db.py main.py routers services scripts etl`
 3. `python scripts/check_schema_drift.py --target staging`
 4. `git push`
 5. `databricks repos update ...`
@@ -55,6 +57,11 @@ Runs:
 7. `databricks repos update ...`
 8. `databricks apps deploy hertz-leo-leadsmgmtsystem ...`
 9. `python scripts/smoke_test.py --target prod --read-only ...`
+
+## Related docs
+
+- `docs/LOCAL-DEV-SETUP.md` (local build + validation)
+- `docs/LOCAL-RESET-RUNBOOK.md` (clean reset procedure)
 
 ## Migration governance
 
