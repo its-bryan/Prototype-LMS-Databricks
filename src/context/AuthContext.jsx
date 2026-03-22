@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useApp } from "./AppContext";
+import { maybeTriggerAuthRedirect, parseApiErrorResponse } from "../utils/apiErrors";
 
 const API_BASE = "/api";
 const TOKEN_KEY = "leo_token";
@@ -37,6 +38,21 @@ function clearToken() {
   } catch { /* ok */ }
 }
 
+function withTokenQuery(url, token) {
+  if (!token) return url;
+  const sep = url.includes("?") ? "&" : "?";
+  return `${url}${sep}_token=${encodeURIComponent(token)}`;
+}
+
+function authHeaders(token, base = {}) {
+  if (!token) return base;
+  return {
+    ...base,
+    Authorization: `Bearer ${token}`,
+    "X-Leo-Token": token,
+  };
+}
+
 function setLocalOnboardingDone(userId, completedAt) {
   if (!userId) return;
   try {
@@ -60,6 +76,18 @@ function profileFromApi(u) {
   };
 }
 
+async function fetchJsonOrThrow(url, options = {}, { triggerAuthRedirect = false } = {}) {
+  const method = options.method ?? "GET";
+  const res = await fetch(url, options);
+  if (!res.ok) {
+    const err = await parseApiErrorResponse(res, method, url);
+    if (triggerAuthRedirect) maybeTriggerAuthRedirect(err);
+    throw err;
+  }
+  if (res.status === 204) return null;
+  return res.json();
+}
+
 export function AuthProvider({ children }) {
   const { setRole } = useApp();
   const [loading, setLoading] = useState(true);
@@ -75,15 +103,9 @@ export function AuthProvider({ children }) {
     }
     (async () => {
       try {
-        const res = await fetch(`${API_BASE}/auth/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) {
-          clearToken();
-          setLoading(false);
-          return;
-        }
-        const data = await res.json();
+        const data = await fetchJsonOrThrow(withTokenQuery(`${API_BASE}/auth/me`, token), {
+          headers: authHeaders(token),
+        }, { triggerAuthRedirect: true });
         const profile = profileFromApi(data.user);
         setUserProfile(profile);
         setRole(profile.role);
@@ -99,17 +121,11 @@ export function AuthProvider({ children }) {
     setProfileError(null);
     setSigningIn(true);
     try {
-      const res = await fetch(`${API_BASE}/auth/login`, {
+      const data = await fetchJsonOrThrow(`${API_BASE}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ detail: "Login failed" }));
-        setSigningIn(false);
-        throw new Error(err.detail || "Invalid email or password");
-      }
-      const data = await res.json();
       storeToken(data.token);
       const profile = profileFromApi(data.user);
       setUserProfile(profile);
@@ -139,19 +155,13 @@ export function AuthProvider({ children }) {
 
     if (token) {
       try {
-        const res = await fetch(`${API_BASE}/auth/profile`, {
+        const data = await fetchJsonOrThrow(withTokenQuery(`${API_BASE}/auth/profile`, token), {
           method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: authHeaders(token, { "Content-Type": "application/json" }),
           body: JSON.stringify(fields ?? {}),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data?.user) {
-            updatedProfile = profileFromApi(data.user);
-          }
+        }, { triggerAuthRedirect: true });
+        if (data?.user) {
+          updatedProfile = profileFromApi(data.user);
         }
       } catch {
         // Fall back to optimistic local profile update.
@@ -186,14 +196,11 @@ export function AuthProvider({ children }) {
     if (!token) return;
 
     try {
-      await fetch(`${API_BASE}/auth/onboarding/complete`, {
+      await fetchJsonOrThrow(withTokenQuery(`${API_BASE}/auth/onboarding/complete`, token), {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: authHeaders(token, { "Content-Type": "application/json" }),
         body: JSON.stringify({ completedAt }),
-      });
+      }, { triggerAuthRedirect: true });
     } catch {
       // Local completion marker is enough for demo flow.
     }

@@ -8,7 +8,7 @@ from datetime import datetime, timezone, timedelta
 
 import bcrypt
 import jwt
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from db import query
@@ -53,11 +53,24 @@ def _user_profile(row: dict) -> dict:
 
 
 async def get_current_user(
+    request: Request,
     creds: HTTPAuthorizationCredentials = Depends(_bearer),
 ) -> dict | None:
-    if creds is None:
+    token = None
+    if creds is not None and creds.credentials:
+        token = creds.credentials
+    else:
+        auth = request.headers.get("authorization", "")
+        if auth.startswith("Bearer "):
+            token = auth[7:]
+        if not token:
+            token = request.headers.get("x-leo-token")
+        if not token:
+            token = request.query_params.get("_token")
+
+    if not token:
         return None
-    payload = _decode_token(creds.credentials)
+    payload = _decode_token(token)
     return payload
 
 
@@ -88,12 +101,11 @@ async def login(body: dict):
 
 
 @router.get("/auth/me")
-async def me(creds: HTTPAuthorizationCredentials = Depends(_bearer)):
-    if creds is None:
+async def me(current_user: dict | None = Depends(get_current_user)):
+    if current_user is None:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    payload = _decode_token(creds.credentials)
-    user_id = payload.get("sub")
+    user_id = current_user.get("sub")
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid token")
 
@@ -110,13 +122,12 @@ async def me(creds: HTTPAuthorizationCredentials = Depends(_bearer)):
 @router.post("/auth/onboarding/complete")
 async def complete_onboarding(
     body: dict,
-    creds: HTTPAuthorizationCredentials = Depends(_bearer),
+    current_user: dict | None = Depends(get_current_user),
 ):
-    if creds is None:
+    if current_user is None:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    payload = _decode_token(creds.credentials)
-    user_id = payload.get("sub")
+    user_id = current_user.get("sub")
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid token")
 
