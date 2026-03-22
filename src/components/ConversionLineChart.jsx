@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 
 const PADDING = { top: 24, right: 24, bottom: 44, left: 52 };
@@ -63,18 +63,18 @@ export default function ConversionLineChart({ data }) {
 
   const labelInterval = data.length > 14 ? Math.ceil(data.length / 10) : 1;
 
-  const handleMouseMove = useCallback(
-    (e) => {
-      const rect = containerRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      const mouseX = e.clientX - rect.left - PADDING.left;
-      const idx = Math.round(mouseX / stepX);
-      const clamped = Math.max(0, Math.min(data.length - 1, idx));
-      setHoveredIdx(clamped);
-      setTooltipPos({ x: toX(clamped), y: Math.min(toY(data[clamped].conversionRate), toY(data[clamped].commentRate)) });
-    },
-    [data, stepX],
-  );
+  const handleMouseMove = (e) => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const mouseX = e.clientX - rect.left - PADDING.left;
+    const idx = Math.round(mouseX / stepX);
+    const clamped = Math.max(0, Math.min(data.length - 1, idx));
+    setHoveredIdx(clamped);
+    setTooltipPos({
+      x: toX(clamped),
+      y: Math.min(toY(data[clamped].conversionRate), toY(data[clamped].commentRate)),
+    });
+  };
 
   const hovered = hoveredIdx !== null ? data[hoveredIdx] : null;
 

@@ -10,15 +10,25 @@ function getToken() {
   }
 }
 
+function withTokenQuery(url, token) {
+  if (!token) return url;
+  const sep = url.includes("?") ? "&" : "?";
+  return `${url}${sep}_token=${encodeURIComponent(token)}`;
+}
+
 export default function StagingBanner() {
   const [isStaging, setIsStaging] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     const token = getToken();
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    if (!token) return () => { cancelled = true; };
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      "X-Leo-Token": token,
+    };
 
-    fetch("/api/health/runtime", { headers })
+    fetch(withTokenQuery("/api/health/runtime", token), { headers })
       .then((res) => {
         if (!res.ok) return null;
         return res.json();
