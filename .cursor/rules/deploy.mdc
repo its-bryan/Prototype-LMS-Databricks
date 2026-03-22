@@ -44,7 +44,7 @@ Local dev  →  git push  →  Staging (hertz-leo-lms-staging)  →  Prod (hertz
 | **Deploy script** | `./scripts/deploy_staging.ps1` | `./scripts/deploy_prod.ps1` |
 
 Shared constants (both environments use the same workspace repo):
-- **Databricks Repo ID**: `3889324859208374`
+- **Databricks Repo ID**: `3281422440033516`
 - **Source path**: `/Workspace/Repos/nh136948@hertz.net/Prototype-LMS-Databricks`
 - **Branch**: `main`
 - **CLI profile**: `DanSiaoAuth` (use `-p DanSiaoAuth`)
@@ -116,7 +116,7 @@ This script does, in order:
 2. `python -m compileall .` (scoped to `db.py main.py routers services scripts etl` if Windows transient permission errors occur)
 3. `python scripts/check_schema_drift.py --target staging`
 4. `git push origin main`
-5. `databricks repos update 3889324859208374 --branch main -p DanSiaoAuth`
+5. `databricks repos update 3281422440033516 --branch main -p DanSiaoAuth`
 6. `databricks apps deploy hertz-leo-lms-staging --source-code-path /Workspace/Repos/nh136948@hertz.net/Prototype-LMS-Databricks -p DanSiaoAuth`
 7. `python scripts/smoke_test.py --target staging --base-url <BaseUrl>`
 8. Writes `release/staging_passed_<sha>.json`
@@ -174,7 +174,7 @@ This script does, in order:
 5. `python scripts/check_schema_drift.py --target prod`
 6. `python scripts/compare_migration_state.py`
 7. `git push origin main`
-8. `databricks repos update 3889324859208374 --branch main -p DanSiaoAuth`
+8. `databricks repos update 3281422440033516 --branch main -p DanSiaoAuth`
 9. `databricks apps deploy hertz-leo-leadsmgmtsystem --source-code-path /Workspace/Repos/nh136948@hertz.net/Prototype-LMS-Databricks -p DanSiaoAuth`
 10. `python scripts/smoke_test.py --target prod --read-only --base-url <BaseUrl>`
 
