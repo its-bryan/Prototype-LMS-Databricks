@@ -83,7 +83,7 @@ async def login(body: dict):
         raise HTTPException(status_code=400, detail="Email and password required")
 
     rows = query(
-        "SELECT id, email, password_hash, role, display_name, branch, is_active, onboarding_completed_at FROM auth_users WHERE email = %s",
+        "SELECT id, email, password_hash, role, display_name, branch, is_active, onboarding_completed_at FROM auth_users WHERE LOWER(email) = %s",
         (email,),
     )
     if not rows:

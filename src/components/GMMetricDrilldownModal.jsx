@@ -260,6 +260,42 @@ function BranchPerformanceSection({ leaderboard, config, sortKey, onSortChange }
   );
 }
 
+function WeeklyBreakdownTable({ rows }) {
+  return (
+    <div className="mt-3 overflow-x-auto">
+      <table className="w-full text-[11px] border-collapse">
+        <thead>
+          <tr className="border-b border-[var(--neutral-200)]">
+            <th className="text-left font-semibold text-[var(--neutral-500)] uppercase tracking-wider py-1.5 pr-3 whitespace-nowrap">Week</th>
+            <th className="text-right font-semibold text-[var(--neutral-500)] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Total</th>
+            <th className="text-right font-semibold text-[#2E7D32] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Rented</th>
+            <th className="text-right font-semibold text-[#B45309] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Cancelled</th>
+            <th className="text-right font-semibold text-[var(--neutral-500)] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Unused</th>
+            <th className="text-right font-semibold text-[var(--hertz-black)] uppercase tracking-wider py-1.5 pl-3 whitespace-nowrap">Rate</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={i} className={`border-b border-[var(--neutral-100)] ${i === rows.length - 1 ? "font-semibold" : ""}`}>
+              <td className="py-1.5 pr-3 text-[var(--neutral-700)] whitespace-nowrap">{row.label}</td>
+              <td className="py-1.5 px-3 text-right text-[var(--neutral-700)]">{row.totalLeads ?? 0}</td>
+              <td className="py-1.5 px-3 text-right text-[#2E7D32]">{row.rented ?? 0}</td>
+              <td className="py-1.5 px-3 text-right text-[#B45309]">{row.cancelled ?? 0}</td>
+              <td className="py-1.5 px-3 text-right text-[var(--neutral-500)]">{row.unused ?? 0}</td>
+              <td className="py-1.5 pl-3 text-right font-bold text-[var(--hertz-black)]">
+                {row.conversionRate != null ? `${row.conversionRate}%` : "—"}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="text-[10px] text-[var(--neutral-400)] mt-1.5">
+        Rate = Rented ÷ Total. Sum all weeks to independently verify the T4W aggregate.
+      </p>
+    </div>
+  );
+}
+
 export default function GMMetricDrilldownModal({
   metricKey,
   onClose,
@@ -300,6 +336,7 @@ export default function GMMetricDrilldownModal({
     return {
       weekLabels,
       series: [{ name: config.label, values }],
+      rows,
     };
   }, [chartData, metricKey, config.label]);
 
@@ -372,6 +409,9 @@ export default function GMMetricDrilldownModal({
             <div className="border border-[var(--neutral-100)] rounded-lg p-3 bg-[var(--neutral-50)]/50">
               <TrendChart data={trendData} config={config} />
             </div>
+            {metricKey === "conversion_rate" && trendData.rows.length > 0 && (
+              <WeeklyBreakdownTable rows={trendData.rows} />
+            )}
           </div>
 
           {/* Section 2: Performance by Branch */}

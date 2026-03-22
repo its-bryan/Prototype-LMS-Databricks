@@ -362,6 +362,43 @@ function TaskTable({ tasks, config, allLeads }) {
   );
 }
 
+function WeeklyBreakdownTable({ rows }) {
+  return (
+    <div className="mb-5 overflow-x-auto">
+      <p className="text-xs font-bold text-[var(--neutral-600)] uppercase tracking-wide mb-2">Weekly Breakdown</p>
+      <table className="w-full text-[11px] border-collapse">
+        <thead>
+          <tr className="border-b border-[var(--neutral-200)]">
+            <th className="text-left font-semibold text-[var(--neutral-500)] uppercase tracking-wider py-1.5 pr-3 whitespace-nowrap">Week</th>
+            <th className="text-right font-semibold text-[var(--neutral-500)] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Total</th>
+            <th className="text-right font-semibold text-[#2E7D32] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Rented</th>
+            <th className="text-right font-semibold text-[#B45309] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Cancelled</th>
+            <th className="text-right font-semibold text-[var(--neutral-500)] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Unused</th>
+            <th className="text-right font-semibold text-[var(--hertz-black)] uppercase tracking-wider py-1.5 pl-3 whitespace-nowrap">Rate</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={i} className="border-b border-[var(--neutral-100)]">
+              <td className="py-1.5 pr-3 text-[var(--neutral-700)] whitespace-nowrap">{row.label}</td>
+              <td className="py-1.5 px-3 text-right text-[var(--neutral-700)]">{row.totalLeads ?? 0}</td>
+              <td className="py-1.5 px-3 text-right text-[#2E7D32]">{row.rented ?? 0}</td>
+              <td className="py-1.5 px-3 text-right text-[#B45309]">{row.cancelled ?? 0}</td>
+              <td className="py-1.5 px-3 text-right text-[var(--neutral-500)]">{row.unused ?? 0}</td>
+              <td className="py-1.5 pl-3 text-right font-bold text-[var(--hertz-black)]">
+                {row.conversionRate != null ? `${row.conversionRate}%` : "—"}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="text-[10px] text-[var(--neutral-400)] mt-1.5">
+        Rate = Rented ÷ Total per week (Sat–Fri). Sum rows to independently verify the T4W aggregate.
+      </p>
+    </div>
+  );
+}
+
 export default function MetricDrilldownModal({
   metricKey,
   onClose,
@@ -374,6 +411,7 @@ export default function MetricDrilldownModal({
   previousStats,
   currentTaskStats,
   previousTaskStats,
+  chartData,
 }) {
   const { fetchLeadsPage } = useData();
   const [activeTab, setActiveTab] = useState("current");
@@ -595,6 +633,11 @@ export default function MetricDrilldownModal({
                 groupByPrimary={groupByPrimary}
               />
             </div>
+          )}
+
+          {/* Weekly breakdown (conversion_rate only) */}
+          {metricKey === "conversion_rate" && (chartData ?? []).length > 0 && (
+            <WeeklyBreakdownTable rows={chartData} />
           )}
 
           {/* Tab selector */}

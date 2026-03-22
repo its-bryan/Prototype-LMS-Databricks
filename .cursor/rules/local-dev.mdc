@@ -22,11 +22,19 @@ Staging and prod share the same Lakebase host/endpoint. Isolation is by `PGDATAB
 
 ## Local startup
 
+### Option A — Neon (Mac, no local Postgres install)
+1. Create a free Neon project, name the DB `lms_leo`
+2. Fill Neon credentials into `.env.local` (copy from `.env.local.example`); include `PGSSLMODE=require`
+3. Export env and run schema: `set -a && source .env.local && set +a && psql -f scripts/setup_local_db.sql`
+4. Seed: `python scripts/seed_local_data.py prodfiles/MainChaddata.xlsx --target local`
+5. Start: `./scripts/start_local.sh`
+
+### Option B — local Postgres (original Windows default)
 1. Copy `.env.local.example` to `.env.local`
 2. `createdb lms_leo`
 3. `psql -d lms_leo -f scripts/setup_local_db.sql`
 4. `python scripts/seed_local_data.py prodfiles/MainChaddata.xlsx --target local`
-5. `./scripts/start_local.ps1`
+5. `./scripts/start_local.ps1` (Windows) or `./scripts/start_local.sh` (Mac)
 
 ## Deploy commands
 

@@ -243,6 +243,7 @@ export function BMDashboard({ navigateTo }) {
             previousStats={comparisonStats}
             currentTaskStats={_snapshotTasks}
             previousTaskStats={_snapshotCompTasks}
+            chartData={snapshotBranch?.chartData ?? []}
           />
         )}
       </AnimatePresence>

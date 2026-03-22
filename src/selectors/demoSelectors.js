@@ -1575,23 +1575,26 @@ function buildChartDataByPeriodFromFiltered(filtered, branchTasks, dateRange, br
   const periodMap = new Map();
 
   for (const p of periods) {
-    periodMap.set(p.key, { label: p.label, total: 0, rented: 0, enriched: 0, leadIds: new Set() });
+    periodMap.set(p.key, { label: p.label, total: 0, rented: 0, cancelled: 0, unused: 0, enriched: 0, leadIds: new Set() });
   }
-  periodMap.set("__unassigned__", { label: "Unassigned", total: 0, rented: 0, enriched: 0, leadIds: new Set() });
+  periodMap.set("__unassigned__", { label: "Unassigned", total: 0, rented: 0, cancelled: 0, unused: 0, enriched: 0, leadIds: new Set() });
 
   const leadById = new Map((leads ?? []).map((l) => [l.id, l]));
   const tasksForBranch = branchTasks ?? [];
   const tasksInRange = dateRange ? tasksInDateRange(tasksForBranch, dateRange) : tasksForBranch;
 
   for (const lead of filtered) {
-    const leadDate = getLeadDateForPeriod(lead);
-    const pk = leadDate ? leadToPeriodKey(leadDate, gran) : null;
+    // Use week_of (HLES Sat–Fri week, stored as Monday label) for weekly buckets so chart
+    // boundaries match the HLES week definition rather than Mon–Sun calendar weeks.
+    const pk = gran === "week" ? getWeekOfForLead(lead) : (getLeadDateForPeriod(lead) ? leadToPeriodKey(getLeadDateForPeriod(lead), gran) : null);
     const periodKey = (pk && periodMap.has(pk)) ? pk : "__unassigned__";
 
     const row = periodMap.get(periodKey);
     row.leadIds.add(lead.id);
     row.total += 1;
     if (lead.status === "Rented") row.rented += 1;
+    if (lead.status === "Cancelled") row.cancelled += 1;
+    if (lead.status === "Unused") row.unused += 1;
     if (lead.enrichmentComplete) row.enriched += 1;
   }
 
@@ -1599,8 +1602,7 @@ function buildChartDataByPeriodFromFiltered(filtered, branchTasks, dateRange, br
     const lead = task.leadId ? leadById.get(task.leadId) : null;
     if (!lead || !leadBranchMatches(lead.branch, branch)) continue;
     if (dateRange && !leadInDateRange(lead, dateRange.start, dateRange.end)) continue;
-    const leadDate = getLeadDateForPeriod(lead);
-    const pk = leadDate ? leadToPeriodKey(leadDate, gran) : null;
+    const pk = gran === "week" ? getWeekOfForLead(lead) : (getLeadDateForPeriod(lead) ? leadToPeriodKey(getLeadDateForPeriod(lead), gran) : null);
     const periodKey = (pk && periodMap.has(pk)) ? pk : "__unassigned__";
     const row = periodMap.get(periodKey);
     if (!row.taskIds) row.taskIds = new Set();
@@ -1615,6 +1617,8 @@ function buildChartDataByPeriodFromFiltered(filtered, branchTasks, dateRange, br
       const row = periodMap.get(p.key);
       const total = row?.total ?? 0;
       const rented = row?.rented ?? 0;
+      const cancelled = row?.cancelled ?? 0;
+      const unused = row?.unused ?? 0;
       const enriched = row?.enriched ?? 0;
       const conversionRate = total > 0 ? Math.round((rented / total) * 100) : 0;
       const commentRate = total > 0 ? Math.round((enriched / total) * 100) : 0;
@@ -1635,6 +1639,8 @@ function buildChartDataByPeriodFromFiltered(filtered, branchTasks, dateRange, br
         label: p.label,
         totalLeads: total,
         rented,
+        cancelled,
+        unused,
         conversionRate,
         commentRate,
         openTasks: openTasks || 0,
@@ -1659,8 +1665,7 @@ function buildChartDataStackedFromFiltered(filtered, dateRange, branch, groupBy,
   periodMap.set("__unassigned__", { label: "Unassigned", segments: {}, total: 0, rented: 0, enriched: 0 });
 
   for (const lead of filtered) {
-    const leadDate = getLeadDateForPeriod(lead);
-    const pk = leadDate ? leadToPeriodKey(leadDate, gran) : null;
+    const pk = gran === "week" ? getWeekOfForLead(lead) : (getLeadDateForPeriod(lead) ? leadToPeriodKey(getLeadDateForPeriod(lead), gran) : null);
     const periodKey = (pk && periodMap.has(pk)) ? pk : "__unassigned__";
 
     const groupKey = getLeadGroupKey(lead, groupBy);
@@ -1910,7 +1915,7 @@ export function getGMMetricTrendByWeek(leads, opts = {}) {
     return "Value";
   };
 
-  const leadPeriodKey = (l) => leadToPeriodKey(getLeadDateForPeriod(l), gran);
+  const leadPeriodKey = (l) => gran === "week" ? getWeekOfForLead(l) : leadToPeriodKey(getLeadDateForPeriod(l), gran);
 
   const counts = weeks.map((weekOf) => filtered.filter((l) => leadPeriodKey(l) === weekOf).length);
 

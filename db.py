@@ -119,9 +119,11 @@ def _ensure_pool() -> ConnectionPool:
             return _pool
 
         if APP_ENV == "local":
+            _ssl = os.getenv("PGSSLMODE", "").strip()
             conninfo = (
                 f"host={_DB_HOST} dbname={_DB_NAME} user={_DB_USER} "
                 f"port={_DB_PORT} password={_DB_PASSWORD}"
+                + (f" sslmode={_ssl}" if _ssl else "")
             )
             _pool = ConnectionPool(
                 conninfo=conninfo,

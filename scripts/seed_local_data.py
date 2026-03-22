@@ -34,6 +34,20 @@ AUTH_SEED_ROWS = [
         "Jonathan Hoover",
         "7467-09 - DORAL HLE",
     ),
+    (
+        "jeri.leo@hertz.com",
+        "$2b$12$drITSEAjqJTwE0W0qgmlYuUIgycvOZQUNkykpJb44VRtsOLYT6/Y2",
+        "bm",
+        "Jeri Baumwoll",
+        "7109-04    - RANCHO HLE",
+    ),
+    (
+        "rachel.leo@hertz.com",
+        "$2b$12$YlNVpD4QFQ102fbznP1xo.PWd4wa7FUEcvvlPVY5HjW6fx1vx3UCK",
+        "gm",
+        "Rachel Messinger",
+        None,
+    ),
 ]
 
 
@@ -146,7 +160,7 @@ def seed_leads(file_path: Path) -> dict:
             %s, %s, %s, %s, %s, %s, %s, %s,
             %s, %s, %s, %s, %s, %s, %s
         )
-        ON CONFLICT (confirm_num) DO UPDATE SET
+        ON CONFLICT (confirm_num) WHERE confirm_num IS NOT NULL DO UPDATE SET
             customer = EXCLUDED.customer,
             reservation_id = EXCLUDED.reservation_id,
             status = EXCLUDED.status,
@@ -171,27 +185,23 @@ def seed_leads(file_path: Path) -> dict:
             updated_at = now()
     """
 
-    with with_connection() as conn:
-        with conn.cursor() as cur:
-            for confirm_num, row in rows_to_process:
-                cur.execute(
-                    upsert_sql,
-                    (
-                        _val(row, "customer"),
-                        confirm_num,
-                        _val(row, "status"),
-                        _val(row, "branch"),
-                        _val(row, "bm_name"),
-                        _val(row, "insurance_company"),
-                        _val(row, "hles_reason"),
-                        _val(row, "init_dt_final"),
-                        confirm_num,
-                        _val(row, "knum"),
-                        _val(row, "body_shop"),
-                        _val(row, "cdp_name"),
-                        _val(row, "htz_region"),
-                        _val(row, "set_state"),
-                        _val(row, "zone"),
+    params_list = [
+        (
+            _val(row, "customer"),
+            confirm_num,
+            _val(row, "status"),
+            _val(row, "branch"),
+            _val(row, "bm_name"),
+            _val(row, "insurance_company"),
+            _val(row, "hles_reason"),
+            _val(row, "init_dt_final"),
+            confirm_num,
+            _val(row, "knum"),
+            _val(row, "body_shop"),
+            _val(row, "cdp_name"),
+            _val(row, "htz_region"),
+            _val(row, "set_state"),
+            _val(row, "zone"),
                         _val(row, "area_mgr"),
                         _val(row, "general_mgr"),
                         _val(row, "rent_loc"),
@@ -199,8 +209,15 @@ def seed_leads(file_path: Path) -> dict:
                         _val(row, "contact_range"),
                         _val(row, "first_contact_by"),
                         _val(row, "time_to_first_contact"),
-                    ),
-                )
+            )
+        for confirm_num, row in rows_to_process
+    ]
+
+    with with_connection() as conn:
+        with conn.cursor() as cur:
+            with conn.pipeline():
+                for params in params_list:
+                    cur.execute(upsert_sql, params)
             upsert_org_mapping(rows_to_process, cur)
 
     return {"rowsParsed": len(df), "upserted": len(rows_to_process)}
