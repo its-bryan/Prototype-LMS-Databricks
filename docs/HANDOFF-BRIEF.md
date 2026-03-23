@@ -3,6 +3,7 @@
 **From:** Dan
 **Date:** Feb 27, 2026
 **Repo:** https://github.com/popcornAlesto33/Prototype-LMS
+**Ops note:** If DB pool fresh-connection auth errors appear in logs, see `DBPoolingtorevisit.md` for investigation context.
 
 ---
 

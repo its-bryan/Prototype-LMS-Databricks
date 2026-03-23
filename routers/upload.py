@@ -16,7 +16,10 @@ from services.days_open import refresh_days_open
 
 router = APIRouter()
 
-HLES_SELECT_CHUNK = 2000  # used by translog router
+# Batch sizes to reduce DB round-trips and stay under gateway timeout (e.g. 60s)
+HLES_SELECT_CHUNK = 2000
+HLES_INSERT_BATCH = 500
+HLES_UPDATE_BATCH = 500
 
 # Unity Catalog Volume for HLES landing: datalabs.lab_lms_prod.hles_landing_prod
 # Override with env HLES_LANDING_VOLUME_PATH (e.g. empty to skip Volume write when testing locally).
@@ -77,6 +80,35 @@ def _val(row, col):
     return v
 
 
+def _row_to_tuple(row, confirm_num):
+    """One row as tuple for INSERT (customer, reservation_id, status, ..., contact_range)."""
+    return (
+        _val(row, "customer"), confirm_num,
+        _val(row, "status"), _val(row, "branch"), _val(row, "bm_name"),
+        _val(row, "insurance_company"), _val(row, "hles_reason"), _val(row, "init_dt_final"),
+        confirm_num, _val(row, "knum"), _val(row, "body_shop"), _val(row, "cdp_name"),
+        _val(row, "htz_region"), _val(row, "set_state"), _val(row, "zone"),
+        _val(row, "area_mgr"), _val(row, "general_mgr"), _val(row, "rent_loc"),
+        _val(row, "week_of"), _val(row, "contact_range"),
+        _val(row, "first_contact_by"),
+        _val(row, "time_to_first_contact"),
+    )
+
+
+def _row_to_update_tuple(row, confirm_num):
+    """One row as tuple for UPDATE FROM VALUES (confirm_num, customer, status, ..., contact_range)."""
+    return (
+        confirm_num,
+        _val(row, "customer"), _val(row, "status"), _val(row, "branch"), _val(row, "bm_name"),
+        _val(row, "insurance_company"), _val(row, "hles_reason"), _val(row, "init_dt_final"),
+        confirm_num, confirm_num, _val(row, "knum"), _val(row, "body_shop"), _val(row, "cdp_name"),
+        _val(row, "htz_region"), _val(row, "set_state"), _val(row, "zone"),
+        _val(row, "area_mgr"), _val(row, "general_mgr"), _val(row, "rent_loc"),
+        _val(row, "week_of"), _val(row, "contact_range"),
+        _val(row, "first_contact_by"),
+        _val(row, "time_to_first_contact"),
+    )
+
 
 def _upsert_org_mapping_from_hles(rows_to_process, cur):
     """Upsert org_mapping from distinct (branch, bm_name, area_mgr, general_mgr, zone) in uploaded HLES rows."""
@@ -110,7 +142,7 @@ def _upsert_org_mapping_from_hles(rows_to_process, cur):
         cur.execute(sql, (bm, branch, am, gm, zone))
 
 
-def _set_ingestion_status(upload_id, state: str, error: str | None = None, counts: dict | None = None):
+def _set_ingestion_status(upload_id, state: str, error: str | None = None):
     rows = query("SELECT hles FROM upload_summary WHERE id = %s", (str(upload_id),))
     if not rows:
         return
@@ -121,110 +153,19 @@ def _set_ingestion_status(upload_id, state: str, error: str | None = None, count
         hles["ingestion_error"] = error
     else:
         hles.pop("ingestion_error", None)
-    if counts:
-        hles.update(counts)
     execute("UPDATE upload_summary SET hles = %s::jsonb WHERE id = %s", (json.dumps(hles), str(upload_id)))
 
 
-_INGEST_COLS = [
-    "customer", "reservation_id", "status", "branch", "bm_name",
-    "insurance_company", "hles_reason", "init_dt_final",
-    "confirm_num", "knum", "body_shop", "cdp_name",
-    "htz_region", "set_state", "zone", "area_mgr", "general_mgr",
-    "rent_loc", "week_of", "contact_range", "first_contact_by", "time_to_first_contact",
-]
-
-
-def _row_to_copy_tuple(row, confirm_num):
-    return (
-        _val(row, "customer"), confirm_num,
-        _val(row, "status"), _val(row, "branch"), _val(row, "bm_name"),
-        _val(row, "insurance_company"), _val(row, "hles_reason"), _val(row, "init_dt_final"),
-        confirm_num, _val(row, "knum"), _val(row, "body_shop"), _val(row, "cdp_name"),
-        _val(row, "htz_region"), _val(row, "set_state"), _val(row, "zone"),
-        _val(row, "area_mgr"), _val(row, "general_mgr"), _val(row, "rent_loc"),
-        _val(row, "week_of"), _val(row, "contact_range"),
-        _val(row, "first_contact_by"), _val(row, "time_to_first_contact"),
-    )
-
-
-def _run_full_ingest(upload_id, rows_to_process, base_stats: dict):
-    """Background task: DB upserts (COPY + temp table) + org_mapping + snapshot jobs."""
-    print(f"[upload] _run_full_ingest START upload_id={upload_id} rows={len(rows_to_process)}", flush=True)
-    stats = dict(base_stats)
+def _run_post_upload_jobs(upload_id):
     try:
-        print(f"[upload] ingest: acquiring DB connection", flush=True)
-        with with_connection() as conn:
-            with conn.cursor() as cur:
-                # 1) COPY all incoming rows into a temp staging table
-                cur.execute(f"""
-                    CREATE TEMP TABLE _hles_stage (
-                        {', '.join(f'{c} TEXT' for c in _INGEST_COLS)}
-                    ) ON COMMIT DROP
-                """)
-                with cur.copy(f"COPY _hles_stage ({','.join(_INGEST_COLS)}) FROM STDIN") as cp:
-                    for confirm_num, row in rows_to_process:
-                        cp.write_row(_row_to_copy_tuple(row, confirm_num))
-                print(f"[upload] COPY stage done", flush=True)
-
-                # 2) INSERT new rows (confirm_num not in leads)
-                _DATE_COLS = {"init_dt_final", "week_of"}
-                cols_joined = ", ".join(_INGEST_COLS)
-                select_cols = ", ".join(
-                    f"s.{c}::date" if c in _DATE_COLS else f"s.{c}"
-                    for c in _INGEST_COLS
-                )
-                cur.execute(f"""
-                    INSERT INTO leads ({cols_joined})
-                    SELECT {select_cols} FROM _hles_stage s
-                    WHERE NOT EXISTS (
-                        SELECT 1 FROM leads l WHERE l.confirm_num = s.confirm_num
-                    )
-                """)
-                stats["newLeads"] = cur.rowcount
-                print(f"[upload] INSERT done: {stats['newLeads']} new leads", flush=True)
-
-                # 3) UPDATE existing rows
-                set_cols = [c for c in _INGEST_COLS if c != "confirm_num"]
-                set_exprs = ", ".join(
-                    f"{c} = s.{c}::date" if c in _DATE_COLS else f"{c} = s.{c}"
-                    for c in set_cols
-                )
-                cur.execute(f"""
-                    UPDATE leads SET
-                        {set_exprs},
-                        archived = false,
-                        updated_at = now()
-                    FROM _hles_stage s
-                    WHERE leads.confirm_num = s.confirm_num
-                """)
-                stats["updated"] = cur.rowcount
-                print(f"[upload] UPDATE done: {stats['updated']} updated", flush=True)
-
-                # 4) Sync org_mapping from HLES
-                _upsert_org_mapping_from_hles(rows_to_process, cur)
-                print(f"[upload] org_mapping upsert done", flush=True)
-
-        print(f"[upload] ingest complete for {upload_id} — newLeads={stats['newLeads']} updated={stats['updated']}", flush=True)
-
-        # DB writes done — snapshots next
-        _set_ingestion_status(upload_id, "rebuilding_snapshots", counts={"newLeads": stats["newLeads"], "updated": stats["updated"], "failed": stats["failed"]})
-
-        # Snapshot + observatory + days_open
         compute_and_store_snapshot()
         compute_observatory_snapshot()
         refresh_days_open()
-        _set_ingestion_status(upload_id, "success", counts={"newLeads": stats["newLeads"], "updated": stats["updated"], "failed": stats["failed"]})
+        _set_ingestion_status(upload_id, "success")
         print(f"[upload] post-upload ingestion succeeded for {upload_id}", flush=True)
-
     except Exception as exc:
-        import traceback
-        print(f"[upload] full ingest EXCEPTION for {upload_id}: {exc}", flush=True)
-        traceback.print_exc()
-        try:
-            _set_ingestion_status(upload_id, "failed", error=str(exc))
-        except Exception as e2:
-            print(f"[upload] _set_ingestion_status also failed: {e2}", flush=True)
+        _set_ingestion_status(upload_id, "failed", str(exc))
+        print(f"[upload] post-upload ingestion failed for {upload_id}: {exc}", flush=True)
 
 
 @router.get("/upload/history")
@@ -248,10 +189,6 @@ def get_ingestion_status(upload_id: str):
         "startedAt": hles.get("ingestion_started_at"),
         "updatedAt": hles.get("ingestion_updated_at"),
         "error": hles.get("ingestion_error"),
-        "newLeads": hles.get("newLeads", 0),
-        "updated": hles.get("updated", 0),
-        "failed": hles.get("failed", 0),
-        "rowsParsed": hles.get("rowsParsed", 0),
     }
 
 
@@ -261,7 +198,7 @@ async def upload_hles(
     file: UploadFile = File(...),
     uploaded_by: str | None = Form(None),
 ):
-    """Upload HLES Excel file -> parse/validate -> return uploadId immediately -> ETL + snapshots in background."""
+    """Upload HLES Excel file -> land in Volume (if configured) -> ETL -> batch insert/update leads."""
     contents = await file.read()
     if len(contents) > MAX_UPLOAD_SIZE:
         raise HTTPException(
@@ -271,12 +208,9 @@ async def upload_hles(
                 "For historical bulk loads, use the admin CLI."
             ),
         )
-
-    # Land raw file in Volume synchronously (fast — local path or Databricks Volume write)
     landed_path = _land_file_in_volume(contents, file.filename or "hles.xlsx", HLES_LANDING_VOLUME_PATH)
-
-    # Parse and clean the Excel file (synchronous, but fast relative to DB work)
     df = pd.read_excel(io.BytesIO(contents), engine="openpyxl")
+
     org_lookup = _build_org_lookup()
     df_clean = clean_hles_data(df, org_lookup)
 
@@ -290,14 +224,14 @@ async def upload_hles(
     stats["ingestion_status"] = "in_progress"
     stats["ingestion_started_at"] = datetime.utcnow().isoformat()
 
-    # Validate rows — reject bad confirm_nums before queuing background work
+    # Build list of (confirm_num, row) for valid rows
     rows_to_process = []
     for _, row in df_clean.iterrows():
         confirm_num = _val(row, "confirm_num")
         if not confirm_num:
             stats["failed"] += 1
             continue
-        rows_to_process.append((confirm_num, row.to_dict()))
+        rows_to_process.append((confirm_num, row))
 
     if not rows_to_process:
         stats["ingestion_status"] = "failed"
@@ -309,18 +243,76 @@ async def upload_hles(
         )
         return stats
 
-    # Create upload_summary record immediately so the UI can poll ingestion-status
+    with with_connection() as conn:
+        with conn.cursor() as cur:
+            # 1) Bulk-fetch existing confirm_nums (chunked)
+            confirm_nums = [c for c, _ in rows_to_process]
+            existing_confirm_nums = set()
+            for i in range(0, len(confirm_nums), HLES_SELECT_CHUNK):
+                chunk = confirm_nums[i : i + HLES_SELECT_CHUNK]
+                placeholders = ",".join(["%s"] * len(chunk))
+                cur.execute(
+                    f"SELECT confirm_num FROM leads WHERE confirm_num IN ({placeholders})",
+                    tuple(chunk),
+                )
+                for r in cur.fetchall():
+                    existing_confirm_nums.add(r["confirm_num"])
+
+            # 2) Split into insert vs update
+            to_insert = [(c, r) for c, r in rows_to_process if c not in existing_confirm_nums]
+            to_update = [(c, r) for c, r in rows_to_process if c in existing_confirm_nums]
+
+            # 3) Batch INSERT
+            cols = (
+                "customer, reservation_id, status, branch, bm_name, insurance_company, hles_reason, init_dt_final, "
+                "confirm_num, knum, body_shop, cdp_name, htz_region, set_state, zone, area_mgr, general_mgr, rent_loc, week_of, contact_range, first_contact_by, time_to_first_contact"
+            )
+            for i in range(0, len(to_insert), HLES_INSERT_BATCH):
+                batch = to_insert[i : i + HLES_INSERT_BATCH]
+                values_tuples = [_row_to_tuple(r, c) for c, r in batch]
+                n = len(values_tuples)
+                one = "(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+                placeholders = ",".join([one] * n)
+                sql = f"INSERT INTO leads ({cols}) VALUES {placeholders}"
+                cur.execute(sql, tuple(x for t in values_tuples for x in t))
+                stats["newLeads"] += n
+
+            # 4) Batch UPDATE (UPDATE ... FROM (VALUES ...))
+            for i in range(0, len(to_update), HLES_UPDATE_BATCH):
+                batch = to_update[i : i + HLES_UPDATE_BATCH]
+                values_tuples = [_row_to_update_tuple(r, c) for c, r in batch]
+                n = len(values_tuples)
+                one = "(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+                placeholders = ",".join([one] * n)
+                sql = f"""UPDATE leads SET
+                    customer = v.customer, status = v.status, branch = v.branch, bm_name = v.bm_name,
+                    insurance_company = v.insurance_company, hles_reason = v.hles_reason, init_dt_final = v.init_dt_final,
+                    confirm_num = v.confirm_num, reservation_id = v.reservation_id, knum = v.knum, body_shop = v.body_shop,
+                    cdp_name = v.cdp_name, htz_region = v.htz_region, set_state = v.set_state,
+                    zone = v.zone, area_mgr = v.area_mgr, general_mgr = v.general_mgr, rent_loc = v.rent_loc,
+                    week_of = v.week_of, contact_range = v.contact_range, first_contact_by = v.first_contact_by, time_to_first_contact = v.time_to_first_contact, updated_at = now()
+                FROM (VALUES {placeholders}) AS v(confirm_num, customer, status, branch, bm_name, insurance_company, hles_reason, init_dt_final, confirm_num2, reservation_id, knum, body_shop, cdp_name, htz_region, set_state, zone, area_mgr, general_mgr, rent_loc, week_of, contact_range, first_contact_by, time_to_first_contact)
+                WHERE leads.confirm_num = v.confirm_num"""
+                cur.execute(sql, tuple(x for t in values_tuples for x in t))
+                stats["updated"] += n
+
+            # 5) Sync org_mapping from HLES (branch -> bm, am, gm, zone) so GM view and org mapping UI stay in sync
+            _upsert_org_mapping_from_hles(rows_to_process, cur)
+
     inserted = query(
         "INSERT INTO upload_summary (hles, translog, data_as_of_date) VALUES (%s::jsonb, %s::jsonb, %s) RETURNING id",
         (json.dumps(stats), "{}", str(pd.Timestamp.now().date())),
     )
     upload_id = inserted[0]["id"] if inserted else None
-
-    # Queue the full ingest (SELECT / INSERT / UPDATE / org_mapping / snapshot) as a background task.
-    # The HTTP response returns immediately with upload_id so the UI can poll /upload/ingestion-status/{id}.
-    background_tasks.add_task(_run_full_ingest, upload_id, rows_to_process, stats)
-    print(f"[upload] HLES parsed {len(rows_to_process)} rows — background ingest queued for {upload_id}", flush=True)
-
+    if upload_id:
+        background_tasks.add_task(_run_post_upload_jobs, upload_id)
+        print(f"[upload] HLES ETL done — ingestion background task queued for {upload_id}", flush=True)
+    else:
+        # Fallback if id cannot be fetched for any reason.
+        background_tasks.add_task(compute_and_store_snapshot)
+        background_tasks.add_task(compute_observatory_snapshot)
+        background_tasks.add_task(refresh_days_open)
+        print("[upload] HLES ETL done — fallback background tasks queued", flush=True)
     return {**stats, "uploadId": upload_id}
 
 @router.post("/upload/translog")

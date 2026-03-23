@@ -1,7 +1,8 @@
 # Handoff Brief: ETL Fix + Phase 2 Completion
 
 > **Date**: 2026-03-17
-> **Status**: **ETL Phase 2 complete.** Migration 004 run in Lakebase; ETL fixed; communication stripped; directive/enrichment/contact return full row; cdp_name bug fixed in upload; app redeployed. **Architect recommendation (Volume staging) reviewed and documented below.**
+> **Status**: **ETL Phase 2 complete.** Migration 004 run in Lakebase; ETL fixed; communication stripped; directive/enrichment/contact return full row; cdp_name bug fixed in upload; app redeployed. **Architect recommendation (Volume staging) reviewed and documented below.**  
+> **Operational note**: Intermittent DB pool fresh-connection auth errors were observed in app logs; see `DBPoolingtorevisit.md` for triage context and follow-up checklist.
 > **Priority**: Test HLES upload end-to-end → verify Phase 2 (directives, wins, compliance) → then PROD-READY items when moving to production.
 
 ---
