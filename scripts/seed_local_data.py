@@ -36,7 +36,7 @@ AUTH_SEED_ROWS = [
     ),
     (
         "jeri.leo@hertz.com",
-        "$2b$12$drITSEAjqJTwE0W0qgmlYuUIgycvOZQUNkykpJb44VRtsOLYT6/Y2",
+        "$2b$12$YlNVpD4QFQ102fbznP1xo.PWd4wa7FUEcvvlPVY5HjW6fx1vx3UCK",
         "bm",
         "Jeri Baumwoll",
         "7109-04    - RANCHO HLE",

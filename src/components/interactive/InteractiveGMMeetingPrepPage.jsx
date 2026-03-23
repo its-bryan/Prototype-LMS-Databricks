@@ -202,6 +202,7 @@ export default function InteractiveGMMeetingPrepPage() {
       gmName,
       startDate: dateRange?.start ?? null,
       endDate: dateRange?.end ?? null,
+      status: "Cancelled,Unused",
       limit: pageSize,
       offset: leadsPageOffset,
     })

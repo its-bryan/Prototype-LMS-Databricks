@@ -204,8 +204,8 @@ export function BMDashboard({ navigateTo }) {
   const relChangeOpenTasks = comparisonRange != null && openInComparison > 0
     ? Math.round(((openInComparison - openInPeriod) / openInComparison) * 100) // fewer = better
     : null;
-  const relChangeCompletion = comparisonRange != null && completionInComparison != null && completionInComparison > 0
-    ? relChange(completionInPeriod ?? 0, completionInComparison)
+  const relChangeCompletion = comparisonRange != null && completionInComparison != null && completionInPeriod != null
+    ? Math.round((completionInPeriod ?? 0) - completionInComparison)
     : null;
   const relChangeAvgTime = comparisonRange != null && prevAvgTimeToContactMin != null && prevAvgTimeToContactMin > 0 && avgTimeToContactMin != null
     ? Math.round(((prevAvgTimeToContactMin - avgTimeToContactMin) / prevAvgTimeToContactMin) * 100) // lower = better
@@ -213,8 +213,8 @@ export function BMDashboard({ navigateTo }) {
 
   const rateTiles = [
     { label: "Total Leads", value: stats.total, color: "text-[var(--hertz-black)]", isCount: true, relChange: relChange(stats.total, comparisonStats.total), metricKey: "total_leads" },
-    { label: "Conversion Rate", value: `${convRate}%`, color: "text-[var(--color-success)]", isCount: false, relChange: relChange(convRate, prevConvRate), metricKey: "conversion_rate" },
-    { label: "Comment Rate", value: `${stats.enrichmentRate}%`, color: "text-[var(--hertz-primary)]", isCount: false, relChange: relChange(stats.enrichmentRate, prevCommentRate), metricKey: "comment_rate" },
+    { label: "Conversion Rate", value: `${convRate}%`, color: "text-[var(--color-success)]", isCount: false, relChange: convRate != null && prevConvRate != null ? Math.round(convRate - prevConvRate) : null, metricKey: "conversion_rate" },
+    { label: "Comment Rate", value: `${stats.enrichmentRate}%`, color: "text-[var(--hertz-primary)]", isCount: false, relChange: stats.enrichmentRate != null && prevCommentRate != null ? Math.round(stats.enrichmentRate - prevCommentRate) : null, metricKey: "comment_rate" },
   ];
 
   const secondaryTiles = [
@@ -224,7 +224,9 @@ export function BMDashboard({ navigateTo }) {
   ];
 
   const activePreset = useCustom ? { key: "custom" } : presets.find((p) => p.key === selectedPresetKey);
-  const rangeLabel = formatDateRange(activePreset, customStart, customEnd);
+  const rangeLabel = (useSnapshotData && !useCustom && selectedPresetKey === "trailing_4_weeks" && snapshot?.period?.start && snapshot?.period?.end)
+    ? formatDateRange({ start: new Date(snapshot.period.start + "T12:00:00Z"), end: new Date(snapshot.period.end + "T12:00:00Z") }, customStart, customEnd)
+    : formatDateRange(activePreset, customStart, customEnd);
 
   if (!initialDataReady && !snapshotBranch) return <BMDashboardSkeleton />;
 
@@ -552,10 +554,6 @@ export function GMDashboardPage({ navigateTo }) {
   const selectedPresetKey = "trailing_4_weeks";
 
   const currentPreset = presets.find((p) => p.key === selectedPresetKey);
-  const dateRange = useMemo(
-    () => (currentPreset ? { start: currentPreset.start, end: currentPreset.end } : null),
-    [currentPreset],
-  );
 
   const gmName = useMemo(() => {
     const name = userProfile?.displayName;
@@ -568,11 +566,32 @@ export function GMDashboardPage({ navigateTo }) {
 
   const snapshotGM = gmName ? (snapshot?.gms?.[gmName] ?? null) : null;
 
+  // Use snapshot's actual period dates when available (anchored to real HLES data),
+  // falling back to the calendar-derived preset.
+  const dateRange = useMemo(() => {
+    if (snapshot?.period?.start && snapshot?.period?.end) {
+      return {
+        start: new Date(snapshot.period.start + "T12:00:00Z"),
+        end: new Date(snapshot.period.end + "T12:00:00Z"),
+      };
+    }
+    return currentPreset ? { start: currentPreset.start, end: currentPreset.end } : null;
+  }, [snapshot?.period, currentPreset]);
+
+  const prevRange = useMemo(() => {
+    if (snapshot?.comparison?.start && snapshot?.comparison?.end) {
+      return {
+        start: new Date(snapshot.comparison.start + "T12:00:00Z"),
+        end: new Date(snapshot.comparison.end + "T12:00:00Z"),
+      };
+    }
+    return getComparisonDateRange(selectedPresetKey);
+  }, [snapshot?.comparison, selectedPresetKey]);
+
   const stats = useMemo(
     () => snapshotGM?.stats ?? EMPTY_GM_DASHBOARD_STATS,
     [snapshotGM]
   );
-  const prevRange = useMemo(() => getComparisonDateRange(selectedPresetKey), [selectedPresetKey]);
   const prevStats = useMemo(
     () => snapshotGM?.comparison ?? null,
     [snapshotGM]
@@ -581,11 +600,14 @@ export function GMDashboardPage({ navigateTo }) {
   const greeting = getTimeOfDayGreeting();
   const insight = getGMContextualInsight({ stats });
 
+  // Rate metrics (already expressed as percentages) show absolute point-change (pp).
+  // Count metrics show relative % change.
+  const ptChange = (cur, prev) => (cur != null && prev != null ? Math.round(cur - prev) : null);
   const gmTiles = [
-    { label: "Conversion Rate", value: `${stats.conversionRate}%`, relChange: relChange(stats.conversionRate, prevStats?.conversionRate), metricKey: "conversion_rate" },
-    { label: "Contacted < 30 min", value: `${stats.pctWithin30}%`, relChange: relChange(stats.pctWithin30, prevStats?.pctWithin30), metricKey: "contacted_within_30_min" },
-    { label: "Comment Compliance", value: `${stats.commentCompliance}%`, relChange: relChange(stats.commentCompliance, prevStats?.commentCompliance), metricKey: "comment_rate" },
-    { label: "Branch Contact %", value: `${stats.branchPct}%`, relChange: relChange(stats.branchPct, prevStats?.branchPct), metricKey: "branch_vs_hrd_split" },
+    { label: "Conversion Rate", value: `${stats.conversionRate}%`, relChange: ptChange(stats.conversionRate, prevStats?.conversionRate), metricKey: "conversion_rate" },
+    { label: "Contacted < 30 min", value: `${stats.pctWithin30}%`, relChange: ptChange(stats.pctWithin30, prevStats?.pctWithin30), metricKey: "contacted_within_30_min" },
+    { label: "Comment Compliance", value: `${stats.commentCompliance}%`, relChange: ptChange(stats.commentCompliance, prevStats?.commentCompliance), metricKey: "comment_rate" },
+    { label: "Branch Contact %", value: `${stats.branchPct}%`, relChange: ptChange(stats.branchPct, prevStats?.branchPct), metricKey: "branch_vs_hrd_split" },
     { label: "Cancelled Unreviewed", value: stats.cancelledUnreviewed, relChange: relChange(stats.cancelledUnreviewed, prevStats?.cancelledUnreviewed), isAlert: stats.cancelledUnreviewed > 0, lowerIsBetter: true, metricKey: "cancelled_unreviewed" },
     { label: "No Contact Attempt", value: stats.noContactAttempt, relChange: relChange(stats.noContactAttempt, prevStats?.noContactAttempt), isAlert: stats.noContactAttempt > 0, lowerIsBetter: true, metricKey: "no_contact_attempt" },
   ];
@@ -621,6 +643,11 @@ export function GMDashboardPage({ navigateTo }) {
               leaderboardRows={(snapshot?.leaderboard ?? []).filter((r) =>
                 (snapshotGM?.branches ?? []).includes(r.branch),
               )}
+              allLeaderboardRows={snapshot?.leaderboard ?? []}
+              branchesSnapshot={snapshot?.branches ?? null}
+              zonesSnapshot={snapshot?.zones ?? null}
+              gmZone={snapshotGM?.zone ?? null}
+              gmName={gmName}
             />
           );
         })()}
@@ -662,8 +689,11 @@ export function GMDashboardPage({ navigateTo }) {
         {/* Time filter */}
         <div className="flex items-center gap-2 mb-4">
           <span className="px-2.5 py-1 rounded-md text-xs font-medium bg-[var(--hertz-primary)] text-[var(--hertz-black)] shadow-[var(--shadow-md)]">
-            Trailing 4 weeks{currentPreset?.sublabel ? ` ${currentPreset.sublabel}` : ""}
+            Trailing 4 weeks{dateRange?.end ? ` ending ${formatDateShort(dateRange.end)}` : (currentPreset?.sublabel ? ` ${currentPreset.sublabel}` : "")}
           </span>
+          {dateRange?.start && dateRange?.end && (
+            <span className="text-xs text-[var(--neutral-600)] font-medium">{formatDateRange({ start: dateRange.start, end: dateRange.end })}</span>
+          )}
         </div>
 
         {/* Metric tiles — 2 rows of 3, BM black-tile format */}
@@ -683,12 +713,12 @@ export function GMDashboardPage({ navigateTo }) {
               </div>
               <div className="flex items-center gap-2 mt-0.5">
                 <p className="text-xl font-extrabold tracking-tight text-white">{tile.value}</p>
-                {prevRange != null && tile.relChange != null && (
+                {prevRange != null && tile.relChange != null && tile.relChange !== 0 && (
                   <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
-                    tile.relChange > 0 ? "bg-emerald-400/25 text-emerald-200" : tile.relChange < 0 ? "bg-rose-400/25 text-rose-200" : "bg-white/15 text-white/70"
+                    tile.relChange > 0 ? "bg-emerald-400/25 text-emerald-200" : "bg-rose-400/25 text-rose-200"
                   }`}>
-                    {tile.relChange > 0 ? "↑" : tile.relChange < 0 ? "↓" : "—"}
-                    {tile.relChange !== 0 ? `${Math.abs(tile.relChange)}%` : ""}
+                    {tile.relChange > 0 ? "↑" : "↓"}
+                    {`${Math.abs(tile.relChange)}%`}
                   </span>
                 )}
               </div>

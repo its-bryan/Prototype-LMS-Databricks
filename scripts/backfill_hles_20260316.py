@@ -163,7 +163,7 @@ def run(apply: bool):
                     rent_loc = v.rent_loc, week_of = v.week_of, contact_range = v.contact_range,
                     first_contact_by = v.first_contact_by,
                     time_to_first_contact = v.time_to_first_contact,
-                    updated_at = now()
+                    archived = false, updated_at = now()
                 FROM (VALUES {placeholders}) AS v(
                     confirm_num, customer, status, branch, bm_name, insurance_company, hles_reason,
                     init_dt_final, confirm_num2, reservation_id, knum, body_shop, cdp_name,

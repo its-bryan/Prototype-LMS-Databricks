@@ -34,7 +34,7 @@ function fmtMD(d) {
 }
 
 export default function InteractiveGMLeaderboardPage() {
-  const { loading, initialDataReady, snapshot, orgMapping } = useData();
+  const { loading, initialDataReady, snapshot, orgMapping, leads } = useData();
   const { userProfile } = useAuth();
   const navigate = useNavigate();
 
@@ -52,13 +52,29 @@ export default function InteractiveGMLeaderboardPage() {
     return resolveGMName(name, userProfile?.id);
   }, [userProfile?.displayName, userProfile?.id, orgMapping]);
 
-  // Trailing 4 weeks preset — locked; used as fallback dateRange when snapshot is unavailable
+  // Use snapshot.period for the T4W date range (matches summary metrics exactly);
+  // fall back to JS-derived preset only when snapshot is unavailable.
   const presets = useMemo(() => getDateRangePresets(), [loading]);
   const trailing4wPreset = presets.find((p) => p.key === "trailing_4_weeks");
-  const dateRange = trailing4wPreset ? { start: trailing4wPreset.start, end: trailing4wPreset.end } : null;
+  const dateRange = useMemo(() => {
+    if (snapshot?.period?.start && snapshot?.period?.end) {
+      return {
+        start: new Date(snapshot.period.start + "T12:00:00Z"),
+        end: new Date(snapshot.period.end + "T12:00:00Z"),
+      };
+    }
+    return trailing4wPreset ? { start: trailing4wPreset.start, end: trailing4wPreset.end } : null;
+  }, [snapshot?.period, trailing4wPreset]);
 
-  // Comparison period for "Change" column header: the 4 weeks before the current trailing_4_weeks
+  // Comparison period for "Change" column header.
+  // Prefer snapshot.comparison (reflects actual HLES data dates); fall back to calendar-derived.
   const comparisonDateRange = useMemo(() => {
+    if (snapshot?.comparison?.start && snapshot?.comparison?.end) {
+      return {
+        start: new Date(snapshot.comparison.start + "T12:00:00Z"),
+        end: new Date(snapshot.comparison.end + "T12:00:00Z"),
+      };
+    }
     if (!trailing4wPreset) return null;
     const end = new Date(trailing4wPreset.end);
     end.setDate(end.getDate() - 7);
@@ -67,7 +83,7 @@ export default function InteractiveGMLeaderboardPage() {
     start.setDate(end.getDate() - 27);
     start.setHours(0, 0, 0, 0);
     return { start, end };
-  }, [trailing4wPreset]);
+  }, [snapshot?.comparison, trailing4wPreset]);
 
   // snapshot.leaderboard filtered to GM's branches, re-sorted client-side.
   // If snapshot is not ready, show an empty leaderboard (no full leads array).
@@ -265,7 +281,7 @@ export default function InteractiveGMLeaderboardPage() {
           <BranchDetailPane
             branchRow={selectedBranch}
             dateRange={dateRange}
-            leads={[]}
+            leads={leads}
             onClose={() => setSelectedBranch(null)}
           />
         )}

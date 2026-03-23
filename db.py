@@ -129,8 +129,9 @@ def _ensure_pool() -> ConnectionPool:
                 conninfo=conninfo,
                 min_size=_POOL_MIN,
                 max_size=_POOL_MAX,
-                max_lifetime=3600,
-                max_idle=600,
+                max_lifetime=300,   # 5 min — Neon drops idle SSL connections ~5 min
+                max_idle=60,        # recycle idle connections every 60s for Neon
+                reconnect_timeout=10,
                 kwargs={"row_factory": dict_row},
                 open=True,
                 timeout=30,

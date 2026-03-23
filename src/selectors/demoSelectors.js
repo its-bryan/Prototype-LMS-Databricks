@@ -72,9 +72,10 @@ export function setNowFromLeads(leads) {
  */
 export function setNowFromDate(isoDateStr) {
   if (!isoDateStr) return;
-  const d = new Date(isoDateStr + (isoDateStr.length <= 10 ? "T09:00:00" : ""));
+  // Use noon UTC so the date is unambiguous across all timezones when
+  // rendered in PST (noon UTC = 4am PST, safely the correct calendar day).
+  const d = new Date(isoDateStr.length <= 10 ? isoDateStr + "T12:00:00Z" : isoDateStr);
   if (isNaN(d.getTime())) return;
-  d.setHours(9, 0, 0, 0);
   NOW = d;
 }
 
@@ -126,7 +127,7 @@ export function getDateRangePresets() {
   trailing4WeeksEnd.setHours(23, 59, 59, 999);
   const trailing4WeeksStart = new Date(trailing4WeeksEnd);
   trailing4WeeksStart.setDate(trailing4WeeksEnd.getDate() - 27);
-  trailing4WeeksStart.setHours(0, 0, 0, 0);
+  trailing4WeeksStart.setHours(12, 0, 0, 0); // noon avoids PST/EDT day-boundary shift in formatDateShort
 
   const endLabelDate = new Date(lastSunday);
   endLabelDate.setHours(12, 0, 0, 0); // noon avoids PST day-boundary shift
@@ -1354,8 +1355,8 @@ function computeBranchMetrics(leads, branch, dateRange) {
   const conversionRate = total ? Math.round((rented / total) * 100) : null;
 
   const pctWithin30 = getPctContactedWithin30Min(filtered);
-  const { branch: branchContact } = getBranchVsHrdSplit(filtered);
-  const branchHrdPct = total ? Math.round((branchContact / total) * 100) : null;
+  const { branch: branchContact, hrd: hrdContact } = getBranchVsHrdSplit(filtered);
+  const branchHrdPct = (branchContact + hrdContact) > 0 ? Math.round((branchContact / (branchContact + hrdContact)) * 100) : null;
 
   const enriched = filtered.filter((l) => l.enrichmentComplete).length;
   const commentRate = total > 0 ? Math.round((enriched / total) * 100) : null;

@@ -1,6 +1,6 @@
 function parseDate(val) {
   if (!val) return null;
-  const d = new Date(`${val}T12:00:00`);
+  const d = new Date(`${val}T12:00:00Z`);
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
@@ -65,7 +65,7 @@ export function buildTrendPoints({
     if (zoneFiltered && !zoneSet.has(branchData.zone)) continue;
     if (gmFiltered && !gmSet.has(branchData.gm)) continue;
     if (amFiltered && !amSet.has(branchData.am)) continue;
-    if (hertzZoneFiltered && !hertzZoneSet.has(branchData.hertzZone || "ù")) continue;
+    if (hertzZoneFiltered && !hertzZoneSet.has(branchData.hertzZone || "ÔøΩ")) continue;
 
     const series = granularity === "month" ? (branchData.monthly ?? []) : (branchData.weekly ?? []);
     for (let i = 0; i < points.length; i++) {
@@ -178,12 +178,12 @@ export function buildGMLeaderboard({
   const byGM = new Map();
 
   for (const branchData of Object.values(snapshot.branches)) {
-    if (hertzZoneFiltered && !hertzZoneSet.has(branchData.hertzZone || "ù")) continue;
-    const gm = branchData.gm && branchData.gm !== "ù" ? branchData.gm : "Unassigned";
+    if (hertzZoneFiltered && !hertzZoneSet.has(branchData.hertzZone || "ÔøΩ")) continue;
+    const gm = branchData.gm && branchData.gm !== "ÔøΩ" ? branchData.gm : "Unassigned";
     if (!byGM.has(gm)) {
       byGM.set(gm, {
         gm,
-        zone: branchData.zone || "ù",
+        zone: branchData.zone || "ÔøΩ",
         currentRows: [],
         prevRows: [],
       });

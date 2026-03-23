@@ -369,12 +369,31 @@ async def get_gm_meeting_prep_stats(
     }
 
     leads_in_period = [r for r in rows if _lead_in_date_range(r, start_date, end_date)]
-    leads_to_review_total = len(leads_in_period)
-    leads_reviewed = sum(
-        1 for r in leads_in_period if (r.get("gm_directive") or "").strip()
-    )
-
     actionable = [r for r in leads_in_period if r.get("status") in ("Cancelled", "Unused")]
+
+    # Use a SQL count with the same filters as /leads to guarantee consistency
+    count_where = ["archived = false", "status IN ('Cancelled', 'Unused')"]
+    count_params: list = []
+    count_where.append(
+        f"regexp_replace(branch, '\\s+', ' ', 'g') IN ({placeholders})"
+    )
+    count_params.extend(normalized)
+    if start_date:
+        count_where.append("COALESCE(init_dt_final, week_of) >= %s::date")
+        count_params.append(start_date)
+    if end_date:
+        count_where.append("COALESCE(init_dt_final, week_of) <= %s::date")
+        count_params.append(end_date)
+    count_sql = " AND ".join(count_where)
+    count_rows = query(
+        f"SELECT COUNT(*)::int AS total,"
+        f" SUM(CASE WHEN gm_directive IS NOT NULL AND gm_directive != '' THEN 1 ELSE 0 END)::int AS reviewed"
+        f" FROM leads WHERE {count_sql}",
+        tuple(count_params),
+    )
+    leads_to_review_total = (count_rows[0]["total"] if count_rows else 0) or 0
+    leads_reviewed = (count_rows[0]["reviewed"] if count_rows else 0) or 0
+
     unreachable = [r for r in actionable if _is_no_contact_attempt(r)]
     unreachable_count = len(unreachable)
     unreachable_pct = round((unreachable_count / len(actionable)) * 100) if actionable else 0

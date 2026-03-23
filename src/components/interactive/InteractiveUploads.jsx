@@ -88,7 +88,7 @@ function StepIndicator({ currentStep }) {
 }
 
 function ingestionBadge(status) {
-  if (status === "in_progress") {
+  if (status === "in_progress" || status === "rebuilding_snapshots") {
     return { label: "In progress", className: "bg-blue-100 text-blue-800" };
   }
   if (status === "failed") {
@@ -638,12 +638,13 @@ export default function InteractiveUploads() {
     setHlesReconciliation(null);
     setParsing(true);
     setValidateProgress({ phase: "Preparing…", pct: 5 });
-    setStep("validate");
 
     const parseStartTs = Date.now();
 
     await new Promise((r) => requestAnimationFrame(r));
     await new Promise((r) => requestAnimationFrame(r));
+
+    setStep("validate");
 
     try {
       setValidateProgress({ phase: "Reading and parsing HLES file…", pct: 15 });
@@ -690,6 +691,7 @@ export default function InteractiveUploads() {
         const result = await uploadHlesFile(hlesFile, {
           uploadedBy: userProfile?.displayName ?? undefined,
         });
+        setCommitProgress({ phase: "Upload complete", pct: 100 });
         setCommitResult({
           hles: {
             inserted: result.newLeads ?? 0,
@@ -730,11 +732,11 @@ export default function InteractiveUploads() {
   useEffect(() => {
     const uploadId = commitResult?.ingestion?.uploadId;
     const state = commitResult?.ingestion?.state;
-    if (!uploadId || state !== "in_progress") return;
+    if (!uploadId || (state !== "in_progress" && state !== "rebuilding_snapshots")) return;
 
     let isCancelled = false;
     let attempts = 0;
-    const maxAttempts = 40;
+    const maxAttempts = 120;
 
     const poll = async () => {
       attempts += 1;
@@ -745,6 +747,13 @@ export default function InteractiveUploads() {
           if (!prev) return prev;
           return {
             ...prev,
+            hles: {
+              ...(prev.hles ?? {}),
+              inserted: status.newLeads ?? prev.hles?.inserted ?? 0,
+              updated: status.updated ?? prev.hles?.updated ?? 0,
+              failed: status.failed ?? prev.hles?.failed ?? 0,
+              rowsParsed: status.rowsParsed ?? prev.hles?.rowsParsed ?? 0,
+            },
             ingestion: {
               ...(prev.ingestion ?? {}),
               uploadId,
@@ -842,31 +851,30 @@ export default function InteractiveUploads() {
         {/* ---- STEP: SELECT FILES ---- */}
         {step === "select" && (
           <motion.div key="select" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <div className="max-w-md mb-6">
-              <p className="text-sm font-semibold text-[var(--hertz-black)] mb-2">HLES Conversion Data</p>
-              <FileDropZone
-                label="Drop HLES CSV file here"
-                accept=".csv,.xlsx"
-                file={hlesFile}
-                onFileSelect={setHlesFile}
-              />
-            </div>
-            <div className="flex justify-end">
-              <button
-                onClick={handleValidate}
-                disabled={!hlesFile || validateStarting}
-                className="px-5 py-2.5 bg-[var(--hertz-primary)] text-[var(--hertz-black)] rounded-lg text-sm font-semibold hover:bg-[#E6BC00] transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                {validateStarting ? (
-                  <span className="inline-flex items-center gap-2">
-                    <span className="w-3.5 h-3.5 border-2 border-[var(--hertz-black)] border-t-transparent rounded-full animate-spin" />
-                    Uploading...
-                  </span>
-                ) : (
-                  "Upload & Validate"
-                )}
-              </button>
-            </div>
+            {validateStarting ? (
+              <ValidateStepLoader progress={validateProgress} />
+            ) : (
+              <>
+                <div className="max-w-md mb-6">
+                  <p className="text-sm font-semibold text-[var(--hertz-black)] mb-2">HLES Conversion Data</p>
+                  <FileDropZone
+                    label="Drop HLES CSV file here"
+                    accept=".csv,.xlsx"
+                    file={hlesFile}
+                    onFileSelect={setHlesFile}
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    onClick={handleValidate}
+                    disabled={!hlesFile}
+                    className="px-5 py-2.5 bg-[var(--hertz-primary)] text-[var(--hertz-black)] rounded-lg text-sm font-semibold hover:bg-[#E6BC00] transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Upload & Validate
+                  </button>
+                </div>
+              </>
+            )}
           </motion.div>
         )}
 
@@ -987,7 +995,7 @@ export default function InteractiveUploads() {
         )}
 
         {/* ---- STEP: COMMIT ---- */}
-        {step === "commit" && committing && (
+        {step === "commit" && (
           <motion.div key="commit" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <div className="py-12 max-w-md mx-auto">
               <div className="flex items-center gap-3 mb-6">
@@ -1031,48 +1039,102 @@ export default function InteractiveUploads() {
           <motion.div key="summary" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             {(() => {
               const ingestion = commitResult.ingestion ?? { state: "success" };
-              const badge = ingestionBadge(ingestion.state);
-              const title =
-                ingestion.state === "in_progress"
-                  ? "Upload accepted"
-                  : ingestion.state === "failed"
-                    ? "Upload complete with ingestion errors"
-                    : "Upload complete";
-              const subtitle =
-                ingestion.state === "in_progress"
-                  ? "File upload succeeded. Data ingestion jobs are still running in the background."
-                  : ingestion.state === "failed"
-                    ? "File upload succeeded, but one or more downstream ingestion jobs failed."
-                    : "Data has been processed and committed successfully. It is now visible across all views.";
+              const isFailed = ingestion.state === "failed";
+              const isSuccess = ingestion.state === "success";
+              const dbDone = ingestion.state === "rebuilding_snapshots" || isSuccess;
+              const snapshotDone = isSuccess;
+
+              const title = isFailed
+                ? "Upload complete with errors"
+                : isSuccess
+                  ? "Upload complete"
+                  : "Upload accepted";
+              const subtitle = isFailed
+                ? "File upload succeeded, but one or more downstream jobs failed."
+                : isSuccess
+                  ? "Data has been processed and committed successfully. It is now visible across all views."
+                  : "File accepted. Processing in the background.";
+
+              const rowsParsed = commitResult.hles?.rowsParsed ?? 0;
+              const inserted = commitResult.hles?.inserted ?? 0;
+              const updated = commitResult.hles?.updated ?? 0;
+              const processed = inserted + updated;
+              const dbPct = rowsParsed > 0
+                ? Math.min(100, Math.round((processed / rowsParsed) * 100))
+                : (dbDone ? 100 : 0);
 
               return (
-                <div className="text-center mb-8">
-                  <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
-                    ingestion.state === "failed" ? "bg-[#FFEBEE]" : "bg-[#E8F5E9]"
-                  }`}>
-                    {ingestion.state === "failed" ? (
+                <div className="mb-8">
+                  <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${isFailed ? "bg-[#FFEBEE]" : "bg-[#E8F5E9]"}`}>
+                    {isFailed ? (
                       <svg className="w-8 h-8 text-[#C62828]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
-                    ) : ingestion.state === "in_progress" ? (
-                      <div className="w-8 h-8 border-2 border-[var(--hertz-primary)] border-t-transparent rounded-full animate-spin" />
-                    ) : (
+                    ) : isSuccess ? (
                       <svg className="w-8 h-8 text-[#2E7D32]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
+                    ) : (
+                      <div className="w-8 h-8 border-2 border-[var(--hertz-primary)] border-t-transparent rounded-full animate-spin" />
                     )}
                   </div>
-                  <h3 className="text-lg font-bold text-[var(--hertz-black)]">{title}</h3>
-                  <p className="text-sm text-[var(--neutral-500)] mt-1">{subtitle}</p>
+                  <h3 className="text-lg font-bold text-[var(--hertz-black)] text-center">{title}</h3>
+                  <p className="text-sm text-[var(--neutral-500)] mt-1 text-center">{subtitle}</p>
 
-                  <div className="mt-4 inline-flex items-center gap-2 rounded-lg border border-[var(--neutral-200)] bg-white px-3 py-2">
-                    <span className="text-xs font-semibold text-[var(--neutral-600)] uppercase tracking-wide">Data ingestion status</span>
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${badge.className}`}>
-                      {ingestion.state === "in_progress" && (
-                        <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
-                      )}
-                      {badge.label}
-                    </span>
+                  <div className="mt-6 border border-[var(--neutral-200)] rounded-lg p-4 bg-white space-y-4">
+                    {/* Step 1: DB write */}
+                    <div>
+                      <div className="flex justify-between items-center mb-1.5">
+                        <span className="text-xs font-semibold text-[var(--neutral-600)] uppercase tracking-wide flex items-center gap-1.5">
+                          {dbDone
+                            ? <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                            : <span className="w-3.5 h-3.5 rounded-full border-2 border-[var(--hertz-primary)] border-t-transparent animate-spin inline-block" />
+                          }
+                          Rows ingested
+                        </span>
+                        <span className="text-xs font-medium text-[var(--neutral-600)]">
+                          {rowsParsed > 0 ? `${processed.toLocaleString()} / ${rowsParsed.toLocaleString()}` : `${dbPct}%`}
+                        </span>
+                      </div>
+                      <div className="w-full h-2 bg-[var(--neutral-100)] rounded-full overflow-hidden">
+                        <motion.div
+                          className={`h-full rounded-full ${isFailed ? "bg-[#C62828]" : "bg-[var(--hertz-primary)]"}`}
+                          initial={{ width: 0 }}
+                          animate={{ width: `${dbPct}%` }}
+                          transition={{ duration: 0.4, ease: "easeOut" }}
+                        />
+                      </div>
+                      <p className="text-xs text-[var(--neutral-500)] mt-1">{inserted.toLocaleString()} new · {updated.toLocaleString()} updated</p>
+                    </div>
+
+                    {/* Step 2: Snapshot rebuild */}
+                    <div>
+                      <div className="flex justify-between items-center mb-1.5">
+                        <span className="text-xs font-semibold text-[var(--neutral-600)] uppercase tracking-wide flex items-center gap-1.5">
+                          {snapshotDone
+                            ? <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                            : dbDone
+                              ? <span className="w-3.5 h-3.5 rounded-full border-2 border-[var(--hertz-primary)] border-t-transparent animate-spin inline-block" />
+                              : <span className="w-3.5 h-3.5 rounded-full border-2 border-[var(--neutral-300)] inline-block" />
+                          }
+                          Rebuilding dashboards
+                        </span>
+                        <span className="text-xs font-medium text-[var(--neutral-600)]">
+                          {snapshotDone ? "100%" : dbDone ? "Running…" : "Waiting"}
+                        </span>
+                      </div>
+                      <div className="w-full h-2 bg-[var(--neutral-100)] rounded-full overflow-hidden">
+                        <motion.div
+                          className="h-full rounded-full bg-[var(--hertz-primary)]"
+                          initial={{ width: 0 }}
+                          animate={{ width: snapshotDone ? "100%" : "0%" }}
+                          transition={{ duration: 0.4, ease: "easeOut" }}
+                        />
+                      </div>
+                      <p className="text-xs text-[var(--neutral-500)] mt-1">
+                        {snapshotDone ? "Snapshots up to date" : dbDone ? "Computing performance metrics…" : "Starts after rows are ingested"}
+                      </p>
+                    </div>
                   </div>
                   {ingestion.error && (
                     <p className="text-xs text-[#C62828] mt-2">{ingestion.error}</p>

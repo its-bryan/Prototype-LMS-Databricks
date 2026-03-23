@@ -2,20 +2,60 @@
  * Branch Detail — Slide-in pane from right showing line-level lead data
  * that powers the GM leaderboard metrics for a branch.
  */
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import StatusBadge from "../StatusBadge";
+import { useData } from "../../context/DataContext";
 import { getLeadsForBranchInRange } from "../../selectors/demoSelectors";
 import { formatDateRange, formatDateShort } from "../../utils/dateTime";
+
+function toISODate(d) {
+  if (!d) return null;
+  if (typeof d === "string") return d.slice(0, 10);
+  return d.toISOString().slice(0, 10);
+}
 
 function formatDateRangeDisplay(dateRange) {
   return formatDateRange(dateRange?.start, dateRange?.end) || "";
 }
 
 export default function BranchDetailPane({ branchRow, dateRange, leads, onClose }) {
-  const branchLeads = branchRow
+  const { fetchLeadsPage } = useData();
+  const [apiLeads, setApiLeads] = useState(null);
+  const [loadingLeads, setLoadingLeads] = useState(false);
+
+  // In live API mode, `leads` from context is empty — fetch from API instead.
+  const localLeads = branchRow
     ? getLeadsForBranchInRange(leads ?? [], dateRange, branchRow.branch)
     : [];
+
+  useEffect(() => {
+    if (!branchRow || localLeads.length > 0) {
+      setApiLeads(null);
+      return;
+    }
+    let cancelled = false;
+    setLoadingLeads(true);
+    fetchLeadsPage({
+      branch: branchRow.branch,
+      startDate: toISODate(dateRange?.start),
+      endDate: toISODate(dateRange?.end),
+      limit: 500,
+      offset: 0,
+    })
+      .then((res) => {
+        if (!cancelled) setApiLeads(res.items ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setApiLeads([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingLeads(false);
+      });
+    return () => { cancelled = true; };
+  }, [branchRow?.branch, dateRange?.start, dateRange?.end]);
+
+  const branchLeads = localLeads.length > 0 ? localLeads : (apiLeads ?? []);
 
   useEffect(() => {
     const handleEscape = (e) => {
@@ -111,7 +151,13 @@ export default function BranchDetailPane({ branchRow, dateRange, leads, onClose 
                       </tr>
                     </thead>
                     <tbody>
-                      {branchLeads.length === 0 ? (
+                      {loadingLeads ? (
+                        <tr>
+                          <td colSpan={7} className="px-4 py-12 text-center text-[var(--neutral-500)]">
+                            Loading leads…
+                          </td>
+                        </tr>
+                      ) : branchLeads.length === 0 ? (
                         <tr>
                           <td colSpan={7} className="px-4 py-12 text-center text-[var(--neutral-500)]">
                             No leads in this period

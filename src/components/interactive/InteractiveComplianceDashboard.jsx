@@ -44,10 +44,15 @@ export default function InteractiveComplianceDashboard() {
   const [sortMetric, setSortMetric] = useState("conversionRate");
 
   const currentPreset = presets.find((p) => p.key === selectedPresetKey);
-  const dateRange = useMemo(
-    () => (currentPreset ? { start: currentPreset.start, end: currentPreset.end } : null),
-    [currentPreset],
-  );
+  const dateRange = useMemo(() => {
+    if (snapshot?.period?.start && snapshot?.period?.end) {
+      return {
+        start: new Date(snapshot.period.start + "T12:00:00Z"),
+        end: new Date(snapshot.period.end + "T12:00:00Z"),
+      };
+    }
+    return currentPreset ? { start: currentPreset.start, end: currentPreset.end } : null;
+  }, [snapshot?.period, currentPreset]);
   const insuranceCompanies = [];
   const branches = useMemo(() => [...new Set(gmBranches)].sort(), [gmBranches]);
 
@@ -89,7 +94,15 @@ export default function InteractiveComplianceDashboard() {
   const benchVal = leaderboard.benchmark?.[sortMetric];
   const benchWidth = benchVal != null ? Math.min(100, benchVal) : null;
 
-  const comparisonRange = useMemo(() => getComparisonDateRange(selectedPresetKey), [selectedPresetKey]);
+  const comparisonRange = useMemo(() => {
+    if (snapshot?.comparison?.start && snapshot?.comparison?.end) {
+      return {
+        start: new Date(snapshot.comparison.start + "T12:00:00Z"),
+        end: new Date(snapshot.comparison.end + "T12:00:00Z"),
+      };
+    }
+    return getComparisonDateRange(selectedPresetKey);
+  }, [snapshot?.comparison, selectedPresetKey]);
   const prevStats = useMemo(() => {
     const snGm = snapshot?.gms?.[gmName];
     if (snGm?.comparison) return snGm.comparison;
@@ -138,6 +151,7 @@ export default function InteractiveComplianceDashboard() {
             contacted_within_30_min: prevStats?.pctWithin30,
             branch_vs_hrd_split: prevStats?.branchPct,
           };
+          const snGm = snapshot?.gms?.[gmName];
           return (
             <GMMetricDrilldownModal
               metricKey={drilldownMetric}
@@ -149,6 +163,14 @@ export default function InteractiveComplianceDashboard() {
               previousValue={prevMetricValueMap[drilldownMetric]}
               selectedPresetKey={selectedPresetKey}
               gmName={gmName}
+              chartData={snGm?.chartData ?? []}
+              leaderboardRows={(snapshot?.leaderboard ?? []).filter((r) =>
+                (snGm?.branches ?? []).includes(r.branch)
+              )}
+              allLeaderboardRows={snapshot?.leaderboard ?? []}
+              branchesSnapshot={snapshot?.branches ?? null}
+              zonesSnapshot={snapshot?.zones ?? null}
+              gmZone={snGm?.zone ?? null}
             />
           );
         })()}

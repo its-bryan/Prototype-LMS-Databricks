@@ -41,7 +41,7 @@ function BarVisual({ rate, maxRate, delta }) {
   );
 }
 
-function getOverallData() {
+function getOverallData(leaderboardData) {
   const overall = [
     ...leaderboardData.branches.map((b) => ({ ...b, type: "Branch" })),
     ...leaderboardData.gms.map((g) => ({ ...g, type: "GM" })),
@@ -80,7 +80,7 @@ export default function InteractiveLeaderboard() {
   const [sortByImproved, setSortByImproved] = useState(false);
 
   let data = activeFilter === "overall"
-    ? getOverallData()
+    ? getOverallData(leaderboardData)
     : leaderboardData[activeFilter].map((d, i) => ({ ...d, rank: i + 1 }));
 
   if (sortByImproved && activeFilter === "branches") {

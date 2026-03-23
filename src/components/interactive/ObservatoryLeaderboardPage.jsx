@@ -15,7 +15,7 @@ function formatDelta(value) {
 
 function parseIsoDate(isoDate) {
   if (!isoDate) return null;
-  const d = new Date(`${isoDate}T12:00:00`);
+  const d = new Date(`${isoDate}T12:00:00Z`);
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
@@ -29,45 +29,64 @@ function formatDateShort(date) {
   return date.toLocaleDateString("en-US", { month: "short", day: "2-digit" });
 }
 
-function buildTrailingFourWeekOptions(weekLabels) {
+/**
+ * Build T4W timeline options matching snapshot.py _trailing_4_weeks exactly:
+ *   current:    (now - 27) .. now          (28-day span)
+ *   shifted:    (now - 27 - 7*i) .. (now - 7*i)   per historical step
+ *
+ * Labels show the raw (now-27)..(now) date span so they match the summary
+ * metrics view. The underlying start/end week-label keys select the correct
+ * weekly buckets for data aggregation via getWeekIndicesInRange.
+ */
+function buildTrailingFourWeekOptions(weekLabels, snapshotNow) {
   if (!Array.isArray(weekLabels) || weekLabels.length === 0) return [];
-  const today = new Date();
-  const todayNoon = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12, 0, 0, 0);
-  const lastSunday = addDays(todayNoon, -todayNoon.getDay());
 
   const weekRows = weekLabels
     .map((week) => {
       const monday = parseIsoDate(week);
       if (!monday) return null;
-      return {
-        week,
-        monday,
-        sunday: addDays(monday, 6),
-      };
+      return { week, monday };
     })
     .filter(Boolean);
-
   if (!weekRows.length) return [];
-  let endIndex = weekRows.length - 1;
-  while (endIndex >= 0 && weekRows[endIndex].sunday > lastSunday) {
-    endIndex -= 1;
-  }
-  if (endIndex < 0) endIndex = weekRows.length - 1;
+
+  // Anchor = snapshot.period.end (actual max data date), matching summary metrics
+  const anchor = snapshotNow ? parseIsoDate(snapshotNow) : null;
+  if (!anchor) return [];
+
+  const firstMonday = weekRows[0].monday;
 
   const options = [];
-  for (let idx = endIndex; idx >= 3 && options.length < 8; idx -= 1) {
-    const startWeek = weekRows[idx - 3].week;
-    const endWeek = weekRows[idx].week;
-    const startMonday = weekRows[idx - 3].monday;
-    const endSunday = weekRows[idx].sunday;
+  for (let i = 0; i < 8; i++) {
+    // Mirror _trailing_4_weeks: end = now - 7*i, start = end - 27
+    const periodEnd = addDays(anchor, -(i * 7));
+    const periodStart = addDays(periodEnd, -27);
+
+    // Find week-label keys that cover this period for data aggregation:
+    // startWeek = Monday of the week containing periodStart
+    // endWeek   = Monday of the week containing periodEnd
+    const startWeekRow = findWeekContaining(weekRows, periodStart);
+    const endWeekRow = findWeekContaining(weekRows, periodEnd);
+    if (!startWeekRow || !endWeekRow) break;
+    // Stop if we'd go before available data
+    if (startWeekRow.monday < firstMonday) break;
+
     options.push({
-      key: `${startWeek}|${endWeek}`,
-      start: startWeek,
-      end: endWeek,
-      label: `${formatDateShort(startMonday)} - ${formatDateShort(endSunday)}`,
+      key: `${startWeekRow.week}|${endWeekRow.week}`,
+      start: startWeekRow.week,
+      end: endWeekRow.week,
+      label: `${formatDateShort(periodStart)} - ${formatDateShort(periodEnd)}`,
     });
   }
   return options;
+}
+
+/** Find the week row whose Monday..Sunday range contains the given date. */
+function findWeekContaining(weekRows, d) {
+  for (let i = weekRows.length - 1; i >= 0; i--) {
+    if (weekRows[i].monday <= d) return weekRows[i];
+  }
+  return null;
 }
 
 function LeaderboardTable({ title, rows, metricKey, showChangeColumn = false }) {
@@ -131,11 +150,14 @@ function LeaderboardTable({ title, rows, metricKey, showChangeColumn = false }) 
 }
 
 export default function ObservatoryLeaderboardPage() {
-  const { observatorySnapshot } = useData();
+  const { observatorySnapshot, snapshot } = useData();
   const filters = useMemo(() => listFilters(observatorySnapshot), [observatorySnapshot]);
 
   const weekLabels = observatorySnapshot?.weeks ?? [];
-  const timelineOptions = useMemo(() => buildTrailingFourWeekOptions(weekLabels), [weekLabels]);
+  // Use main snapshot's period.end as anchor (matches summary metrics T4W exactly),
+  // falling back to observatorySnapshot.now
+  const snapshotNow = snapshot?.period?.end ?? observatorySnapshot?.now ?? null;
+  const timelineOptions = useMemo(() => buildTrailingFourWeekOptions(weekLabels, snapshotNow), [weekLabels, snapshotNow]);
   const [selectedTimelineKey, setSelectedTimelineKey] = useState("");
   const [metricKey, setMetricKey] = useState("conversion");
   const [excludeBelow20, setExcludeBelow20] = useState(true);

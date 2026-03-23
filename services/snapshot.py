@@ -29,14 +29,22 @@ def _get_monday(d: date) -> date:
 
 
 def _get_now(leads: list[dict]) -> date:
-    """Determine NOW the same way setNowFromLeads() does in JS.
+    """Return the actual latest date present in the lead data.
 
-    Picks the latest Monday derived from week_of / init_dt_final across all
-    leads, then takes the Sunday of that week. If that Sunday is in the future
-    relative to the current calendar week's Sunday, use the calendar Sunday.
+    Uses the maximum init_dt_final (actual lead date) across all leads,
+    capped at today to avoid future-dated leads pushing NOW forward.
+    Falls back to the Sunday of the latest week_of week if no init_dt_final
+    values are present.
     """
+    max_date: date | None = None
     max_monday: date | None = None
     for lead in leads:
+        init_dt = lead.get("init_dt_final")
+        if init_dt:
+            d = _to_date(init_dt)
+            if d:
+                if max_date is None or d > max_date:
+                    max_date = d
         week_of = lead.get("week_of")
         if week_of:
             d = _to_date(week_of)
@@ -44,20 +52,17 @@ def _get_now(leads: list[dict]) -> date:
                 mon = _get_monday(d)
                 if max_monday is None or mon > max_monday:
                     max_monday = mon
-        init_dt = lead.get("init_dt_final")
-        if init_dt:
-            d = _to_date(init_dt)
-            if d:
-                mon = _get_monday(d)
-                if max_monday is None or mon > max_monday:
-                    max_monday = mon
 
+    today = date.today()
+
+    if max_date is not None:
+        return min(max_date, today)
+
+    # Fallback: use Sunday of the latest week_of week
     if max_monday is None:
-        return date.today()
-
+        return today
     data_sunday = max_monday + timedelta(days=6)
-    cal_monday = _get_monday(date.today())
-    cal_sunday = cal_monday + timedelta(days=6)
+    cal_sunday = _get_monday(today) + timedelta(days=6)
     return data_sunday if data_sunday <= cal_sunday else cal_sunday
 
 
@@ -192,6 +197,27 @@ def _parse_time_to_minutes(s) -> float | None:
 
 
 # ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _w30_eligible(leads: list[dict]) -> list[dict]:
+    """Leads that count toward the contacted-within-30-min denominator.
+
+    Rented leads with NO CONTACT are excluded: they converted without a contact
+    attempt so including them in the denominator would suppress the rate unfairly.
+    All other leads (including Rented leads that do have a contact range) remain.
+    """
+    return [
+        l for l in leads
+        if not (
+            l.get("status") == "Rented"
+            and (l.get("contact_range") or "") in ("NO CONTACT", "")
+            and not l.get("time_to_first_contact")
+        )
+    ]
+
+
+# ---------------------------------------------------------------------------
 # BM stats (mirrors getBMStats)
 # ---------------------------------------------------------------------------
 
@@ -221,8 +247,9 @@ def _gm_stats(filtered: list[dict]) -> dict:
     rented = sum(1 for l in filtered if l.get("status") == "Rented")
     conversion_rate = round(rented / total * 100) if total else 0
 
-    within30 = sum(1 for l in filtered if (l.get("contact_range") or "") == "(a)<30min")
-    pct_within30 = round(within30 / total * 100) if total else 0
+    w30_pool = _w30_eligible(filtered)
+    within30 = sum(1 for l in w30_pool if (l.get("contact_range") or "") == "(a)<30min")
+    pct_within30 = round(within30 / len(w30_pool) * 100) if w30_pool else 0
 
     branch_contact = sum(1 for l in filtered if (l.get("first_contact_by") or "") == "branch")
     hrd_contact = sum(1 for l in filtered if (l.get("first_contact_by") or "") == "hrd")
@@ -247,7 +274,7 @@ def _gm_stats(filtered: list[dict]) -> dict:
         1 for l in filtered
         if l.get("status") == "Unused" and (l.get("days_open") or 0) > 5
     )
-    no_contact = sum(1 for l in filtered if
+    no_contact = sum(1 for l in actionable if
         (l.get("contact_range") or "") == "NO CONTACT" or
         (l.get("first_contact_by") == "none" and not l.get("time_to_first_contact")))
 
@@ -277,8 +304,15 @@ def _weekly_chart_data(
     start: date,
     end: date,
     branch: str | None = None,
+    include_empty: bool = False,
 ) -> list[dict]:
-    """Build weekly-bucketed chart data for the trailing 4-week period."""
+    """Build weekly-bucketed chart data for the given date range.
+
+    When *include_empty* is True every period slot is emitted even when it has
+    no leads, so callers that need a fixed-length array (e.g. the GM trendline
+    that extends 3 weeks before the T4W start) always receive the expected
+    number of rows.
+    """
     lead_by_id = {l["id"]: l for l in filtered}
     mon = _get_monday(start)
     end_monday = _get_monday(end)
@@ -330,19 +364,39 @@ def _weekly_chart_data(
     for p in periods:
         p_leads = p["leads"]
         total = len(p_leads)
-        if total == 0:
+        if total == 0 and not include_empty:
             continue
         rented = sum(1 for l in p_leads if l.get("status") == "Rented")
         cancelled = sum(1 for l in p_leads if l.get("status") == "Cancelled")
         unused = sum(1 for l in p_leads if l.get("status") == "Unused")
         enriched = sum(1 for l in p_leads if l.get("enrichment_complete"))
-        conversion_rate = round(rented / total * 100) if total else 0
-        comment_rate = round(enriched / total * 100) if total else 0
+        w30_pool = _w30_eligible(p_leads)
+        within30 = sum(1 for l in w30_pool if (l.get("contact_range") or "") == "(a)<30min")
+        branch_contact = sum(1 for l in p_leads if (l.get("first_contact_by") or "") == "branch")
+        hrd_contact = sum(1 for l in p_leads if (l.get("first_contact_by") or "") == "hrd")
+        contact_total = branch_contact + hrd_contact
+        cancelled_unreviewed = sum(
+            1 for l in p_leads
+            if l.get("status") == "Cancelled" and not l.get("archived") and not l.get("gm_directive")
+        )
+        unused_overdue = sum(1 for l in p_leads if l.get("status") == "Unused" and l.get("days_open", 0) > 5)
+        p_actionable = [l for l in p_leads if l.get("status") in ("Cancelled", "Unused")]
+        no_contact = sum(
+            1 for l in p_actionable
+            if (l.get("contact_range") or "") == "NO CONTACT"
+            or (l.get("first_contact_by") == "none" and not l.get("time_to_first_contact"))
+        )
+        # Use None (not 0) for rate metrics when there are no leads so the
+        # chart can distinguish "no data" from a genuine 0% rate.
+        conversion_rate = round(rented / total * 100) if total else None
+        comment_rate = round(enriched / total * 100) if total else None
+        pct_within30 = round(within30 / len(w30_pool) * 100) if w30_pool else None
+        branch_hrd_pct = round(branch_contact / contact_total * 100) if contact_total else None
 
         p_tasks = task_period_map.get(p["key"], [])
         open_tasks = sum(1 for t in p_tasks if t.get("status") != "Done")
         done_tasks = sum(1 for t in p_tasks if t.get("status") == "Done")
-        task_completion = round(done_tasks / len(p_tasks) * 100) if p_tasks else 0
+        task_completion = round(done_tasks / len(p_tasks) * 100) if p_tasks else None
 
         minutes = [
             m for m in (
@@ -351,16 +405,32 @@ def _weekly_chart_data(
             )
             if m is not None
         ]
-        avg_ttc = round(sum(minutes) / len(minutes)) if minutes else 0
+        avg_ttc = round(sum(minutes) / len(minutes)) if minutes else None
 
+        monday = date.fromisoformat(p["key"])
+        week_start = monday - timedelta(days=2)   # Saturday
+        week_end = monday + timedelta(days=4)     # Friday
         result.append({
             "label": p["label"],
+            "weekStart": week_start.isoformat(),
+            "weekEnd": week_end.isoformat(),
             "totalLeads": total,
             "rented": rented,
             "cancelled": cancelled,
             "unused": unused,
+            "enriched": enriched,
+            "within30": within30,
+            "w30Den": len(w30_pool),
+            "branchContact": branch_contact,
+            "hrdContact": hrd_contact,
+            "contactTotal": contact_total,
+            "cancelledUnreviewed": cancelled_unreviewed,
+            "unusedOverdue": unused_overdue,
+            "noContact": no_contact,
             "conversionRate": conversion_rate,
             "commentRate": comment_rate,
+            "pctWithin30": pct_within30,
+            "branchHrdPct": branch_hrd_pct,
             "openTasks": open_tasks,
             "taskCompletionRate": task_completion,
             "avgTimeToContact": avg_ttc,
@@ -469,8 +539,9 @@ def _build_leaderboard(
         unused = sum(1 for l in bl if l.get("status") == "Unused")
         conversion_rate = round(rented / total * 100) if total else None
 
-        w30 = sum(1 for l in bl if (l.get("contact_range") or "") == "(a)<30min")
-        pct_within30 = round(w30 / total * 100) if total else None
+        w30_pool = _w30_eligible(bl)
+        w30 = sum(1 for l in w30_pool if (l.get("contact_range") or "") == "(a)<30min")
+        pct_within30 = round(w30 / len(w30_pool) * 100) if w30_pool else None
 
         bc = sum(1 for l in bl if (l.get("first_contact_by") or "") == "branch")
         hc = sum(1 for l in bl if (l.get("first_contact_by") or "") == "hrd")
@@ -505,8 +576,9 @@ def _build_leaderboard(
         prev_rented = sum(1 for l in prev_bl if l.get("status") == "Rented")
         prev_conversion = round(prev_rented / prev_total * 100) if prev_total else None
 
-        prev_w30 = sum(1 for l in prev_bl if (l.get("contact_range") or "") == "(a)<30min")
-        prev_pct_within30 = round(prev_w30 / prev_total * 100) if prev_total else None
+        prev_w30_pool = _w30_eligible(prev_bl)
+        prev_w30 = sum(1 for l in prev_w30_pool if (l.get("contact_range") or "") == "(a)<30min")
+        prev_pct_within30 = round(prev_w30 / len(prev_w30_pool) * 100) if prev_w30_pool else None
         prev_bc = sum(1 for l in prev_bl if (l.get("first_contact_by") or "") == "branch")
         prev_hc = sum(1 for l in prev_bl if (l.get("first_contact_by") or "") == "hrd")
         prev_branch_hrd_pct = round(prev_bc / (prev_bc + prev_hc) * 100) if (prev_bc + prev_hc) > 0 else None
@@ -588,8 +660,9 @@ def _build_leaderboard_indexed(
         unused = sum(1 for l in bl if l.get("status") == "Unused")
         conversion_rate = round(rented / total * 100) if total else None
 
-        w30 = sum(1 for l in bl if (l.get("contact_range") or "") == "(a)<30min")
-        pct_within30 = round(w30 / total * 100) if total else None
+        w30_pool = _w30_eligible(bl)
+        w30 = sum(1 for l in w30_pool if (l.get("contact_range") or "") == "(a)<30min")
+        pct_within30 = round(w30 / len(w30_pool) * 100) if w30_pool else None
 
         bc = sum(1 for l in bl if (l.get("first_contact_by") or "") == "branch")
         hc = sum(1 for l in bl if (l.get("first_contact_by") or "") == "hrd")
@@ -615,16 +688,24 @@ def _build_leaderboard_indexed(
             1 for l in bl
             if l.get("status") == "Unused" and (l.get("days_open") or 0) > 5
         )
+        bl_actionable = [l for l in bl if l.get("status") in ("Cancelled", "Unused")]
+        no_contact = sum(
+            1 for l in bl_actionable
+            if (l.get("contact_range") or "") == "NO CONTACT" or
+            (l.get("first_contact_by") == "none" and not l.get("time_to_first_contact"))
+        )
 
         org_row = org_by_branch.get(branch)
 
         prev_bl = branch_prev.get(branch, [])
         prev_total = len(prev_bl)
         prev_rented = sum(1 for l in prev_bl if l.get("status") == "Rented")
-        prev_conversion = round(prev_rented / prev_total * 100) if prev_total else None
+        prev_conversion_exact = (prev_rented / prev_total * 100) if prev_total else None
+        prev_conversion = round(prev_conversion_exact) if prev_conversion_exact is not None else None
 
-        prev_w30 = sum(1 for l in prev_bl if (l.get("contact_range") or "") == "(a)<30min")
-        prev_pct_within30 = round(prev_w30 / prev_total * 100) if prev_total else None
+        prev_w30_pool = _w30_eligible(prev_bl)
+        prev_w30 = sum(1 for l in prev_w30_pool if (l.get("contact_range") or "") == "(a)<30min")
+        prev_pct_within30 = round(prev_w30 / len(prev_w30_pool) * 100) if prev_w30_pool else None
         prev_bc = sum(1 for l in prev_bl if (l.get("first_contact_by") or "") == "branch")
         prev_hc = sum(1 for l in prev_bl if (l.get("first_contact_by") or "") == "hrd")
         prev_branch_hrd_pct = round(prev_bc / (prev_bc + prev_hc) * 100) if (prev_bc + prev_hc) > 0 else None
@@ -640,10 +721,38 @@ def _build_leaderboard_indexed(
         else:
             prev_comment_rate = None
 
+        prev_no_contact = sum(
+            1 for l in prev_actionable
+            if (l.get("contact_range") or "") == "NO CONTACT" or
+            (l.get("first_contact_by") == "none" and not l.get("time_to_first_contact"))
+        )
+        prev_cancelled_unreviewed = sum(
+            1 for l in prev_bl
+            if l.get("status") == "Cancelled" and not l.get("archived") and not l.get("gm_directive")
+        )
+        prev_unused_overdue = sum(
+            1 for l in prev_bl
+            if l.get("status") == "Unused" and (l.get("days_open") or 0) > 5
+        )
+
+        # Compute deltas from exact unrounded rates to avoid rounding-of-rounded errors.
+        # e.g. round(63.64) - round(60.34) = 64 - 60 = 4, but round(63.64 - 60.34) = round(3.29) = 3
+        def _exact_delta(cur_num, cur_den, prev_num, prev_den):
+            if not cur_den or not prev_den:
+                return None
+            return round(cur_num / cur_den * 100 - prev_num / prev_den * 100)
+
+        conversion_rate_exact = (rented / total * 100) if total else None
         improvement_delta = (
-            (conversion_rate - prev_conversion)
-            if conversion_rate is not None and prev_conversion is not None
+            round(conversion_rate_exact - prev_conversion_exact)
+            if conversion_rate_exact is not None and prev_conversion_exact is not None
             else None
+        )
+        delta_pct_within30 = _exact_delta(w30, len(w30_pool), prev_w30, len(prev_w30_pool))
+        delta_branch_hrd_pct = _exact_delta(bc, bc + hc, prev_bc, prev_bc + prev_hc) if (bc + hc) and (prev_bc + prev_hc) else None
+        delta_comment_rate = (
+            round(len(with_comments) / len(actionable) * 100 - len(prev_with_comments) / len(prev_actionable) * 100)
+            if actionable and prev_actionable else None
         )
 
         rows.append({
@@ -661,11 +770,18 @@ def _build_leaderboard_indexed(
             "commentRate": comment_rate,
             "cancelledUnreviewed": cancelled_unreviewed,
             "unusedOverdue": unused_overdue,
+            "noContact": no_contact,
             "improvementDelta": improvement_delta,
             "prevConversionRate": prev_conversion,
             "prevPctWithin30": prev_pct_within30,
             "prevBranchHrdPct": prev_branch_hrd_pct,
             "prevCommentRate": prev_comment_rate,
+            "deltaPctWithin30": delta_pct_within30,
+            "deltaBranchHrdPct": delta_branch_hrd_pct,
+            "deltaCommentRate": delta_comment_rate,
+            "prevNoContact": prev_no_contact,
+            "prevCancelledUnreviewed": prev_cancelled_unreviewed,
+            "prevUnusedOverdue": prev_unused_overdue,
         })
 
     q_sorted = sorted(rows, key=lambda r: r["conversionRate"] if r["conversionRate"] is not None else -1, reverse=True)
@@ -794,16 +910,98 @@ def compute_and_store_snapshot():
             if l.get("status") != "Reviewed" and _lead_in_range(l, p_start, p_end)
         ]
 
+        # Include 3 extra historical weeks before c_start so each trendline
+        # data point can show a proper trailing-4-week breakdown window.
+        chart_history_start = c_start - timedelta(weeks=3)
+        gm_chart_leads = [
+            l for l in gm_branch_leads
+            if l.get("status") != "Reviewed" and _lead_in_range(l, chart_history_start, c_end)
+        ]
+
         gms_snapshot[gm_name] = {
             "zone": org_by_branch.get(gm_branches[0], {}).get("zone", "—") if gm_branches else "—",
             "branches": gm_branches,
             "stats": _gm_stats(gm_filtered),
             "comparison": _gm_stats(gm_prev),
-            "chartData": _weekly_chart_data(gm_filtered, tasks, c_start, c_end),
+            "chartData": _weekly_chart_data(gm_chart_leads, tasks, chart_history_start, c_end, include_empty=True),
         }
 
     t_gms = _time.monotonic()
     print(f"[snapshot] computed {len(gms_snapshot)} GM snapshots in {t_gms - t_lb:.1f}s", flush=True)
+
+    # --- Zone-level aggregates (weighted, from raw counts) ---
+    # Group branches by zone and sum raw counts so the frontend can display
+    # a true weighted zone conversion rate (total rented / total leads),
+    # not an average of branch-level rounded percentages.
+    zone_buckets: dict[str, dict] = {}
+    for row in leaderboard_base:
+        z = row.get("zone") or "—"
+        if z not in zone_buckets:
+            zone_buckets[z] = {
+                "total": 0, "rented": 0,
+                "w30": 0,
+                "bc": 0, "bc_hc": 0,
+                "actionable": 0, "with_comments": 0,
+                "prev_total": 0, "prev_rented": 0,
+                "prev_w30": 0,
+                "prev_bc": 0, "prev_bc_hc": 0,
+                "prev_actionable": 0, "prev_with_comments": 0,
+            }
+        b = zone_buckets[z]
+        bl = branch_current.get(row["branch"], [])
+        prev_bl = branch_prev.get(row["branch"], [])
+
+        b["total"] += len(bl)
+        b["rented"] += sum(1 for l in bl if l.get("status") == "Rented")
+        cur_w30_pool = _w30_eligible(bl)
+        b["w30"] += sum(1 for l in cur_w30_pool if (l.get("contact_range") or "") == "(a)<30min")
+        b["w30_den"] = b.get("w30_den", 0) + len(cur_w30_pool)
+        bc_cur = sum(1 for l in bl if (l.get("first_contact_by") or "") == "branch")
+        hc_cur = sum(1 for l in bl if (l.get("first_contact_by") or "") == "hrd")
+        b["bc"] += bc_cur
+        b["bc_hc"] += bc_cur + hc_cur
+        actionable_cur = [l for l in bl if l.get("status") in ("Cancelled", "Unused")]
+        b["actionable"] += len(actionable_cur)
+        b["with_comments"] += sum(
+            1 for l in actionable_cur
+            if (l.get("enrichment") or {}).get("reason") or (l.get("enrichment") or {}).get("notes")
+        )
+
+        b["prev_total"] += len(prev_bl)
+        b["prev_rented"] += sum(1 for l in prev_bl if l.get("status") == "Rented")
+        prev_w30_pool = _w30_eligible(prev_bl)
+        b["prev_w30"] += sum(1 for l in prev_w30_pool if (l.get("contact_range") or "") == "(a)<30min")
+        b["prev_w30_den"] = b.get("prev_w30_den", 0) + len(prev_w30_pool)
+        bc_prev = sum(1 for l in prev_bl if (l.get("first_contact_by") or "") == "branch")
+        hc_prev = sum(1 for l in prev_bl if (l.get("first_contact_by") or "") == "hrd")
+        b["prev_bc"] += bc_prev
+        b["prev_bc_hc"] += bc_prev + hc_prev
+        actionable_prev = [l for l in prev_bl if l.get("status") in ("Cancelled", "Unused")]
+        b["prev_actionable"] += len(actionable_prev)
+        b["prev_with_comments"] += sum(
+            1 for l in actionable_prev
+            if (l.get("enrichment") or {}).get("reason") or (l.get("enrichment") or {}).get("notes")
+        )
+
+    def _safe_rate(num, den):
+        return round(num / den * 100) if den else None
+
+    zones_snapshot: dict = {}
+    for z, b in zone_buckets.items():
+        zones_snapshot[z] = {
+            "conversionRate": _safe_rate(b["rented"], b["total"]),
+            "pctWithin30": _safe_rate(b["w30"], b.get("w30_den", b["total"])),
+            "branchHrdPct": _safe_rate(b["bc"], b["bc_hc"]),
+            "commentRate": _safe_rate(b["with_comments"], b["actionable"]) if b["actionable"] else (100 if b["total"] > 0 else None),
+            "prevConversionRate": _safe_rate(b["prev_rented"], b["prev_total"]),
+            "prevPctWithin30": _safe_rate(b["prev_w30"], b.get("prev_w30_den", b["prev_total"])),
+            "prevBranchHrdPct": _safe_rate(b["prev_bc"], b["prev_bc_hc"]),
+            "prevCommentRate": _safe_rate(b["prev_with_comments"], b["prev_actionable"]) if b["prev_actionable"] else (100 if b["prev_total"] > 0 else None),
+            "total": b["total"],
+        }
+
+    t_zones = _time.monotonic()
+    print(f"[snapshot] computed {len(zones_snapshot)} zone snapshots in {t_zones - t_gms:.1f}s", flush=True)
 
     snapshot = {
         "version": 2,
@@ -813,6 +1011,7 @@ def compute_and_store_snapshot():
         "comparison": {"start": p_start.isoformat(), "end": p_end.isoformat()},
         "branches": branches_snapshot,
         "gms": gms_snapshot,
+        "zones": zones_snapshot,
         "leaderboard": leaderboard_base,
     }
 

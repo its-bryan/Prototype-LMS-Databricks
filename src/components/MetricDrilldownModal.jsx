@@ -203,10 +203,15 @@ function ComparisonCards({ config, currentValue, previousValue, currentRange, pr
   );
 }
 
+const INITIAL_ROWS = 5;
+
 function LeadTable({ leads, config, allLeads, onLeadClick }) {
+  const [showAll, setShowAll] = useState(false);
   const showHighlight = !!config.numeratorFilter;
   const extraCol = config.extraColumn;
   const colCount = 7 + (showHighlight ? 1 : 0) + (extraCol ? 1 : 0);
+  const visibleLeads = showAll ? leads : leads.slice(0, INITIAL_ROWS);
+  const hasMore = leads.length > INITIAL_ROWS;
   return (
     <div className="border border-[var(--neutral-200)] rounded-lg overflow-hidden">
       <div className="overflow-x-auto max-h-[45vh]">
@@ -232,7 +237,7 @@ function LeadTable({ leads, config, allLeads, onLeadClick }) {
                 </td>
               </tr>
             ) : (
-              leads.map((lead) => {
+              visibleLeads.map((lead) => {
                 const isNumerator = showHighlight && config.numeratorFilter(lead);
                 return (
                   <tr
@@ -278,12 +283,25 @@ function LeadTable({ leads, config, allLeads, onLeadClick }) {
           </tbody>
         </table>
       </div>
+      {hasMore && (
+        <div className="border-t border-[var(--neutral-200)] px-3 py-2 bg-[var(--neutral-50)]">
+          <button
+            onClick={() => setShowAll((v) => !v)}
+            className="text-xs font-medium text-[var(--hertz-primary)] hover:underline"
+          >
+            {showAll ? "Show less" : `View all ${leads.length} rows`}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
 function TaskTable({ tasks, config, allLeads }) {
+  const [showAll, setShowAll] = useState(false);
   const showHighlight = !!config.numeratorFilter;
+  const visibleTasks = showAll ? tasks : tasks.slice(0, INITIAL_ROWS);
+  const hasMore = tasks.length > INITIAL_ROWS;
   return (
     <div className="border border-[var(--neutral-200)] rounded-lg overflow-hidden">
       <div className="overflow-x-auto max-h-[45vh]">
@@ -307,7 +325,7 @@ function TaskTable({ tasks, config, allLeads }) {
                 </td>
               </tr>
             ) : (
-              tasks.map((task) => {
+              visibleTasks.map((task) => {
                 const isNumerator = showHighlight && config.numeratorFilter(task);
                 const leadCustomer = task.lead?.customer ?? getLeadById(allLeads, task.leadId)?.customer ?? "—";
                 return (
@@ -358,11 +376,27 @@ function TaskTable({ tasks, config, allLeads }) {
           </tbody>
         </table>
       </div>
+      {hasMore && (
+        <div className="border-t border-[var(--neutral-200)] px-3 py-2 bg-[var(--neutral-50)]">
+          <button
+            onClick={() => setShowAll((v) => !v)}
+            className="text-xs font-medium text-[var(--hertz-primary)] hover:underline"
+          >
+            {showAll ? "Show less" : `View all ${tasks.length} rows`}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
 function WeeklyBreakdownTable({ rows }) {
+  const totalLeads = rows.reduce((sum, r) => sum + (r.totalLeads ?? 0), 0);
+  const totalRented = rows.reduce((sum, r) => sum + (r.rented ?? 0), 0);
+  const totalCancelled = rows.reduce((sum, r) => sum + (r.cancelled ?? 0), 0);
+  const totalUnused = rows.reduce((sum, r) => sum + (r.unused ?? 0), 0);
+  const totalRate = totalLeads > 0 ? Math.round((totalRented / totalLeads) * 100) : 0;
+
   return (
     <div className="mb-5 overflow-x-auto">
       <p className="text-xs font-bold text-[var(--neutral-600)] uppercase tracking-wide mb-2">Weekly Breakdown</p>
@@ -390,10 +424,238 @@ function WeeklyBreakdownTable({ rows }) {
               </td>
             </tr>
           ))}
+          <tr className="border-t-2 border-[var(--neutral-300)] bg-[var(--neutral-50)]">
+            <td className="py-1.5 pr-3 font-semibold text-[var(--neutral-700)] whitespace-nowrap">Total</td>
+            <td className="py-1.5 px-3 text-right font-semibold text-[var(--neutral-700)]">{totalLeads}</td>
+            <td className="py-1.5 px-3 text-right font-semibold text-[#2E7D32]">{totalRented}</td>
+            <td className="py-1.5 px-3 text-right font-semibold text-[#B45309]">{totalCancelled}</td>
+            <td className="py-1.5 px-3 text-right font-semibold text-[var(--neutral-500)]">{totalUnused}</td>
+            <td className="py-1.5 pl-3 text-right font-bold text-[var(--hertz-black)]">{totalRate}%</td>
+          </tr>
         </tbody>
       </table>
       <p className="text-[10px] text-[var(--neutral-400)] mt-1.5">
-        Rate = Rented ÷ Total per week (Sat–Fri). Sum rows to independently verify the T4W aggregate.
+        Rate = Rented ÷ Total per week (Sat–Fri). Total rate is recalculated from summed weekly counts.
+      </p>
+    </div>
+  );
+}
+
+function BmCommentRateBreakdownTable({ rows }) {
+  const totalLeads = rows.reduce((sum, r) => sum + (r.totalLeads ?? 0), 0);
+  const totalEnriched = rows.reduce((sum, r) => sum + (r.enriched ?? 0), 0);
+  const totalRate = totalLeads > 0 ? Math.round((totalEnriched / totalLeads) * 100) : 0;
+
+  return (
+    <div className="mb-5 overflow-x-auto">
+      <p className="text-xs font-bold text-[var(--neutral-600)] uppercase tracking-wide mb-2">Weekly Breakdown</p>
+      <table className="w-full text-[11px] border-collapse">
+        <thead>
+          <tr className="border-b border-[var(--neutral-200)]">
+            <th className="text-left font-semibold text-[var(--neutral-500)] uppercase tracking-wider py-1.5 pr-3 whitespace-nowrap">Week</th>
+            <th className="text-right font-semibold text-[var(--neutral-500)] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Total</th>
+            <th className="text-right font-semibold text-[#2E7D32] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Commented</th>
+            <th className="text-right font-semibold text-[var(--hertz-black)] uppercase tracking-wider py-1.5 pl-3 whitespace-nowrap">Rate</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => {
+            const weekRate = (row.totalLeads ?? 0) > 0
+              ? Math.round(((row.enriched ?? 0) / row.totalLeads) * 100)
+              : null;
+            return (
+              <tr key={i} className="border-b border-[var(--neutral-100)]">
+                <td className="py-1.5 pr-3 text-[var(--neutral-700)] whitespace-nowrap">{row.label}</td>
+                <td className="py-1.5 px-3 text-right text-[var(--neutral-700)]">{row.totalLeads ?? 0}</td>
+                <td className="py-1.5 px-3 text-right text-[#2E7D32]">{row.enriched ?? 0}</td>
+                <td className="py-1.5 pl-3 text-right font-bold text-[var(--hertz-black)]">
+                  {weekRate != null ? `${weekRate}%` : "—"}
+                </td>
+              </tr>
+            );
+          })}
+          <tr className="border-t-2 border-[var(--neutral-300)] bg-[var(--neutral-50)]">
+            <td className="py-1.5 pr-3 font-semibold text-[var(--neutral-700)] whitespace-nowrap">Total</td>
+            <td className="py-1.5 px-3 text-right font-semibold text-[var(--neutral-700)]">{totalLeads}</td>
+            <td className="py-1.5 px-3 text-right font-semibold text-[#2E7D32]">{totalEnriched}</td>
+            <td className="py-1.5 pl-3 text-right font-bold text-[var(--hertz-black)]">{totalRate}%</td>
+          </tr>
+        </tbody>
+      </table>
+      <p className="text-[10px] text-[var(--neutral-400)] mt-1.5">
+        Rate = Commented ÷ Total per week (Sat–Fri). Total rate is recalculated from summed weekly counts.
+      </p>
+    </div>
+  );
+}
+
+function BmContactedWithin30BreakdownTable({ rows }) {
+  const totalWithin30 = rows.reduce((sum, r) => sum + (r.within30 ?? 0), 0);
+  const totalDen = rows.reduce((sum, r) => sum + (r.w30Den ?? r.totalLeads ?? 0), 0);
+  const totalRate = totalDen > 0 ? Math.round((totalWithin30 / totalDen) * 100) : 0;
+
+  return (
+    <div className="mb-5 overflow-x-auto">
+      <p className="text-xs font-bold text-[var(--neutral-600)] uppercase tracking-wide mb-2">Weekly Breakdown</p>
+      <table className="w-full text-[11px] border-collapse">
+        <thead>
+          <tr className="border-b border-[var(--neutral-200)]">
+            <th className="text-left font-semibold text-[var(--neutral-500)] uppercase tracking-wider py-1.5 pr-3 whitespace-nowrap">Week</th>
+            <th className="text-right font-semibold text-[var(--neutral-500)] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Total</th>
+            <th className="text-right font-semibold text-[#2E7D32] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Within 30 min</th>
+            <th className="text-right font-semibold text-[var(--hertz-black)] uppercase tracking-wider py-1.5 pl-3 whitespace-nowrap">Rate</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => {
+            const den = row.w30Den ?? row.totalLeads ?? 0;
+            const weekRate = den > 0 ? Math.round(((row.within30 ?? 0) / den) * 100) : null;
+            return (
+              <tr key={i} className="border-b border-[var(--neutral-100)]">
+                <td className="py-1.5 pr-3 text-[var(--neutral-700)] whitespace-nowrap">{row.label}</td>
+                <td className="py-1.5 px-3 text-right text-[var(--neutral-700)]">{den}</td>
+                <td className="py-1.5 px-3 text-right text-[#2E7D32]">{row.within30 ?? 0}</td>
+                <td className="py-1.5 pl-3 text-right font-bold text-[var(--hertz-black)]">
+                  {weekRate != null ? `${weekRate}%` : "—"}
+                </td>
+              </tr>
+            );
+          })}
+          <tr className="border-t-2 border-[var(--neutral-300)] bg-[var(--neutral-50)]">
+            <td className="py-1.5 pr-3 font-semibold text-[var(--neutral-700)] whitespace-nowrap">Total</td>
+            <td className="py-1.5 px-3 text-right font-semibold text-[var(--neutral-700)]">{totalDen}</td>
+            <td className="py-1.5 px-3 text-right font-semibold text-[#2E7D32]">{totalWithin30}</td>
+            <td className="py-1.5 pl-3 text-right font-bold text-[var(--hertz-black)]">{totalRate}%</td>
+          </tr>
+        </tbody>
+      </table>
+      <p className="text-[10px] text-[var(--neutral-400)] mt-1.5">
+        Rate = Within 30 min ÷ Total per week (Sat–Fri). Total rate is recalculated from summed weekly counts.
+      </p>
+    </div>
+  );
+}
+
+function BmBranchContactBreakdownTable({ rows }) {
+  const totalBranch = rows.reduce((sum, r) => sum + (r.branchContact ?? 0), 0);
+  const totalHrd = rows.reduce((sum, r) => sum + (r.hrdContact ?? 0), 0);
+  const totalContact = rows.reduce((sum, r) => sum + (r.contactTotal ?? 0), 0);
+  const totalRate = totalContact > 0 ? Math.round((totalBranch / totalContact) * 100) : 0;
+
+  return (
+    <div className="mb-5 overflow-x-auto">
+      <p className="text-xs font-bold text-[var(--neutral-600)] uppercase tracking-wide mb-2">Weekly Breakdown</p>
+      <table className="w-full text-[11px] border-collapse">
+        <thead>
+          <tr className="border-b border-[var(--neutral-200)]">
+            <th className="text-left font-semibold text-[var(--neutral-500)] uppercase tracking-wider py-1.5 pr-3 whitespace-nowrap">Week</th>
+            <th className="text-right font-semibold text-[var(--neutral-500)] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Total Contacts</th>
+            <th className="text-right font-semibold text-[#2E7D32] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Branch</th>
+            <th className="text-right font-semibold text-[var(--neutral-500)] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">HRD</th>
+            <th className="text-right font-semibold text-[var(--hertz-black)] uppercase tracking-wider py-1.5 pl-3 whitespace-nowrap">Branch %</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => {
+            const contact = row.contactTotal ?? 0;
+            const weekRate = contact > 0 ? Math.round(((row.branchContact ?? 0) / contact) * 100) : null;
+            return (
+              <tr key={i} className="border-b border-[var(--neutral-100)]">
+                <td className="py-1.5 pr-3 text-[var(--neutral-700)] whitespace-nowrap">{row.label}</td>
+                <td className="py-1.5 px-3 text-right text-[var(--neutral-700)]">{contact}</td>
+                <td className="py-1.5 px-3 text-right text-[#2E7D32]">{row.branchContact ?? 0}</td>
+                <td className="py-1.5 px-3 text-right text-[var(--neutral-500)]">{row.hrdContact ?? 0}</td>
+                <td className="py-1.5 pl-3 text-right font-bold text-[var(--hertz-black)]">
+                  {weekRate != null ? `${weekRate}%` : "—"}
+                </td>
+              </tr>
+            );
+          })}
+          <tr className="border-t-2 border-[var(--neutral-300)] bg-[var(--neutral-50)]">
+            <td className="py-1.5 pr-3 font-semibold text-[var(--neutral-700)] whitespace-nowrap">Total</td>
+            <td className="py-1.5 px-3 text-right font-semibold text-[var(--neutral-700)]">{totalContact}</td>
+            <td className="py-1.5 px-3 text-right font-semibold text-[#2E7D32]">{totalBranch}</td>
+            <td className="py-1.5 px-3 text-right font-semibold text-[var(--neutral-500)]">{totalHrd}</td>
+            <td className="py-1.5 pl-3 text-right font-bold text-[var(--hertz-black)]">{totalRate}%</td>
+          </tr>
+        </tbody>
+      </table>
+      <p className="text-[10px] text-[var(--neutral-400)] mt-1.5">
+        Branch % = Branch Contacts ÷ Total Contacts per week (Sat–Fri). Total rate is recalculated from summed weekly counts.
+      </p>
+    </div>
+  );
+}
+
+function BmCancelledUnreviewedBreakdownTable({ rows }) {
+  const totalCancelledUnreviewed = rows.reduce((sum, r) => sum + (r.cancelledUnreviewed ?? 0), 0);
+  const totalLeads = rows.reduce((sum, r) => sum + (r.totalLeads ?? 0), 0);
+
+  return (
+    <div className="mb-5 overflow-x-auto">
+      <p className="text-xs font-bold text-[var(--neutral-600)] uppercase tracking-wide mb-2">Weekly Breakdown</p>
+      <table className="w-full text-[11px] border-collapse">
+        <thead>
+          <tr className="border-b border-[var(--neutral-200)]">
+            <th className="text-left font-semibold text-[var(--neutral-500)] uppercase tracking-wider py-1.5 pr-3 whitespace-nowrap">Week</th>
+            <th className="text-right font-semibold text-[var(--neutral-500)] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Total Leads</th>
+            <th className="text-right font-semibold text-[#B45309] uppercase tracking-wider py-1.5 pl-3 whitespace-nowrap">Cancelled Unreviewed</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={i} className="border-b border-[var(--neutral-100)]">
+              <td className="py-1.5 pr-3 text-[var(--neutral-700)] whitespace-nowrap">{row.label}</td>
+              <td className="py-1.5 px-3 text-right text-[var(--neutral-700)]">{row.totalLeads ?? 0}</td>
+              <td className="py-1.5 pl-3 text-right font-bold text-[#B45309]">{row.cancelledUnreviewed ?? 0}</td>
+            </tr>
+          ))}
+          <tr className="border-t-2 border-[var(--neutral-300)] bg-[var(--neutral-50)]">
+            <td className="py-1.5 pr-3 font-semibold text-[var(--neutral-700)] whitespace-nowrap">Total</td>
+            <td className="py-1.5 px-3 text-right font-semibold text-[var(--neutral-700)]">{totalLeads}</td>
+            <td className="py-1.5 pl-3 text-right font-bold text-[#B45309]">{totalCancelledUnreviewed}</td>
+          </tr>
+        </tbody>
+      </table>
+      <p className="text-[10px] text-[var(--neutral-400)] mt-1.5">
+        Count of cancelled leads not yet archived or with GM directive, per week (Sat–Fri).
+      </p>
+    </div>
+  );
+}
+
+function BmUnusedOverdueBreakdownTable({ rows }) {
+  const totalUnusedOverdue = rows.reduce((sum, r) => sum + (r.unusedOverdue ?? 0), 0);
+  const totalLeads = rows.reduce((sum, r) => sum + (r.totalLeads ?? 0), 0);
+
+  return (
+    <div className="mb-5 overflow-x-auto">
+      <p className="text-xs font-bold text-[var(--neutral-600)] uppercase tracking-wide mb-2">Weekly Breakdown</p>
+      <table className="w-full text-[11px] border-collapse">
+        <thead>
+          <tr className="border-b border-[var(--neutral-200)]">
+            <th className="text-left font-semibold text-[var(--neutral-500)] uppercase tracking-wider py-1.5 pr-3 whitespace-nowrap">Week</th>
+            <th className="text-right font-semibold text-[var(--neutral-500)] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Total Leads</th>
+            <th className="text-right font-semibold text-[#B45309] uppercase tracking-wider py-1.5 pl-3 whitespace-nowrap">Unused Overdue</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={i} className="border-b border-[var(--neutral-100)]">
+              <td className="py-1.5 pr-3 text-[var(--neutral-700)] whitespace-nowrap">{row.label}</td>
+              <td className="py-1.5 px-3 text-right text-[var(--neutral-700)]">{row.totalLeads ?? 0}</td>
+              <td className="py-1.5 pl-3 text-right font-bold text-[#B45309]">{row.unusedOverdue ?? 0}</td>
+            </tr>
+          ))}
+          <tr className="border-t-2 border-[var(--neutral-300)] bg-[var(--neutral-50)]">
+            <td className="py-1.5 pr-3 font-semibold text-[var(--neutral-700)] whitespace-nowrap">Total</td>
+            <td className="py-1.5 px-3 text-right font-semibold text-[var(--neutral-700)]">{totalLeads}</td>
+            <td className="py-1.5 pl-3 text-right font-bold text-[#B45309]">{totalUnusedOverdue}</td>
+          </tr>
+        </tbody>
+      </table>
+      <p className="text-[10px] text-[var(--neutral-400)] mt-1.5">
+        Count of unused leads open more than 5 days, per week (Sat–Fri).
       </p>
     </div>
   );
@@ -413,17 +675,17 @@ export default function MetricDrilldownModal({
   previousTaskStats,
   chartData,
 }) {
+  const config = METRIC_CONFIG[metricKey];
   const { fetchLeadsPage } = useData();
   const [activeTab, setActiveTab] = useState("current");
   const [groupByPrimary, setGroupByPrimary] = useState(null);
   const [groupBySecondary, setGroupBySecondary] = useState(null);
   const [showBenchmarks, setShowBenchmarks] = useState(false);
-  const [currentOffset, setCurrentOffset] = useState(0);
-  const [previousOffset, setPreviousOffset] = useState(0);
+  const [currentLimit, setCurrentLimit] = useState(INITIAL_ROWS);
+  const [previousLimit, setPreviousLimit] = useState(INITIAL_ROWS);
   const [currentLeadsPage, setCurrentLeadsPage] = useState({ items: [], total: 0, hasNext: false, loading: false });
   const [previousLeadsPage, setPreviousLeadsPage] = useState({ items: [], total: 0, hasNext: false, loading: false });
 
-  const config = METRIC_CONFIG[metricKey];
   if (!config) return null;
 
   const isLeadMetric = config.type === "leads";
@@ -434,8 +696,8 @@ export default function MetricDrilldownModal({
   const taskStatsPrevious = previousTaskStats ?? {};
 
   useEffect(() => {
-    setCurrentOffset(0);
-    setPreviousOffset(0);
+    setCurrentLimit(INITIAL_ROWS);
+    setPreviousLimit(INITIAL_ROWS);
   }, [metricKey, dateRange, comparisonRange, branch]);
 
   useEffect(() => {
@@ -446,8 +708,8 @@ export default function MetricDrilldownModal({
       branch,
       startDate: dateRange.start,
       endDate: dateRange.end,
-      limit: 20,
-      offset: currentOffset,
+      limit: currentLimit,
+      offset: 0,
     })
       .then((result) => {
         if (cancelled) return;
@@ -465,7 +727,7 @@ export default function MetricDrilldownModal({
     return () => {
       cancelled = true;
     };
-  }, [isLeadMetric, dateRange, branch, currentOffset, fetchLeadsPage]);
+  }, [isLeadMetric, dateRange, branch, currentLimit, fetchLeadsPage]);
 
   useEffect(() => {
     if (!isLeadMetric || !comparisonRange || !branch) return;
@@ -475,8 +737,8 @@ export default function MetricDrilldownModal({
       branch,
       startDate: comparisonRange.start,
       endDate: comparisonRange.end,
-      limit: 20,
-      offset: previousOffset,
+      limit: previousLimit,
+      offset: 0,
     })
       .then((result) => {
         if (cancelled) return;
@@ -494,7 +756,7 @@ export default function MetricDrilldownModal({
     return () => {
       cancelled = true;
     };
-  }, [isLeadMetric, comparisonRange, branch, previousOffset, fetchLeadsPage]);
+  }, [isLeadMetric, comparisonRange, branch, previousLimit, fetchLeadsPage]);
 
   const currentValue = useMemo(() => {
     if (!isLeadMetric) {
@@ -635,9 +897,24 @@ export default function MetricDrilldownModal({
             </div>
           )}
 
-          {/* Weekly breakdown (conversion_rate only) */}
-          {metricKey === "conversion_rate" && (chartData ?? []).length > 0 && (
+          {/* Weekly breakdown */}
+          {(chartData ?? []).length > 0 && metricKey === "conversion_rate" && (
             <WeeklyBreakdownTable rows={chartData} />
+          )}
+          {(chartData ?? []).length > 0 && metricKey === "comment_rate" && (
+            <BmCommentRateBreakdownTable rows={chartData} />
+          )}
+          {(chartData ?? []).length > 0 && metricKey === "contacted_within_30_min" && (
+            <BmContactedWithin30BreakdownTable rows={chartData} />
+          )}
+          {(chartData ?? []).length > 0 && metricKey === "branch_vs_hrd_split" && (
+            <BmBranchContactBreakdownTable rows={chartData} />
+          )}
+          {(chartData ?? []).length > 0 && metricKey === "cancelled_unreviewed" && (
+            <BmCancelledUnreviewedBreakdownTable rows={chartData} />
+          )}
+          {(chartData ?? []).length > 0 && metricKey === "unused_overdue" && (
+            <BmUnusedOverdueBreakdownTable rows={chartData} />
           )}
 
           {/* Tab selector */}
@@ -685,38 +962,28 @@ export default function MetricDrilldownModal({
             </motion.div>
           </AnimatePresence>
           {isLeadMetric && (
-            <div className="mt-3 flex items-center justify-between">
-              <span className="text-xs text-[var(--neutral-600)]">
+            <div className="mt-2 flex items-center justify-between">
+              <span className="text-xs text-[var(--neutral-500)]">
                 {activeTab === "current"
-                  ? `Showing ${Math.min(currentOffset + 1, Math.max(currentLeadsPage.total, 1))}-${Math.min(currentOffset + 20, currentLeadsPage.total)} of ${currentLeadsPage.total}`
-                  : `Showing ${Math.min(previousOffset + 1, Math.max(previousLeadsPage.total, 1))}-${Math.min(previousOffset + 20, previousLeadsPage.total)} of ${previousLeadsPage.total}`}
+                  ? `Showing ${currentLeadsPage.items.length} of ${currentLeadsPage.total}`
+                  : `Showing ${previousLeadsPage.items.length} of ${previousLeadsPage.total}`}
               </span>
-              <div className="flex items-center gap-2">
+              {(activeTab === "current" ? currentLeadsPage.hasNext : previousLeadsPage.hasNext) && (
                 <button
                   type="button"
                   onClick={() =>
                     activeTab === "current"
-                      ? setCurrentOffset((v) => Math.max(v - 20, 0))
-                      : setPreviousOffset((v) => Math.max(v - 20, 0))
+                      ? setCurrentLimit(currentLeadsPage.total)
+                      : setPreviousLimit(previousLeadsPage.total)
                   }
-                  disabled={activeTab === "current" ? currentOffset === 0 : previousOffset === 0}
-                  className="px-3 py-1.5 text-xs rounded-md border border-[var(--neutral-300)] disabled:opacity-40"
+                  disabled={activeTab === "current" ? currentLeadsPage.loading : previousLeadsPage.loading}
+                  className="text-xs font-medium text-[var(--hertz-primary)] hover:underline disabled:opacity-40"
                 >
-                  Previous
+                  {(activeTab === "current" ? currentLeadsPage.loading : previousLeadsPage.loading)
+                    ? "Loading…"
+                    : `View all ${activeTab === "current" ? currentLeadsPage.total : previousLeadsPage.total} rows`}
                 </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    activeTab === "current"
-                      ? setCurrentOffset((v) => v + 20)
-                      : setPreviousOffset((v) => v + 20)
-                  }
-                  disabled={activeTab === "current" ? !currentLeadsPage.hasNext : !previousLeadsPage.hasNext}
-                  className="px-3 py-1.5 text-xs rounded-md border border-[var(--neutral-300)] disabled:opacity-40"
-                >
-                  Next
-                </button>
-              </div>
+              )}
             </div>
           )}
         </div>

@@ -1,21 +1,16 @@
 import { useState, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useData } from "../../context/DataContext";
-
-const bmOptions = [
-  "J. Smith", "M. Johnson", "A. Williams", "S. Davis", "T. Brown",
-  "L. Garcia", "R. Martinez", "B. Jackson", "C. Taylor", "D. Anderson",
-];
 
 export default function InteractiveOrgMapping() {
   const { orgMapping } = useData();
-  const [rows, setRows] = useState(() =>
-    orgMapping.map((r) => ({ ...r, autoDerived: !r.bm || r.bm === "— Unassigned —" ? false : true })),
-  );
+  const [rows, setRows] = useState(() => orgMapping.map((r) => ({ ...r })));
   const [editingRow, setEditingRow] = useState(null);
+  const [editBmValue, setEditBmValue] = useState("");
   const [isSaved, setIsSaved] = useState(false);
   const [filterZone, setFilterZone] = useState("All");
   const [filterUnassigned, setFilterUnassigned] = useState(false);
+  const [seedStatus, setSeedStatus] = useState(null); // null | "loading" | { ok, total, bm_assigned, hles_file, employee_file } | { error }
   const PAGE_SIZE = 20;
   const [page, setPage] = useState(0);
 
@@ -37,32 +32,58 @@ export default function InteractiveOrgMapping() {
   const safePage = Math.min(page, totalPages - 1);
   const pagedRows = filteredRows.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
 
-  const handleBMChange = (branch, value) => {
-    setRows((prev) => prev.map((r) => (r.branch === branch ? { ...r, bm: value } : r)));
+  const handleEditStart = (row) => {
+    setEditingRow(row.branch);
+    setEditBmValue(row.bm || "");
   };
 
-  const handleConfirm = () => {
+  const handleEditSave = async (branch) => {
+    const newBm = editBmValue.trim();
+    setRows((prev) => prev.map((r) => (r.branch === branch ? { ...r, bm: newBm } : r)));
     setEditingRow(null);
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 2000);
+    setEditBmValue("");
+    // Persist to DB
+    try {
+      await fetch(`/api/config/org-mapping/${encodeURIComponent(branch)}/bm`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bm: newBm }),
+      });
+      setIsSaved(true);
+      setTimeout(() => setIsSaved(false), 2000);
+    } catch {
+      // best-effort; local state already updated
+    }
+  };
+
+  const handleSeedFromProdfiles = async () => {
+    setSeedStatus("loading");
+    try {
+      const res = await fetch("/api/config/org-mapping/seed-from-prodfiles", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        setSeedStatus({ error: data.detail || "Seed failed" });
+      } else {
+        setSeedStatus(data);
+        // Refresh rows from updated DB via page reload (simplest since DataContext loads on mount)
+        setTimeout(() => window.location.reload(), 1200);
+      }
+    } catch (e) {
+      setSeedStatus({ error: String(e) });
+    }
   };
 
   return (
     <div>
-      <div className="flex items-start justify-between mb-6">
+      <div className="flex items-start justify-between mb-4">
         <div>
           <h2 className="text-xl font-bold text-[var(--hertz-black)]">Organisation Mapping</h2>
           <p className="text-sm text-[var(--neutral-500)] mt-1">
-            Hierarchy (AM, GM, Zone) is auto-derived from HLES uploads. Manually assign Branch Managers below.
+            Branch, AM, GM, and Zone are sourced from the HLES file. BM names come from the March 2026 employee listing.
+            Click any BM cell to edit manually.
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <button
-            onClick={handleConfirm}
-            className="px-4 py-2 bg-[var(--hertz-primary)] text-[var(--hertz-black)] rounded-lg text-sm font-semibold hover:bg-[#E6BC00] transition-colors cursor-pointer"
-          >
-            Save Changes
-          </button>
           {isSaved && (
             <motion.span
               initial={{ opacity: 0, scale: 0.8 }}
@@ -72,8 +93,30 @@ export default function InteractiveOrgMapping() {
               Saved
             </motion.span>
           )}
+          <button
+            onClick={handleSeedFromProdfiles}
+            disabled={seedStatus === "loading"}
+            className="px-4 py-2 bg-[var(--hertz-black)] text-white rounded-lg text-sm font-semibold hover:bg-[#333] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {seedStatus === "loading" ? "Refreshing…" : "Refresh from Source Files"}
+          </button>
         </div>
       </div>
+
+      {/* Seed result banner */}
+      {seedStatus && seedStatus !== "loading" && (
+        <div className={`mb-4 px-4 py-3 rounded-lg text-sm ${seedStatus.error ? "bg-[#FFEBEE] text-[#C62828] border border-[#FFCDD2]" : "bg-[#E8F5E9] text-[#2E7D32] border border-[#C8E6C9]"}`}>
+          {seedStatus.error ? (
+            <span>Seed failed: {seedStatus.error}</span>
+          ) : (
+            <span>
+              Refreshed {seedStatus.total} branches — {seedStatus.bm_assigned} BMs assigned from{" "}
+              <span className="font-medium">{seedStatus.employee_file}</span> ×{" "}
+              <span className="font-medium">{seedStatus.hles_file}</span>. Reloading…
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex items-center gap-4 mb-5">
@@ -147,34 +190,41 @@ export default function InteractiveOrgMapping() {
                   <td className="px-4 py-2.5">
                     {isEditing ? (
                       <div className="flex items-center gap-2">
-                        <select
-                          value={row.bm || ""}
-                          onChange={(e) => handleBMChange(row.branch, e.target.value)}
-                          className="border border-[var(--hertz-primary)] rounded px-2 py-1 bg-white text-sm focus:outline-none"
+                        <input
+                          type="text"
+                          value={editBmValue}
+                          onChange={(e) => setEditBmValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleEditSave(row.branch);
+                            if (e.key === "Escape") { setEditingRow(null); setEditBmValue(""); }
+                          }}
+                          placeholder="Enter BM name"
+                          className="border border-[var(--hertz-primary)] rounded px-2 py-1 bg-white text-sm focus:outline-none w-48"
                           autoFocus
-                        >
-                          <option value="">— Select BM —</option>
-                          {bmOptions.map((bm) => (
-                            <option key={bm} value={bm}>{bm}</option>
-                          ))}
-                        </select>
+                        />
                         <button
-                          onClick={() => setEditingRow(null)}
+                          onClick={() => handleEditSave(row.branch)}
+                          className="text-xs font-medium text-[var(--hertz-black)] bg-[var(--hertz-primary)] px-2 py-1 rounded hover:bg-[#E6BC00] cursor-pointer"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => { setEditingRow(null); setEditBmValue(""); }}
                           className="text-xs text-[var(--neutral-500)] hover:text-[var(--hertz-black)] cursor-pointer"
                         >
-                          Done
+                          Cancel
                         </button>
                       </div>
                     ) : isUnassigned ? (
                       <button
-                        onClick={() => setEditingRow(row.branch)}
+                        onClick={() => handleEditStart(row)}
                         className="text-[#C62828] italic cursor-pointer hover:underline text-sm"
                       >
                         — Unassigned — click to assign
                       </button>
                     ) : (
                       <button
-                        onClick={() => setEditingRow(row.branch)}
+                        onClick={() => handleEditStart(row)}
                         className="cursor-pointer hover:text-[var(--hertz-primary)] transition-colors text-sm font-medium"
                       >
                         {row.bm}
@@ -242,8 +292,8 @@ export default function InteractiveOrgMapping() {
       )}
 
       <p className="text-xs text-[var(--neutral-400)] mt-3">
-        AM, GM, and Zone columns are read-only — they update automatically when HLES data is uploaded.
-        Only Branch Manager assignment is manually editable.
+        AM, GM, and Zone are sourced from the HLES file (read-only here). BM names come from the employee listing and can be edited manually.
+        Use <span className="font-medium">Refresh from Source Files</span> to re-sync from the latest prodfiles.
       </p>
     </div>
   );

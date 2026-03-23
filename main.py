@@ -112,6 +112,10 @@ async def log_runtime_context():
         f"[startup] env={ctx['env']} tier={ctx['tier']} host={ctx['host']} db={ctx['db']}",
         flush=True,
     )
+    # Warm the connection pool so background ingest tasks don't block on first-use pool init
+    from db import _ensure_pool
+    _ensure_pool().wait()
+    print("[startup] DB connection pool warmed", flush=True)
 
 # API routes — auth first (no DB-token dependency)
 app.include_router(auth.router, prefix="/api")
