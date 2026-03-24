@@ -53,7 +53,7 @@ export default function SummaryExportModal({ onClose, leads, branchTasks, branch
 
   const periodLabel = useMemo(() => {
     if (useCustom && customStart && customEnd) {
-      return formatDateRange(new Date(customStart + "T12:00:00"), new Date(customEnd + "T12:00:00"), true);
+      return formatDateRange(new Date(customStart + "T12:00:00Z"), new Date(customEnd + "T12:00:00Z"), true);
     }
     const preset = presets.find((p) => p.key === selectedPreset);
     return preset?.label ?? "—";

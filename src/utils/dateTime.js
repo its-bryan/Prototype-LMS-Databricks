@@ -22,7 +22,7 @@ export function formatDateShort(d, includeYear = false) {
 /** Whole calendar days from init date (YYYY-MM-DD) to `asOf`, using noon on the init date to avoid TZ boundary shifts. Returns null if missing/invalid. */
 export function daysSinceInitDateString(isoDateStr, asOf = new Date()) {
   if (!isoDateStr || typeof isoDateStr !== "string") return null;
-  const start = new Date(`${isoDateStr}T12:00:00`);
+  const start = new Date(`${isoDateStr}T12:00:00Z`);
   if (isNaN(start.getTime())) return null;
   const end = asOf instanceof Date ? asOf : new Date(asOf);
   if (isNaN(end.getTime())) return null;
@@ -143,7 +143,7 @@ export function formatTranslogTimestamp(raw) {
 /** Format date-only string (YYYY-MM-DD) — no timezone conversion needed for calendar dates */
 export function formatDateOnly(isoStr) {
   if (!isoStr) return "—";
-  const d = new Date(isoStr + "T12:00:00");
+  const d = new Date(isoStr + "T12:00:00Z");
   if (isNaN(d.getTime())) return isoStr;
   return d.toLocaleDateString("en-US", dateOpts({
     month: "short",

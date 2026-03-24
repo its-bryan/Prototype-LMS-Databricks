@@ -2,7 +2,10 @@ from fastapi import APIRouter, HTTPException, Query, Request
 import json
 import re
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from db import query, execute
+
+_ET = ZoneInfo("America/New_York")
 
 router = APIRouter()
 
@@ -34,7 +37,7 @@ def _branches_for_gm(gm_name: str) -> list[str]:
     if from_org:
         return list(from_org)
     lead_branches = query(
-        "SELECT DISTINCT branch FROM leads WHERE archived = false AND lower(general_mgr) LIKE %s",
+        "SELECT DISTINCT branch FROM leads WHERE lower(general_mgr) LIKE %s",
         (f"%{nm}%",),
     )
     return [r["branch"] for r in lead_branches]
@@ -197,7 +200,7 @@ async def get_leads(
     search: str = Query(None),
     start_date: str = Query(None),
     end_date: str = Query(None),
-    limit: int = Query(20, ge=1, le=200),
+    limit: int = Query(20, ge=1, le=500),
     offset: int = Query(0, ge=0),
     paged: bool = Query(False),
 ):
@@ -235,7 +238,7 @@ async def get_leads(
                     branch_list = _branches_for_gm(user_rows[0]["display_name"])
                     print(f"[leads-api] JWT gm '{user_rows[0]['display_name']}' -> {len(branch_list)} branches", flush=True)
 
-    where = ["archived = false"]
+    where: list[str] = []
     params: list = []
 
     if branch_list:
@@ -327,6 +330,30 @@ async def get_leads(
     return rows
 
 
+@router.get("/leads/weeks")
+async def get_lead_weeks(gm_name: str = Query(...)):
+    """Return distinct HLES weeks (Sat-Fri) for a GM, newest first."""
+    branch_list = _branches_for_gm(gm_name)
+    if not branch_list:
+        return []
+    normalized = [re.sub(r"\s+", " ", b.strip()) for b in branch_list]
+    placeholders = ",".join(["%s"] * len(normalized))
+    rows = query(
+        f"""
+        SELECT DISTINCT
+            (COALESCE(init_dt_final, week_of)::date
+             - MOD(EXTRACT(dow FROM COALESCE(init_dt_final, week_of)::date)::int + 1, 7) * interval '1 day'
+            )::date AS week_start
+        FROM leads
+        WHERE regexp_replace(branch, '\\s+', ' ', 'g') IN ({placeholders})
+          AND COALESCE(init_dt_final, week_of) IS NOT NULL
+        ORDER BY week_start DESC
+        """,
+        tuple(normalized),
+    )
+    return [{"weekStart": str(r["week_start"])} for r in rows]
+
+
 @router.get("/leads/gm-meeting-prep-stats")
 async def get_gm_meeting_prep_stats(
     gm_name: str = Query(...),
@@ -357,7 +384,7 @@ async def get_gm_meeting_prep_stats(
     placeholders = ",".join(["%s"] * len(normalized))
     rows = query(
         f"SELECT {_LEAD_LIST_COLS}, enrichment_log FROM leads "
-        f"WHERE archived = false AND regexp_replace(branch, '\\s+', ' ', 'g') IN ({placeholders})",
+        f"WHERE regexp_replace(branch, '\\s+', ' ', 'g') IN ({placeholders})",
         tuple(normalized),
     )
 
@@ -372,7 +399,7 @@ async def get_gm_meeting_prep_stats(
     actionable = [r for r in leads_in_period if r.get("status") in ("Cancelled", "Unused")]
 
     # Use a SQL count with the same filters as /leads to guarantee consistency
-    count_where = ["archived = false", "status IN ('Cancelled', 'Unused')"]
+    count_where = ["status IN ('Cancelled', 'Unused')"]
     count_params: list = []
     count_where.append(
         f"regexp_replace(branch, '\\s+', ' ', 'g') IN ({placeholders})"
@@ -504,10 +531,10 @@ async def get_activity_report(
                 if user_rows and user_rows[0].get("display_name"):
                     branch_list = _branches_for_gm(user_rows[0]["display_name"])
 
-    where = ["archived = false"]
+    where: list[str] = []
     params: list = []
 
-    earliest = (datetime.utcnow() - timedelta(weeks=4)).strftime("%Y-%m-%d")
+    earliest = (datetime.now(_ET) - timedelta(weeks=4)).strftime("%Y-%m-%d")
     where.append("COALESCE(init_dt_final, week_of) >= %s::date")
     params.append(earliest)
 
@@ -626,7 +653,7 @@ async def get_activity_report(
         "SELECT DISTINCT bm FROM org_mapping WHERE bm IS NOT NULL ORDER BY bm LIMIT 6"
     )
     logins = []
-    now = datetime.utcnow()
+    now = datetime.now(_ET)
     login_offsets = [0, 45, 120, 185, 320, 410]
     for i, row in enumerate(org_rows[:6]):
         ts = now - timedelta(minutes=login_offsets[i] if i < len(login_offsets) else 500)
@@ -732,7 +759,7 @@ async def update_directive(lead_id: int, body: dict):
             log.append({
                 "text": directive_text,
                 "by": body.get("created_by_name", "GM"),
-                "at": datetime.utcnow().isoformat(),
+                "at": datetime.now(_ET).isoformat(),
             })
             execute(
                 "UPDATE tasks SET notes = %s, notes_log = %s::jsonb, updated_at = now() WHERE id = %s",
@@ -779,8 +806,9 @@ async def update_contact(lead_id: int, body: dict):
 
 @router.put("/leads/{lead_id}/review")
 async def mark_lead_reviewed(lead_id: int):
+    """Archive a lead (mark it as reviewed). Sets archived=true only."""
     execute(
-        "UPDATE leads SET status = 'Reviewed', archived = true, updated_at = now() WHERE id = %s",
+        "UPDATE leads SET archived = true, updated_at = now() WHERE id = %s",
         (lead_id,)
     )
     rows = query("SELECT * FROM leads WHERE id = %s", (lead_id,))

@@ -13,8 +13,13 @@ import logging
 import time as _time
 from calendar import monthrange
 from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from db import execute, query
+
+_ET = ZoneInfo("America/New_York")
+def _today_et() -> date:
+    return datetime.now(_ET).date()
 
 logger = logging.getLogger(__name__)
 
@@ -41,8 +46,13 @@ def _to_date(val) -> date | None:
         return None
 
 
-def _get_monday(d: date) -> date:
-    return d - timedelta(days=d.weekday())
+def _get_saturday(d: date) -> date:
+    """Return the Saturday that starts the HLES week containing *d* (Sat–Fri)."""
+    days_since_sat = (d.weekday() + 2) % 7
+    return d - timedelta(days=days_since_sat)
+
+
+_get_monday = _get_saturday
 
 
 def _lead_date(lead: dict) -> date | None:
@@ -53,7 +63,7 @@ def _lead_date(lead: dict) -> date | None:
 
 
 def _get_now(leads: list[dict]) -> date:
-    """Latest data Sunday capped by calendar Sunday — same as snapshot.setNowFromLeads."""
+    """Latest data Friday capped by calendar Friday — same as snapshot.setNowFromLeads (HLES Sat–Fri week)."""
     max_monday: date | None = None
     for lead in leads:
         week_of = lead.get("week_of")
@@ -72,12 +82,12 @@ def _get_now(leads: list[dict]) -> date:
                     max_monday = mon
 
     if max_monday is None:
-        return date.today()
+        return _today_et()
 
-    data_sunday = max_monday + timedelta(days=6)
-    cal_monday = _get_monday(date.today())
-    cal_sunday = cal_monday + timedelta(days=6)
-    return data_sunday if data_sunday <= cal_sunday else cal_sunday
+    data_friday = max_monday + timedelta(days=6)
+    cal_saturday = _get_saturday(_today_et())
+    cal_friday = cal_saturday + timedelta(days=6)
+    return data_friday if data_friday <= cal_friday else cal_friday
 
 
 def _twelve_month_labels(anchor: date) -> list[str]:
@@ -94,10 +104,13 @@ def _twelve_month_labels(anchor: date) -> list[str]:
     return list(reversed(labels_rev))
 
 
-def _trailing_week_mondays(anchor: date) -> list[date]:
-    """Oldest-first Mondays; last week is the ISO week (Monday) containing anchor."""
-    end = _get_monday(anchor)
+def _trailing_week_saturdays(anchor: date) -> list[date]:
+    """Oldest-first Saturdays; last week is the HLES week (Saturday) containing anchor."""
+    end = _get_saturday(anchor)
     return [end - timedelta(weeks=NUM_WEEKS - 1 - i) for i in range(NUM_WEEKS)]
+
+
+_trailing_week_mondays = _trailing_week_saturdays
 
 
 def _month_start_end(label: str) -> tuple[date, date] | None:
@@ -124,6 +137,7 @@ def _empty_metrics() -> dict:
         "cancelled": 0,
         "unused": 0,
         "within30": 0,
+        "w30Pool": 0,
         "branchContact": 0,
         "totalContact": 0,
     }
@@ -132,13 +146,22 @@ def _empty_metrics() -> dict:
 def _accumulate(bucket: dict, lead: dict) -> None:
     bucket["total"] += 1
     st = lead.get("status")
+    cr = lead.get("contact_range") or ""
     if st == "Rented":
         bucket["rented"] += 1
     elif st == "Cancelled":
         bucket["cancelled"] += 1
     elif st == "Unused":
         bucket["unused"] += 1
-    if (lead.get("contact_range") or "") == "(a)<30min":
+    # W30 pool: exclude Rented leads with no contact
+    is_rented_no_contact = (
+        st == "Rented"
+        and cr in ("NO CONTACT", "")
+        and not lead.get("time_to_first_contact")
+    )
+    if not is_rented_no_contact:
+        bucket["w30Pool"] += 1
+    if cr == "(a)<30min":
         bucket["within30"] += 1
     fc = lead.get("first_contact_by") or ""
     if fc == "branch":
@@ -207,12 +230,12 @@ def _index_leads_by_branch(leads: list[dict]) -> dict[str, list[dict]]:
 
 def compute_observatory_snapshot() -> None:
     t0 = _time.monotonic()
-    earliest_date = (datetime.utcnow() - timedelta(weeks=56)).strftime("%Y-%m-%d")
+    earliest_date = (datetime.now(_ET) - timedelta(weeks=56)).strftime("%Y-%m-%d")
     print("[observatory] compute_observatory_snapshot started", flush=True)
 
     try:
         leads = query(
-            "SELECT * FROM leads WHERE archived = false AND COALESCE(init_dt_final, week_of) >= %s",
+            "SELECT * FROM leads WHERE COALESCE(init_dt_final, week_of) >= %s",
             (earliest_date,),
         )
         print(f"[observatory] loaded {len(leads)} leads in {_time.monotonic() - t0:.2f}s", flush=True)
@@ -254,8 +277,6 @@ def compute_observatory_snapshot() -> None:
         branch_weekly[b] = w_grid
 
     for lead in leads:
-        if lead.get("status") == "Reviewed":
-            continue
         branch = lead.get("branch")
         if not branch:
             continue

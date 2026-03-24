@@ -700,7 +700,7 @@ function BranchLeadDetailPanel({ branch, leads, leaderboardRow, onBack }) {
                 return (
                   <tr key={lead.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                     <td className="py-2.5 pr-3 text-white/50 text-xs whitespace-nowrap">
-                      {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
+                      {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00Z")) : "—"}
                     </td>
                     <td className="py-2.5 pr-3 text-white font-medium truncate max-w-[160px]">{lead.customer}</td>
                     <td className="py-2.5 pr-3">
@@ -956,7 +956,7 @@ function InsurerLeadDetailPanel({ insurer, leads, onBack }) {
                 return (
                   <tr key={lead.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                     <td className="py-2.5 pr-3 text-white/50 text-xs whitespace-nowrap">
-                      {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
+                      {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00Z")) : "—"}
                     </td>
                     <td className="py-2.5 pr-3 text-white font-medium truncate max-w-[140px]">{lead.customer}</td>
                     <td className="py-2.5 pr-3 text-white/60">{lead.branch}</td>
@@ -1232,7 +1232,7 @@ function BodyShopLeadDetailPanel({ bodyShop, leads, onBack }) {
                 return (
                   <tr key={lead.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                     <td className="py-2.5 pr-3 text-white/50 text-xs whitespace-nowrap">
-                      {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
+                      {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00Z")) : "—"}
                     </td>
                     <td className="py-2.5 pr-3 text-white font-medium truncate max-w-[140px]">{lead.customer}</td>
                     <td className="py-2.5 pr-3 text-white/60">{lead.branch}</td>
@@ -1467,7 +1467,7 @@ function SpotCheckLeadDetailPanel({ lead, onBack }) {
         {[
           { label: "Reservation #", value: lead.reservationId ?? lead.confirmNum ?? "—", color: "text-white" },
           { label: "Status", value: lead.status, color: lead.status === "Rented" ? "text-[#2E7D32]" : lead.status === "Cancelled" ? "text-[#C62828]" : "text-[#F4C300]" },
-          { label: "Date", value: lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—", color: "text-white" },
+          { label: "Date", value: lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00Z")) : "—", color: "text-white" },
           { label: "Insurer", value: lead.insuranceCompany ?? "—", color: "text-white" },
         ].map(({ label, value, color }) => (
           <div key={label} className="rounded-xl p-4 bg-white/5 border border-white/10">
@@ -1681,7 +1681,7 @@ function SlideSpotCheck({ frozenLeads, gmName, initialBranch }) {
                         className="border-b border-white/5 hover:bg-white/5 cursor-pointer group transition-colors"
                       >
                         <td className="py-2.5 pr-3 text-white/50 text-xs whitespace-nowrap">
-                          {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
+                          {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00Z")) : "—"}
                         </td>
                         <td className="py-2.5 pr-3 text-white/50 text-xs font-mono">{lead.reservationId ?? lead.confirmNum ?? "—"}</td>
                         <td className="py-2.5 pr-3 text-white font-medium truncate max-w-[140px] group-hover:text-[#F4C300] transition-colors">

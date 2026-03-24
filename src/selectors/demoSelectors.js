@@ -703,7 +703,7 @@ export function getActivityReportData(leads, limitPerCategory = 10) {
     const ts = lead.lastActivity
       ? new Date(lead.lastActivity).getTime()
       : lead.initDtFinal
-        ? new Date(lead.initDtFinal + "T12:00:00").getTime()
+        ? new Date(lead.initDtFinal + "T12:00:00Z").getTime()
         : 0;
     if (ts > 0) {
       comments.push({
@@ -908,7 +908,7 @@ export function getBranchConversionRateForWeek(leads, branch, weekOf) {
 /** Format week date for display (e.g. "Feb 17–23") */
 export function formatWeekLabel(weekOf) {
   if (!weekOf) return "—";
-  const d = new Date(weekOf + "T12:00:00");
+  const d = new Date(weekOf + "T12:00:00Z");
   const mon = formatDateShort(d);
   const sun = new Date(d.getTime() + 6 * 86400000);
   const sunStr = formatDateShort(sun);

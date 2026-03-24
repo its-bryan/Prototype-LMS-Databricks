@@ -36,44 +36,44 @@ export default function LeadDetail({ lead, enrichmentSlot, contactSlot, contactB
 
         {/* Lead header */}
         <div className="rounded-lg border border-[var(--neutral-200)] bg-[var(--hertz-white)] p-5">
-          <h2 className="text-2xl font-bold text-[#1A1A1A]">{lead.customer}</h2>
-          <p className="text-sm text-[#6E6E6E] font-mono mt-0.5">{lead.reservationId}</p>
+          <h2 className="text-2xl font-bold text-[var(--hertz-black)]">{lead.customer}</h2>
+          <p className="text-sm text-[var(--neutral-600)] font-mono mt-0.5">{lead.reservationId}</p>
         </div>
 
         {hierarchy && (
           <div className="flex items-center gap-2 text-xs text-[var(--neutral-600)] bg-[var(--hertz-white)] rounded-lg border border-[var(--neutral-200)] px-3 py-2">
-            <span><span className="font-medium text-[#1A1A1A]">BM</span> {hierarchy.bm}</span>
-            <span className="text-[#E6E6E6]">→</span>
-            <span><span className="font-medium text-[#1A1A1A]">AM</span> {hierarchy.am}</span>
-            <span className="text-[#E6E6E6]">→</span>
-            <span><span className="font-medium text-[#1A1A1A]">GM</span> {hierarchy.gm}</span>
-            <span className="text-[#E6E6E6]">→</span>
-            <span><span className="font-medium text-[#1A1A1A]">Zone</span> {hierarchy.zone}</span>
+            <span><span className="font-medium text-[var(--hertz-black)]">BM</span> {hierarchy.bm}</span>
+            <span className="text-[var(--neutral-200)]">→</span>
+            <span><span className="font-medium text-[var(--hertz-black)]">AM</span> {hierarchy.am}</span>
+            <span className="text-[var(--neutral-200)]">→</span>
+            <span><span className="font-medium text-[var(--hertz-black)]">GM</span> {hierarchy.gm}</span>
+            <span className="text-[var(--neutral-200)]">→</span>
+            <span><span className="font-medium text-[var(--hertz-black)]">Zone</span> {hierarchy.zone}</span>
           </div>
         )}
 
         {/* Lead Details */}
         <div className="rounded-lg border border-[var(--neutral-200)] bg-[var(--hertz-white)] p-5">
-          <h3 className="text-xs font-bold text-[#6E6E6E] uppercase tracking-wider mb-3">Lead Details</h3>
+          <h3 className="text-xs font-bold text-[var(--neutral-600)] uppercase tracking-wider mb-3">Lead Details</h3>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <p className="text-[#6E6E6E] text-xs uppercase">Status</p>
+              <p className="text-[var(--neutral-600)] text-xs uppercase">Status</p>
               <StatusBadge status={lead.status} />
             </div>
             <div>
-              <p className="text-[#6E6E6E] text-xs uppercase">Branch</p>
+              <p className="text-[var(--neutral-600)] text-xs uppercase">Branch</p>
               <p className="font-medium">{lead.branch ?? "—"}</p>
             </div>
             <div>
-              <p className="text-[#6E6E6E] text-xs uppercase">Branch Manager</p>
+              <p className="text-[var(--neutral-600)] text-xs uppercase">Branch Manager</p>
               <p className="font-medium">{lead.bmName ?? "—"}</p>
             </div>
             <div>
-              <p className="text-[#6E6E6E] text-xs uppercase">Insurance Company</p>
+              <p className="text-[var(--neutral-600)] text-xs uppercase">Insurance Company</p>
               <p className="font-medium">{lead.insuranceCompany ?? "—"}</p>
             </div>
             <div>
-              <p className="text-[#6E6E6E] text-xs uppercase">Time to 1st Contact</p>
+              <p className="text-[var(--neutral-600)] text-xs uppercase">Time to 1st Contact</p>
               <div className="flex items-center gap-2">
                 <p className="font-medium">{lead.timeToFirstContact ?? "—"}</p>
                 {lead.firstContactBy && lead.firstContactBy !== "none" && (
@@ -89,19 +89,19 @@ export default function LeadDetail({ lead, enrichmentSlot, contactSlot, contactB
             </div>
             {lead.timeToCancel && (
               <div>
-                <p className="text-[#6E6E6E] text-xs uppercase">Time to Cancellation</p>
+                <p className="text-[var(--neutral-600)] text-xs uppercase">Time to Cancellation</p>
                 <p className="font-medium">{lead.timeToCancel}</p>
               </div>
             )}
             {lead.gmDirective && (
               <div className="col-span-2">
-                <p className="text-[#6E6E6E] text-xs uppercase">GM Directive</p>
+                <p className="text-[var(--neutral-600)] text-xs uppercase">GM Directive</p>
                 <p className="font-medium text-[var(--hertz-black)]">{lead.gmDirective}</p>
               </div>
             )}
             {lead.hlesReason && (
               <div className="col-span-2">
-                <p className="text-[#6E6E6E] text-xs uppercase">HLES Cancellation Reason</p>
+                <p className="text-[var(--neutral-600)] text-xs uppercase">HLES Cancellation Reason</p>
                 <p className="font-medium text-[var(--color-error)]">{lead.hlesReason}</p>
               </div>
             )}
@@ -118,14 +118,14 @@ export default function LeadDetail({ lead, enrichmentSlot, contactSlot, contactB
             <div className="mt-4 pt-4 border-t border-[var(--neutral-200)]">
               {contactSlot ?? (
                 <div>
-                  <h3 className="text-xs font-bold text-[#6E6E6E] uppercase tracking-wider mb-3">Contact Details</h3>
+                  <h3 className="text-xs font-bold text-[var(--neutral-600)] uppercase tracking-wider mb-3">Contact Details</h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <p className="text-[#6E6E6E] text-xs uppercase">Email</p>
+                      <p className="text-[var(--neutral-600)] text-xs uppercase">Email</p>
                       <p className="font-medium truncate" title={lead.email ?? undefined}>{lead.email ?? "—"}</p>
                     </div>
                     <div>
-                      <p className="text-[#6E6E6E] text-xs uppercase">Phone</p>
+                      <p className="text-[var(--neutral-600)] text-xs uppercase">Phone</p>
                       <p className="font-medium">{lead.phone ?? "—"}</p>
                     </div>
                   </div>
@@ -143,7 +143,7 @@ export default function LeadDetail({ lead, enrichmentSlot, contactSlot, contactB
             className="w-full flex items-center justify-between gap-3 px-5 py-3 text-left hover:bg-[var(--neutral-50)] transition-colors cursor-pointer"
             aria-expanded={translogExpanded}
           >
-            <span className="text-xs font-bold text-[#6E6E6E] uppercase tracking-wider">TRANSLOG Activity</span>
+            <span className="text-xs font-bold text-[var(--neutral-600)] uppercase tracking-wider">TRANSLOG Activity</span>
             <span className="flex items-center gap-2 text-xs text-[var(--neutral-600)]">
               {hasActivity && <span className="font-medium">{activityCount} event{activityCount !== 1 ? "s" : ""}</span>}
               <svg
@@ -183,7 +183,7 @@ export default function LeadDetail({ lead, enrichmentSlot, contactSlot, contactB
         )}
         {contactButtonsSlot && (
           <div className="rounded-lg border border-[var(--neutral-200)] bg-[var(--hertz-white)] p-5">
-            <h3 className="text-xs font-bold text-[#6E6E6E] uppercase tracking-wider mb-3">Contact Customer</h3>
+            <h3 className="text-xs font-bold text-[var(--neutral-600)] uppercase tracking-wider mb-3">Contact Customer</h3>
             {contactButtonsSlot}
           </div>
         )}

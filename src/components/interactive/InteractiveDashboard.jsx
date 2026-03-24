@@ -519,7 +519,7 @@ export function BMDashboardInbox({ navigateTo }) {
                   className="border-t border-[var(--neutral-200)] cursor-pointer hover:bg-[var(--neutral-50)] transition-colors duration-150"
                 >
                   <td className="px-4 py-3 text-sm text-[var(--neutral-600)]">
-                    {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
+                    {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00Z")) : "—"}
                   </td>
                   <td className="px-4 py-3 text-sm font-semibold text-[var(--hertz-black)]">{lead.customer}</td>
                   <td className="px-4 py-3 text-sm font-mono text-[var(--neutral-600)]">{lead.reservationId}</td>
@@ -647,7 +647,6 @@ export function GMDashboardPage({ navigateTo }) {
               branchesSnapshot={snapshot?.branches ?? null}
               zonesSnapshot={snapshot?.zones ?? null}
               gmZone={snapshotGM?.zone ?? null}
-              gmName={gmName}
             />
           );
         })()}

@@ -8,6 +8,7 @@ import os
 import re
 import time as _time
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from db import execute, query, with_connection
 from etl.clean import clean_hles_data, clean_translog_data
 from services.snapshot import compute_and_store_snapshot
@@ -15,6 +16,7 @@ from services.observatory_snapshot import compute_observatory_snapshot
 from services.days_open import refresh_days_open
 
 router = APIRouter()
+_ET = ZoneInfo("America/New_York")
 
 # Batch sizes to reduce DB round-trips and stay under gateway timeout (e.g. 60s)
 HLES_SELECT_CHUNK = 2000
@@ -48,7 +50,7 @@ def _land_file_in_volume(contents: bytes, original_filename: str, base_path: str
     if not base_path or not contents:
         return None
     safe_name = re.sub(r"[^\w\-\.]", "_", original_filename or "upload.xlsx")
-    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(_ET).strftime("%Y%m%d_%H%M%S")
     filename = f"{timestamp}_{safe_name}"
     base = base_path.rstrip("/")
     path = f"{base}/{filename}" if base else None
@@ -142,26 +144,28 @@ def _upsert_org_mapping_from_hles(rows_to_process, cur):
         cur.execute(sql, (bm, branch, am, gm, zone))
 
 
-def _set_ingestion_status(upload_id, state: str, error: str | None = None):
+def _set_ingestion_status(upload_id, state: str, error: str | None = None, counts: dict | None = None):
     rows = query("SELECT hles FROM upload_summary WHERE id = %s", (str(upload_id),))
     if not rows:
         return
     hles = dict(rows[0].get("hles") or {})
     hles["ingestion_status"] = state
-    hles["ingestion_updated_at"] = datetime.utcnow().isoformat()
+    hles["ingestion_updated_at"] = datetime.now(_ET).isoformat()
     if error:
         hles["ingestion_error"] = error
     else:
         hles.pop("ingestion_error", None)
+    if counts:
+        hles.update(counts)
     execute("UPDATE upload_summary SET hles = %s::jsonb WHERE id = %s", (json.dumps(hles), str(upload_id)))
 
 
-def _run_post_upload_jobs(upload_id):
+def _run_post_upload_jobs(upload_id, counts: dict | None = None):
     try:
         compute_and_store_snapshot()
         compute_observatory_snapshot()
         refresh_days_open()
-        _set_ingestion_status(upload_id, "success")
+        _set_ingestion_status(upload_id, "success", counts=counts)
         print(f"[upload] post-upload ingestion succeeded for {upload_id}", flush=True)
     except Exception as exc:
         _set_ingestion_status(upload_id, "failed", str(exc))
@@ -189,6 +193,10 @@ def get_ingestion_status(upload_id: str):
         "startedAt": hles.get("ingestion_started_at"),
         "updatedAt": hles.get("ingestion_updated_at"),
         "error": hles.get("ingestion_error"),
+        "newLeads": hles.get("newLeads", 0),
+        "updated": hles.get("updated", 0),
+        "failed": hles.get("failed", 0),
+        "rowsParsed": hles.get("rowsParsed", 0),
     }
 
 
@@ -222,7 +230,7 @@ async def upload_hles(
     if uploaded_by:
         stats["uploaded_by"] = uploaded_by
     stats["ingestion_status"] = "in_progress"
-    stats["ingestion_started_at"] = datetime.utcnow().isoformat()
+    stats["ingestion_started_at"] = datetime.now(_ET).isoformat()
 
     # Build list of (confirm_num, row) for valid rows
     rows_to_process = []
@@ -236,7 +244,7 @@ async def upload_hles(
     if not rows_to_process:
         stats["ingestion_status"] = "failed"
         stats["ingestion_error"] = "No valid rows to ingest."
-        stats["ingestion_updated_at"] = datetime.utcnow().isoformat()
+        stats["ingestion_updated_at"] = datetime.now(_ET).isoformat()
         execute(
             "INSERT INTO upload_summary (hles, translog, data_as_of_date) VALUES (%s::jsonb, %s::jsonb, %s)",
             (json.dumps(stats), "{}", str(pd.Timestamp.now().date())),
@@ -305,7 +313,13 @@ async def upload_hles(
     )
     upload_id = inserted[0]["id"] if inserted else None
     if upload_id:
-        background_tasks.add_task(_run_post_upload_jobs, upload_id)
+        count_snapshot = {
+            "newLeads": stats.get("newLeads", 0),
+            "updated": stats.get("updated", 0),
+            "failed": stats.get("failed", 0),
+            "rowsParsed": stats.get("rowsParsed", 0),
+        }
+        background_tasks.add_task(_run_post_upload_jobs, upload_id, count_snapshot)
         print(f"[upload] HLES ETL done — ingestion background task queued for {upload_id}", flush=True)
     else:
         # Fallback if id cannot be fetched for any reason.

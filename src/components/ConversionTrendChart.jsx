@@ -30,7 +30,7 @@ const TIMEFRAME_OPTIONS = [
 
 const METRIC_OPTIONS = [
   { value: "conversion_rate", label: "Conversion rate" },
-  { value: "comment_rate", label: "Comment rate" },
+  { value: "comment_rate", label: "Comment Compliance %" },
   { value: "meeting_prep_comment_rate", label: "Comment rate (Meeting Prep)" },
   { value: "contacted_within_30_min", label: "Contacted within 30 min" },
   { value: "branch_vs_hrd_split", label: "Branch vs. HRD split" },
@@ -487,9 +487,9 @@ function ComboView({ data, width, metric, hoveredPoint, setHoveredPoint, reduceM
     metric === "conversion_rate"
       ? "Conversion rate"
       : metric === "comment_rate"
-        ? "Comment rate"
+        ? "Comment Compliance %"
         : metric === "meeting_prep_comment_rate"
-          ? "Comment rate (MP)"
+          ? "Comment Compliance % (MP)"
           : metric === "contacted_within_30_min"
             ? "Contacted <30m"
             : "Rate";

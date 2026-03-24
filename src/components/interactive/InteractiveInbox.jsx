@@ -95,7 +95,7 @@ export default function InteractiveInbox() {
               </div>
               <div className="flex items-center gap-3 mt-2 text-xs text-[#6E6E6E]">
                 {lead.initDtFinal && (
-                  <span>{formatDateShort(new Date(lead.initDtFinal + "T12:00:00"))}</span>
+                  <span>{formatDateShort(new Date(lead.initDtFinal + "T12:00:00Z"))}</span>
                 )}
                 <span>{lead.branch}</span>
               </div>

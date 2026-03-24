@@ -16,9 +16,9 @@ import StatusChangeModal, { statusChangeNeedsModal } from "./StatusChangeModal";
 import { formatDateTimeShort, formatDateShort } from "../utils/dateTime";
 
 const COLUMNS = [
-  { key: "Rented", label: "Rented", color: "border-[#2E7D32]", headerBg: "bg-[#2E7D32]/10", countColor: "text-[#2E7D32]" },
-  { key: "Cancelled", label: "Cancelled", color: "border-[#C62828]", headerBg: "bg-[#C62828]/10", countColor: "text-[#C62828]" },
-  { key: "Unused", label: "Unused", color: "border-amber-400", headerBg: "bg-amber-50", countColor: "text-[#1A1A1A]" },
+  { key: "Rented", label: "Rented", color: "border-[var(--color-success)]", headerBg: "bg-[var(--color-success)]/10", countColor: "text-[var(--color-success)]" },
+  { key: "Cancelled", label: "Cancelled", color: "border-[var(--color-error)]", headerBg: "bg-[var(--color-error)]/10", countColor: "text-[var(--color-error)]" },
+  { key: "Unused", label: "Unused", color: "border-[var(--color-warning)]/40", headerBg: "bg-[var(--color-warning-light)]", countColor: "text-[var(--hertz-black)]" },
 ];
 
 function formatNow() {
@@ -59,7 +59,7 @@ function LeadCard({ lead, org, onLeadClick, isDragging, dataOnboarding }) {
       <div className="flex items-center justify-between mt-2">
         <StatusBadge status={lead.status} />
         <span className="text-[10px] text-[var(--neutral-500)]">
-          {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"} · {zone}
+          {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00Z")) : "—"} · {zone}
         </span>
       </div>
       {lead.timeToFirstContact && (

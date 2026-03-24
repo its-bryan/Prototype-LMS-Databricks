@@ -458,7 +458,7 @@ export default function InteractiveGMMeetingPrepPage() {
                                   className={`border-t border-[var(--neutral-100)] cursor-pointer transition-colors ${selectedLeadId === lead.id ? "bg-[var(--hertz-primary-subtle)]" : "hover:bg-[var(--neutral-50)]"}`}
                                 >
                                   <td className="px-4 py-3 text-[var(--neutral-600)] text-xs">
-                                    {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
+                                    {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00Z")) : "—"}
                                   </td>
                                   <td className="px-4 py-3 font-semibold text-[var(--hertz-black)]">{lead.customer}</td>
                                   <td className="px-4 py-3"><StatusBadge status={lead.status} /></td>
@@ -968,7 +968,7 @@ export default function InteractiveGMMeetingPrepPage() {
                                   className="border-t border-[var(--neutral-100)] cursor-pointer transition-colors hover:bg-[var(--neutral-50)] group"
                                 >
                                   <td className="px-4 py-3 text-[var(--neutral-600)] text-xs">
-                                    {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
+                                    {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00Z")) : "—"}
                                   </td>
                                   <td className="px-4 py-3">
                                     <div className="font-semibold text-[var(--hertz-black)]">{lead.customer}</div>

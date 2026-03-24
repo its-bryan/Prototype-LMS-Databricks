@@ -200,7 +200,7 @@ export default function BMLeadsPage() {
                   className="border-b border-[var(--neutral-100)] cursor-pointer transition-colors hover:bg-[var(--neutral-50)]"
                 >
                   <td className="px-4 py-3 text-[var(--neutral-600)] text-xs">
-                    {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
+                    {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00Z")) : "—"}
                   </td>
                   <td className="px-4 py-3 font-medium text-[var(--hertz-black)]">
                     <div>{lead.customer}</div>

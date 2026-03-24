@@ -1,6 +1,6 @@
 function parseDate(val) {
   if (!val) return null;
-  const d = new Date(`${val}T12:00:00`);
+  const d = new Date(`${val}T12:00:00Z`);
   return Number.isNaN(d.getTime()) ? null : d;
 }
 

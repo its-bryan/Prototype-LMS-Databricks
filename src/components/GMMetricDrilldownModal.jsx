@@ -222,7 +222,7 @@ function TrendChart({ data, config, selectedIndex, onPointClick, dateRange }) {
 }
 
 const STATUS_COLOR = {
-  Rented: "text-[#2E7D32]",
+  Rented: "text-[var(--color-success)]",
   Cancelled: "text-[#B45309]",
   Unused: "text-[var(--neutral-500)]",
   Reviewed: "text-[var(--neutral-400)]",
@@ -411,7 +411,7 @@ function BranchBar({ row, maxVal, config, benchmark, rank, onClick }) {
       <span className={`text-[10px] font-semibold w-[48px] text-center shrink-0 ${
         delta == null || delta === 0
           ? "text-[var(--neutral-400)]"
-          : isPositive ? "text-[#2E7D32]" : isNegative ? "text-[#C62828]" : "text-[var(--neutral-400)]"
+          : isPositive ? "text-[var(--color-success)]" : isNegative ? "text-[var(--color-error)]" : "text-[var(--neutral-400)]"
       }`}>
         {delta == null ? "—" : delta === 0 ? "—" : `${rawDelta > 0 ? "↑" : "↓"}${Math.abs(delta)}${displaySuffix}`}
       </span>
@@ -558,7 +558,7 @@ function WeeklyBreakdownTable({ rows, selectedIndex, dateRange, onWeekClick }) {
           <tr className="border-b border-[var(--neutral-200)]">
             <th className="text-center font-semibold text-[var(--neutral-500)] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Week</th>
             <th className="text-center font-semibold text-[var(--neutral-500)] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Total</th>
-            <th className="text-center font-semibold text-[#2E7D32] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Rented</th>
+            <th className="text-center font-semibold text-[var(--color-success)] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Rented</th>
             <th className="text-center font-semibold text-[#B45309] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Cancelled</th>
             <th className="text-center font-semibold text-[var(--neutral-500)] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Unused</th>
             <th className="text-center font-semibold text-[var(--hertz-black)] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Rate</th>
@@ -581,7 +581,7 @@ function WeeklyBreakdownTable({ rows, selectedIndex, dateRange, onWeekClick }) {
                   </div>
                 </td>
                 <td className={`py-1.5 px-3 text-center ${isSelected ? "font-semibold text-[var(--hertz-black)]" : "text-[var(--neutral-700)]"}`}>{row.totalLeads ?? 0}</td>
-                <td className={`py-1.5 px-3 text-center ${isSelected ? "font-semibold" : ""} text-[#2E7D32]`}>{row.rented ?? 0}</td>
+                <td className={`py-1.5 px-3 text-center ${isSelected ? "font-semibold" : ""} text-[var(--color-success)]`}>{row.rented ?? 0}</td>
                 <td className={`py-1.5 px-3 text-center ${isSelected ? "font-semibold" : ""} text-[#B45309]`}>{row.cancelled ?? 0}</td>
                 <td className={`py-1.5 px-3 text-center ${isSelected ? "font-semibold" : ""} text-[var(--neutral-500)]`}>{row.unused ?? 0}</td>
                 <td className="py-1.5 px-3 text-center font-bold text-[var(--hertz-black)]">
@@ -593,7 +593,7 @@ function WeeklyBreakdownTable({ rows, selectedIndex, dateRange, onWeekClick }) {
           <tr className="border-t-2 border-[var(--neutral-300)] bg-[var(--neutral-50)]">
             <td className="py-1.5 px-3 text-center font-semibold text-[var(--neutral-700)] whitespace-nowrap">T4W Total</td>
             <td className="py-1.5 px-3 text-center font-semibold text-[var(--neutral-700)]">{totalLeads}</td>
-            <td className="py-1.5 px-3 text-center font-semibold text-[#2E7D32]">{totalRented}</td>
+            <td className="py-1.5 px-3 text-center font-semibold text-[var(--color-success)]">{totalRented}</td>
             <td className="py-1.5 px-3 text-center font-semibold text-[#B45309]">{totalCancelled}</td>
             <td className="py-1.5 px-3 text-center font-semibold text-[var(--neutral-500)]">{totalUnused}</td>
             <td className="py-1.5 px-3 text-center font-bold text-[var(--hertz-black)]">{totalRate}%</td>
@@ -622,7 +622,7 @@ function CommentRateBreakdownTable({ rows, selectedIndex, dateRange, onWeekClick
           <tr className="border-b border-[var(--neutral-200)]">
             <th className="text-center font-semibold text-[var(--neutral-500)] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Week</th>
             <th className="text-center font-semibold text-[var(--neutral-500)] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Total</th>
-            <th className="text-center font-semibold text-[#2E7D32] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Commented</th>
+            <th className="text-center font-semibold text-[var(--color-success)] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Commented</th>
             <th className="text-center font-semibold text-[var(--hertz-black)] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Rate</th>
           </tr>
         </thead>
@@ -644,7 +644,7 @@ function CommentRateBreakdownTable({ rows, selectedIndex, dateRange, onWeekClick
                   </span>
                 </td>
                 <td className={`py-1.5 px-3 text-center ${isSelected ? "font-semibold text-[var(--hertz-black)]" : "text-[var(--neutral-700)]"}`}>{row.totalLeads ?? 0}</td>
-                <td className={`py-1.5 px-3 text-center ${isSelected ? "font-semibold" : ""} text-[#2E7D32]`}>{row.enriched ?? 0}</td>
+                <td className={`py-1.5 px-3 text-center ${isSelected ? "font-semibold" : ""} text-[var(--color-success)]`}>{row.enriched ?? 0}</td>
                 <td className="py-1.5 px-3 text-center font-bold text-[var(--hertz-black)]">
                   {weekRate != null ? `${weekRate}%` : "—"}
                 </td>
@@ -654,7 +654,7 @@ function CommentRateBreakdownTable({ rows, selectedIndex, dateRange, onWeekClick
           <tr className="border-t-2 border-[var(--neutral-300)] bg-[var(--neutral-50)]">
             <td className="py-1.5 px-3 text-center font-semibold text-[var(--neutral-700)] whitespace-nowrap">T4W Total</td>
             <td className="py-1.5 px-3 text-center font-semibold text-[var(--neutral-700)]">{totalLeads}</td>
-            <td className="py-1.5 px-3 text-center font-semibold text-[#2E7D32]">{totalEnriched}</td>
+            <td className="py-1.5 px-3 text-center font-semibold text-[var(--color-success)]">{totalEnriched}</td>
             <td className="py-1.5 px-3 text-center font-bold text-[var(--hertz-black)]">{totalRate}%</td>
           </tr>
         </tbody>
@@ -731,7 +731,7 @@ function ContactedWithin30BreakdownTable({ rows, selectedIndex, dateRange, onWee
           <tr className="border-b border-[var(--neutral-200)]">
             <th className="text-center font-semibold text-[var(--neutral-500)] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Week</th>
             <th className="text-center font-semibold text-[var(--neutral-500)] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Total</th>
-            <th className="text-center font-semibold text-[#2E7D32] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Within 30 min</th>
+            <th className="text-center font-semibold text-[var(--color-success)] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Within 30 min</th>
             <th className="text-center font-semibold text-[var(--hertz-black)] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Rate</th>
           </tr>
         </thead>
@@ -752,7 +752,7 @@ function ContactedWithin30BreakdownTable({ rows, selectedIndex, dateRange, onWee
                   </span>
                 </td>
                 <td className={`py-1.5 px-3 text-center ${isSelected ? "font-semibold text-[var(--hertz-black)]" : "text-[var(--neutral-700)]"}`}>{den}</td>
-                <td className={`py-1.5 px-3 text-center ${isSelected ? "font-semibold" : ""} text-[#2E7D32]`}>{row.within30 ?? 0}</td>
+                <td className={`py-1.5 px-3 text-center ${isSelected ? "font-semibold" : ""} text-[var(--color-success)]`}>{row.within30 ?? 0}</td>
                 <td className="py-1.5 px-3 text-center font-bold text-[var(--hertz-black)]">
                   {weekRate != null ? `${weekRate}%` : "—"}
                 </td>
@@ -762,7 +762,7 @@ function ContactedWithin30BreakdownTable({ rows, selectedIndex, dateRange, onWee
           <tr className="border-t-2 border-[var(--neutral-300)] bg-[var(--neutral-50)]">
             <td className="py-1.5 px-3 text-center font-semibold text-[var(--neutral-700)] whitespace-nowrap">T4W Total</td>
             <td className="py-1.5 px-3 text-center font-semibold text-[var(--neutral-700)]">{totalDen}</td>
-            <td className="py-1.5 px-3 text-center font-semibold text-[#2E7D32]">{totalWithin30}</td>
+            <td className="py-1.5 px-3 text-center font-semibold text-[var(--color-success)]">{totalWithin30}</td>
             <td className="py-1.5 px-3 text-center font-bold text-[var(--hertz-black)]">{totalRate}%</td>
           </tr>
         </tbody>
@@ -790,7 +790,7 @@ function BranchContactBreakdownTable({ rows, selectedIndex, dateRange, onWeekCli
           <tr className="border-b border-[var(--neutral-200)]">
             <th className="text-center font-semibold text-[var(--neutral-500)] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Week</th>
             <th className="text-center font-semibold text-[var(--neutral-500)] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Total Contacts</th>
-            <th className="text-center font-semibold text-[#2E7D32] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Branch</th>
+            <th className="text-center font-semibold text-[var(--color-success)] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Branch</th>
             <th className="text-center font-semibold text-[var(--neutral-500)] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">HRD</th>
             <th className="text-center font-semibold text-[var(--hertz-black)] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Branch %</th>
           </tr>
@@ -812,7 +812,7 @@ function BranchContactBreakdownTable({ rows, selectedIndex, dateRange, onWeekCli
                   </span>
                 </td>
                 <td className={`py-1.5 px-3 text-center ${isSelected ? "font-semibold text-[var(--hertz-black)]" : "text-[var(--neutral-700)]"}`}>{contact}</td>
-                <td className={`py-1.5 px-3 text-center ${isSelected ? "font-semibold" : ""} text-[#2E7D32]`}>{row.branchContact ?? 0}</td>
+                <td className={`py-1.5 px-3 text-center ${isSelected ? "font-semibold" : ""} text-[var(--color-success)]`}>{row.branchContact ?? 0}</td>
                 <td className={`py-1.5 px-3 text-center ${isSelected ? "font-semibold" : ""} text-[var(--neutral-500)]`}>{row.hrdContact ?? 0}</td>
                 <td className="py-1.5 px-3 text-center font-bold text-[var(--hertz-black)]">
                   {weekRate != null ? `${weekRate}%` : "—"}
@@ -823,7 +823,7 @@ function BranchContactBreakdownTable({ rows, selectedIndex, dateRange, onWeekCli
           <tr className="border-t-2 border-[var(--neutral-300)] bg-[var(--neutral-50)]">
             <td className="py-1.5 px-3 text-center font-semibold text-[var(--neutral-700)] whitespace-nowrap">T4W Total</td>
             <td className="py-1.5 px-3 text-center font-semibold text-[var(--neutral-700)]">{totalContact}</td>
-            <td className="py-1.5 px-3 text-center font-semibold text-[#2E7D32]">{totalBranch}</td>
+            <td className="py-1.5 px-3 text-center font-semibold text-[var(--color-success)]">{totalBranch}</td>
             <td className="py-1.5 px-3 text-center font-semibold text-[var(--neutral-500)]">{totalHrd}</td>
             <td className="py-1.5 px-3 text-center font-bold text-[var(--hertz-black)]">{totalRate}%</td>
           </tr>
@@ -954,6 +954,12 @@ export default function GMMetricDrilldownModal({
   // { branch, startDate, endDate, periodLabel } — drives the BranchLeadsPanel
   const [branchLeadsContext, setBranchLeadsContext] = useState(null);
 
+  useEffect(() => {
+    const onKeyDown = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
   if (!config) return null;
 
   const relChangeVal = useMemo(() => {
@@ -1020,17 +1026,20 @@ export default function GMMetricDrilldownModal({
     } else if (metricKey === "cancelled_unreviewed") {
       t4wValues = rows.map((_, i) => {
         const win = t4wWindow(i);
-        return win.reduce((s, r) => s + (r.cancelledUnreviewed ?? 0), 0) || null;
+        const hasData = win.some((r) => (r.totalLeads ?? 0) > 0);
+        return hasData ? win.reduce((s, r) => s + (r.cancelledUnreviewed ?? 0), 0) : null;
       });
     } else if (metricKey === "unused_overdue") {
       t4wValues = rows.map((_, i) => {
         const win = t4wWindow(i);
-        return win.reduce((s, r) => s + (r.unusedOverdue ?? 0), 0) || null;
+        const hasData = win.some((r) => (r.totalLeads ?? 0) > 0);
+        return hasData ? win.reduce((s, r) => s + (r.unusedOverdue ?? 0), 0) : null;
       });
     } else if (metricKey === "no_contact_attempt") {
       t4wValues = rows.map((_, i) => {
         const win = t4wWindow(i);
-        return win.reduce((s, r) => s + (r.noContact ?? 0), 0) || null;
+        const hasData = win.some((r) => (r.totalLeads ?? 0) > 0);
+        return hasData ? win.reduce((s, r) => s + (r.noContact ?? 0), 0) : null;
       });
     }
 
@@ -1249,7 +1258,7 @@ export default function GMMetricDrilldownModal({
                   <span className="text-2xl font-extrabold text-[var(--hertz-black)]">{config.format(currentValue)}</span>
                   {relChangeVal != null && relChangeVal !== 0 && (
                     <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
-                      isPositive ? "bg-[#2E7D32]/15 text-[#2E7D32]" : isNegative ? "bg-[#C62828]/15 text-[#C62828]" : "bg-[var(--neutral-100)] text-[var(--neutral-600)]"
+                      isPositive ? "bg-[var(--color-success)]/15 text-[var(--color-success)]" : isNegative ? "bg-[var(--color-error)]/15 text-[var(--color-error)]" : "bg-[var(--neutral-100)] text-[var(--neutral-600)]"
                     }`}>
                       {config.lowerIsBetter
                         ? (relChangeVal < 0 ? "↓" : "↑")

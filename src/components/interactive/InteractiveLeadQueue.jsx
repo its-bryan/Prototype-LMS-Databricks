@@ -32,7 +32,7 @@ export default function InteractiveLeadQueue() {
 
   const dateRange = useMemo(() => {
     if (useCustom && customStart && customEnd) {
-      return { start: new Date(customStart + "T12:00:00"), end: new Date(customEnd + "T23:59:59") };
+      return { start: new Date(customStart + "T12:00:00Z"), end: new Date(customEnd + "T23:59:59") };
     }
     const preset = presets.find((p) => p.key === selectedPresetKey);
     return preset ? { start: preset.start, end: preset.end } : { start: null, end: null };

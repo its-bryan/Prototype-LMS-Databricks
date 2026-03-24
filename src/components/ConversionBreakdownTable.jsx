@@ -84,7 +84,7 @@ export default function ConversionBreakdownTable({
                 <td className="px-3 py-2.5 text-right text-[var(--color-success)]">{row.rented}</td>
                 <td className="px-3 py-2.5 text-right text-[var(--neutral-600)]">{row.unused}</td>
                 <td className="px-3 py-2.5 text-right text-[var(--color-error)]">{row.cancelled}</td>
-                <td className="px-3 py-2.5 text-right font-semibold text-[var(--hertz-black)]">{row.conversionRate}%</td>
+                <td className="px-3 py-2.5 text-right font-semibold text-[var(--hertz-black)]">{row.conversionRate != null ? `${row.conversionRate}%` : "—"}</td>
                 <td className="px-3 py-2.5 text-right text-[var(--neutral-600)]">
                   <span className="inline-flex items-center gap-1">
                     {row.unusedPct}%

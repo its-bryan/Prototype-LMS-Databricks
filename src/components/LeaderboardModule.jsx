@@ -5,7 +5,7 @@ import { getBMLeaderboardData } from "../selectors/demoSelectors";
 const LEADERBOARD_METRICS = [
   { key: "conversionRate", label: "Conversion rate" },
   { key: "pctWithin30", label: "Contacted within 30 min" },
-  { key: "commentRate", label: "Comment rate" },
+  { key: "commentRate", label: "Comment Compliance %" },
   { key: "branchHrdPct", label: "Branch Contact %" },
 ];
 
