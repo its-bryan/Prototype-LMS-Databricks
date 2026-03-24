@@ -13,7 +13,7 @@ import {
 import GMMetricDrilldownModal from "../GMMetricDrilldownModal";
 import { ComplianceSkeleton, usePageTransition } from "../DashboardSkeleton";
 
-const quartileColors = { 1: "#2E7D32", 2: "#F4C300", 3: "#808080", 4: "#C62828" };
+const quartileColors = { 1: "var(--color-success)", 2: "#F4C300", 3: "#808080", 4: "var(--color-error)" };
 
 function getQuartile(rate, maxRate) {
   if (rate == null) return 4;
@@ -112,11 +112,11 @@ export default function InteractiveComplianceDashboard() {
   const summaryCards = [
     { label: "Cancelled Unreviewed", value: String(stats.cancelledUnreviewed), metricKey: "cancelled_unreviewed", relChange: relChange(stats.cancelledUnreviewed, prevStats?.cancelledUnreviewed), lowerIsBetter: true },
     { label: "Unused Overdue (5+ days)", value: String(stats.unusedOverdue), metricKey: "unused_overdue", relChange: relChange(stats.unusedOverdue, prevStats?.unusedOverdue), lowerIsBetter: true },
-    { label: "Comment Compliance", value: `${stats.commentCompliance}%`, metricKey: "comment_rate", relChange: relChange(stats.commentCompliance, prevStats?.commentCompliance) },
+    { label: "Comment Compliance", value: stats.commentCompliance != null ? `${stats.commentCompliance}%` : "—", metricKey: "comment_rate", relChange: relChange(stats.commentCompliance, prevStats?.commentCompliance) },
   ];
 
   const sortOptions = [
-    { value: "commentRate", label: "Comment Rate" },
+    { value: "commentRate", label: "Comment Compliance %" },
     { value: "conversionRate", label: "Conversion Rate" },
     { value: "pctWithin30", label: "% < 30 min" },
     { value: "branchHrdPct", label: "Branch Contact %" },
@@ -235,8 +235,8 @@ export default function InteractiveComplianceDashboard() {
                 <span
                   className={`text-xs font-semibold px-1.5 py-0.5 rounded self-center ${
                     card.lowerIsBetter
-                      ? (card.relChange > 0 ? "bg-rose-400/25 text-rose-200" : card.relChange < 0 ? "bg-emerald-400/25 text-emerald-200" : "bg-white/15 text-white/70")
-                      : (card.relChange > 0 ? "bg-emerald-400/25 text-emerald-200" : card.relChange < 0 ? "bg-rose-400/25 text-rose-200" : "bg-white/15 text-white/70")
+                      ? (card.relChange > 0 ? "bg-[var(--color-error)]/25 text-[var(--color-error-light)]" : card.relChange < 0 ? "bg-[var(--color-success)]/25 text-[var(--color-success-light)]" : "bg-white/15 text-white/70")
+                      : (card.relChange > 0 ? "bg-[var(--color-success)]/25 text-[var(--color-success-light)]" : card.relChange < 0 ? "bg-[var(--color-error)]/25 text-[var(--color-error-light)]" : "bg-white/15 text-white/70")
                   }`}
                 >
                   {card.lowerIsBetter

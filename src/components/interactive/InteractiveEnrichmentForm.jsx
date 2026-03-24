@@ -136,12 +136,12 @@ export default function InteractiveEnrichmentForm({ lead }) {
       )}
 
       <div className="space-y-5">
-        <h4 className="text-xs font-semibold text-[#6E6E6E] uppercase tracking-wide">
+        <h4 className="text-xs font-semibold text-[var(--neutral-600)] uppercase tracking-wide">
           Update Lead
         </h4>
 
         <div>
-          <label className="text-xs text-[#6E6E6E] uppercase tracking-wide block mb-1">
+          <label className="text-xs text-[var(--neutral-600)] uppercase tracking-wide block mb-1">
             Status
           </label>
           <div className="flex gap-2">
@@ -168,16 +168,16 @@ export default function InteractiveEnrichmentForm({ lead }) {
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
           >
-            <label className="text-xs text-[#6E6E6E] uppercase tracking-wide block mb-1">
+            <label className="text-xs text-[var(--neutral-600)] uppercase tracking-wide block mb-1">
               Cancellation Reason <span className="text-[var(--color-error)]">*</span>
             </label>
             <select
               value={reason}
               onChange={(e) => { setReason(e.target.value); clearError(); }}
-              className={`w-full border rounded px-3 py-2 text-sm bg-white focus:border-[#FFD100] focus:outline-none ${
+              className={`w-full border rounded px-3 py-2 text-sm bg-white focus:border-[var(--hertz-primary)] focus:outline-none ${
                 showCancellationReason && !reason?.trim()
                   ? "border-[var(--hertz-primary)] animate-hertz-pulse"
-                  : "border-[#E6E6E6]"
+                  : "border-[var(--neutral-200)]"
               }`}
             >
               <option value="">Select a reason...</option>
@@ -194,17 +194,17 @@ export default function InteractiveEnrichmentForm({ lead }) {
 
         {showNextAction && (
           <div>
-            <label className="text-xs text-[#6E6E6E] uppercase tracking-wide block mb-1">
+            <label className="text-xs text-[var(--neutral-600)] uppercase tracking-wide block mb-1">
               Next Action {(status === "Cancelled" || status === "Unused") && <span className="text-[var(--color-error)]">*</span>}
             </label>
             <select
               value={nextAction}
               onChange={(e) => { setNextAction(e.target.value); clearError(); }}
               disabled={status === "Rented"}
-              className={`w-full border rounded px-3 py-2 text-sm bg-white focus:border-[#FFD100] focus:outline-none disabled:bg-[var(--neutral-50)] disabled:cursor-not-allowed ${
+              className={`w-full border rounded px-3 py-2 text-sm bg-white focus:border-[var(--hertz-primary)] focus:outline-none disabled:bg-[var(--neutral-50)] disabled:cursor-not-allowed ${
                 showNextAction && !nextAction?.trim() && status !== "Rented"
                   ? "border-[var(--hertz-primary)] animate-hertz-pulse"
-                  : "border-[#E6E6E6]"
+                  : "border-[var(--neutral-200)]"
               }`}
             >
               <option value="">Select next action...</option>
@@ -221,17 +221,17 @@ export default function InteractiveEnrichmentForm({ lead }) {
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
           >
-            <label className="text-xs text-[#6E6E6E] uppercase tracking-wide block mb-1">
+            <label className="text-xs text-[var(--neutral-600)] uppercase tracking-wide block mb-1">
               Follow-up Date <span className="text-[var(--color-error)]">*</span>
             </label>
             <input
               type="date"
               value={followUpDate}
               onChange={(e) => { setFollowUpDate(e.target.value); clearError(); }}
-              className={`w-full border rounded px-3 py-2 text-sm bg-white focus:border-[#FFD100] focus:outline-none ${
+              className={`w-full border rounded px-3 py-2 text-sm bg-white focus:border-[var(--hertz-primary)] focus:outline-none ${
                 showFollowUpDate && !followUpDate?.trim()
                   ? "border-[var(--hertz-primary)] animate-hertz-pulse"
-                  : "border-[#E6E6E6]"
+                  : "border-[var(--neutral-200)]"
               }`}
             />
           </motion.div>
@@ -239,7 +239,7 @@ export default function InteractiveEnrichmentForm({ lead }) {
 
         <div data-onboarding="notes-textarea">
           <div>
-            <label className="text-xs text-[#6E6E6E] uppercase tracking-wide block mb-1">
+            <label className="text-xs text-[var(--neutral-600)] uppercase tracking-wide block mb-1">
               Notes
             </label>
             <textarea
@@ -247,7 +247,7 @@ export default function InteractiveEnrichmentForm({ lead }) {
               onChange={(e) => { setNotes(e.target.value); clearError(); }}
               rows={3}
               placeholder="Add notes..."
-              className="w-full border border-[#E6E6E6] rounded px-3 py-2 text-sm bg-white focus:border-[#FFD100] focus:outline-none resize-none"
+              className="w-full border border-[var(--neutral-200)] rounded px-3 py-2 text-sm bg-white focus:border-[var(--hertz-primary)] focus:outline-none resize-none"
             />
           </div>
 
@@ -255,7 +255,7 @@ export default function InteractiveEnrichmentForm({ lead }) {
           <button
             onClick={handleSave}
             disabled={saving || !hasChanges}
-            className="px-4 py-2 bg-[#FFD100] text-[#1A1A1A] rounded text-sm font-medium hover:bg-[#E6BC00] transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-[var(--hertz-primary)] text-[var(--hertz-black)] rounded text-sm font-medium hover:bg-[var(--hertz-primary-hover)] transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {saving ? "Saving…" : "Update Lead"}
           </button>
@@ -263,7 +263,7 @@ export default function InteractiveEnrichmentForm({ lead }) {
             <motion.span
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="text-[#2E7D32] text-sm font-medium flex items-center gap-1"
+              className="text-[var(--color-success)] text-sm font-medium flex items-center gap-1"
             >
               <span className="text-lg">✓</span> Saved
             </motion.span>

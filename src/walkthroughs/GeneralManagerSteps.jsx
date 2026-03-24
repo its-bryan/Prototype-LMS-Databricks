@@ -12,7 +12,7 @@ const summaryCards = [
   { label: "Comment Compliance", value: "91%", color: "text-[#2E7D32]" },
 ];
 
-const cancelledLeads = leads.filter((l) => l.status === "Cancelled" && !l.archived);
+const cancelledLeads = leads.filter((l) => l.status === "Cancelled");
 
 function GM1() {
   return (
@@ -104,7 +104,7 @@ function GM6() {
           <button className="px-3 py-1.5 bg-[#6E6E6E] text-white rounded text-sm">
             ✓ Archive — Reviewed
           </button>
-          <StatusBadge status="Reviewed" />
+          <StatusBadge status="Archived" />
         </motion.div>
       </motion.div>
     </div>

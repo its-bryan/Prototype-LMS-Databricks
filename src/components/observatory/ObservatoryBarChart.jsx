@@ -67,7 +67,7 @@ export default function ObservatoryBarChart({
 
                     return (
                       <div key={p.label} className="flex-1 min-w-[34px] h-full flex flex-col items-center justify-end">
-                        <div className="w-full max-w-[48px] flex items-end justify-center" title={p.tooltip}>
+                        <div className={`w-full mx-auto flex items-end justify-center ${mode === "cluster" ? "max-w-[100px]" : "max-w-[48px]"}`} title={p.tooltip}>
                           {mode === "single" ? (
                             <div className="relative w-full flex items-end justify-center">
                               {yAxis === "percent" && (

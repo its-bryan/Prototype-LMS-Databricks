@@ -191,12 +191,12 @@ export default function Sidebar() {
       initial={false}
       animate={{ width: sidebarCollapsed ? 56 : 220 }}
       transition={{ duration: reduceMotion ? 0 : 0.25, ease: [0.4, 0, 0.2, 1] }}
-      className="bg-[#F8F8F8] border-r border-[#E5E5E5] flex flex-col shrink-0 overflow-hidden"
+      className="bg-[var(--neutral-50)] border-r border-[var(--neutral-200)] flex flex-col shrink-0 overflow-hidden"
     >
       {/* Collapse toggle */}
       <button
         onClick={toggleSidebar}
-        className="p-2.5 text-[#666666] hover:text-[#272425] self-end cursor-pointer transition-colors duration-200 hover:scale-110 active:scale-95"
+        className="p-2.5 text-[var(--neutral-600)] hover:text-[var(--hertz-black)] self-end cursor-pointer transition-colors duration-200 hover:scale-110 active:scale-95"
         title={sidebarCollapsed ? "Expand sidebar" : "Close sidebar"}
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -292,13 +292,13 @@ export default function Sidebar() {
                   !sidebarCollapsed && isChild ? "pl-6" : ""
                 } ${
                   isActive
-                    ? "bg-[#FFD100]/15 text-[#272425] font-semibold ring-1 ring-[#FFD100]/40"
-                    : "text-[#666666] hover:bg-white/80 hover:text-[#272425]"
+                    ? "bg-[var(--hertz-primary)]/15 text-[var(--hertz-black)] font-semibold ring-1 ring-[var(--hertz-primary)]/40"
+                    : "text-[var(--neutral-600)] hover:bg-white/80 hover:text-[var(--hertz-black)]"
                 }`}
                 title={showBadge ? badgeTitle : item.label}
               >
                 {showIcon && (
-                  <span className={`relative shrink-0 ${isActive ? "text-[#FFD100]" : ""}`}>
+                  <span className={`relative shrink-0 ${isActive ? "text-[var(--hertz-primary)]" : ""}`}>
                     {iconMap[item.icon]}
                     {showBadge && (
                       <span
@@ -331,12 +331,12 @@ export default function Sidebar() {
                 whileTap={!reduceMotion ? { scale: 0.98 } : {}}
                 className={`flex-1 flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm transition-colors cursor-pointer min-w-0 ${
                   resolvedActive === "feedback"
-                    ? "bg-[#FFD100]/15 text-[#272425] font-semibold ring-1 ring-[#FFD100]/40"
-                    : "text-[#666666] hover:bg-white/80 hover:text-[#272425]"
+                    ? "bg-[var(--hertz-primary)]/15 text-[var(--hertz-black)] font-semibold ring-1 ring-[var(--hertz-primary)]/40"
+                    : "text-[var(--neutral-600)] hover:bg-white/80 hover:text-[var(--hertz-black)]"
                 }`}
                 title={feedbackItem.label}
               >
-                <span className={`relative shrink-0 ${resolvedActive === "feedback" ? "text-[#FFD100]" : ""}`}>
+                <span className={`relative shrink-0 ${resolvedActive === "feedback" ? "text-[var(--hertz-primary)]" : ""}`}>
                   {iconMap[feedbackItem.icon]}
                 </span>
                 {!sidebarCollapsed && (
@@ -349,7 +349,7 @@ export default function Sidebar() {
       </nav>
 
       {/* Footer — user, settings, logout */}
-      <div className="border-t border-[#E5E5E5] mx-2 mt-auto" />
+      <div className="border-t border-[var(--neutral-200)] mx-2 mt-auto" />
       <div className={`flex flex-col px-2 py-3 space-y-0.5 ${sidebarCollapsed ? "items-center" : ""}`}>
         {role && (
           <button
@@ -379,7 +379,7 @@ export default function Sidebar() {
           </button>
         )}
         <button
-          className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm text-[#666666] hover:bg-white/80 hover:text-[#272425] transition-colors cursor-pointer ${
+          className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm text-[var(--neutral-600)] hover:bg-white/80 hover:text-[var(--hertz-black)] transition-colors cursor-pointer ${
             sidebarCollapsed ? "justify-center px-0" : ""
           }`}
           title="Settings"
@@ -392,7 +392,7 @@ export default function Sidebar() {
         </button>
         <button
           onClick={() => signOut()}
-          className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm text-[#666666] hover:bg-white/80 hover:text-[#272425] transition-colors cursor-pointer ${
+          className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm text-[var(--neutral-600)] hover:bg-white/80 hover:text-[var(--hertz-black)] transition-colors cursor-pointer ${
             sidebarCollapsed ? "justify-center px-0" : ""
           }`}
           title="Logout"

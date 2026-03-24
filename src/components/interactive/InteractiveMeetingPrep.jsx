@@ -84,8 +84,8 @@ function MetricCard({ label, value, subtext, children, className = "", variant =
               <span
                 className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
                   lowerIsBetter
-                    ? (relChangeVal > 0 ? "bg-[#C62828]/15 text-[#C62828]" : relChangeVal < 0 ? "bg-[#2E7D32]/15 text-[#2E7D32]" : "bg-[var(--neutral-100)] text-[var(--neutral-600)]")
-                    : (relChangeVal > 0 ? "bg-[#2E7D32]/15 text-[#2E7D32]" : relChangeVal < 0 ? "bg-[#C62828]/15 text-[#C62828]" : "bg-[var(--neutral-100)] text-[var(--neutral-600)]")
+                    ? (relChangeVal > 0 ? "bg-[var(--color-error)]/15 text-[var(--color-error)]" : relChangeVal < 0 ? "bg-[var(--color-success)]/15 text-[var(--color-success)]" : "bg-[var(--neutral-100)] text-[var(--neutral-600)]")
+                    : (relChangeVal > 0 ? "bg-[var(--color-success)]/15 text-[var(--color-success)]" : relChangeVal < 0 ? "bg-[var(--color-error)]/15 text-[var(--color-error)]" : "bg-[var(--neutral-100)] text-[var(--neutral-600)]")
                 }`}
               >
                 {lowerIsBetter
@@ -739,7 +739,7 @@ export default function InteractiveMeetingPrep() {
                                 <span className="text-xs text-[var(--neutral-600)] font-mono">
                                   {lead.reservationId}
                                 </span>
-                                <span className="px-2 py-0.5 rounded text-xs font-medium bg-amber-50 text-[var(--hertz-black)] border border-amber-200 shrink-0">
+                                <span className="px-2 py-0.5 rounded text-xs font-medium bg-[var(--color-warning-light)] text-[var(--hertz-black)] border border-[var(--color-warning)]/40 shrink-0">
                                   {lead.status}
                                 </span>
                               </div>
@@ -827,7 +827,7 @@ export default function InteractiveMeetingPrep() {
                               <span className="text-xs text-[var(--neutral-600)] font-mono">
                                 {lead.reservationId}
                               </span>
-                              <span className="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
+                              <span className="px-2 py-0.5 rounded text-xs font-medium bg-[var(--color-warning-light)] text-[var(--color-warning)] border border-[var(--color-warning)]/40">
                                 Mismatch
                               </span>
                             </button>
@@ -950,7 +950,7 @@ export default function InteractiveMeetingPrep() {
               whileTap={!reduceMotion && wlText.trim() ? { scale: 0.97 } : {}}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
                 wlSubmitted
-                  ? "bg-emerald-100 text-emerald-700"
+                  ? "bg-[var(--color-success-light)] text-[var(--color-success)]"
                   : !wlText.trim() || wlSubmitting
                   ? "bg-[var(--neutral-100)] text-[var(--neutral-400)] cursor-not-allowed"
                   : "bg-[var(--hertz-primary)] text-[var(--hertz-black)] hover:bg-[var(--hertz-primary-hover)] cursor-pointer"

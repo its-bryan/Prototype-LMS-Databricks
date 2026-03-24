@@ -19,7 +19,7 @@ const easeOut = [0.4, 0, 0.2, 1];
 const METRICS = [
   { key: "conversionRate", label: "Conversion rate", suffix: "%", higherIsBetter: true },
   { key: "pctWithin30", label: "Contacted within 30 min", suffix: "%", higherIsBetter: true },
-  { key: "commentRate", label: "Comment rate", suffix: "%", higherIsBetter: true },
+  { key: "commentRate", label: "Comment Compliance %", suffix: "%", higherIsBetter: true },
   { key: "branchHrdPct", label: "Branch Contact %", suffix: "%", higherIsBetter: true },
 ];
 

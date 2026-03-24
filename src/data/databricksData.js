@@ -99,7 +99,6 @@ function leadFromRow(r) {
     sourcePhone: r.source_phone ?? null,
     sourceStatus: r.source_status ?? null,
     status: r.status,
-    archived: r.archived ?? false,
     enrichmentComplete: r.enrichment_complete ?? false,
     branch: r.branch,
     bmName: r.bm_name,
@@ -291,6 +290,11 @@ export async function fetchLeadsPage({
     offset: result?.offset ?? offset,
     hasNext: !!result?.has_next,
   };
+}
+
+export async function fetchLeadWeeks({ gmName } = {}) {
+  const q = buildQuery({ gm_name: gmName });
+  return apiGet(`/leads/weeks${q}`);
 }
 
 export async function fetchGMMeetingPrepStats({ gmName, startDate = null, endDate = null } = {}) {
@@ -556,7 +560,7 @@ export async function updateLeadDirective(leadId, gmDirective) {
   return leadFromRow(row);
 }
 
-/** Mark a lead as reviewed (status="Reviewed", archived=true). */
+/** Archive a lead (mark it as reviewed). Sets archived=true only. */
 export async function markLeadReviewed(leadId) {
   const row = await apiPut(`/leads/${leadId}/review`, {});
   return leadFromRow(row);

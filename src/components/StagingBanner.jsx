@@ -38,7 +38,7 @@ export default function StagingBanner() {
   if (!isStaging) return null;
 
   return (
-    <div className="w-full bg-amber-500 text-black text-xs font-semibold tracking-wide text-center py-1">
+    <div className="w-full bg-[var(--color-warning)] text-black text-xs font-semibold tracking-wide text-center py-1">
       STAGING ENVIRONMENT
     </div>
   );

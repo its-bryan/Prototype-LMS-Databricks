@@ -89,12 +89,12 @@ function StepIndicator({ currentStep }) {
 
 function ingestionBadge(status) {
   if (status === "in_progress" || status === "rebuilding_snapshots") {
-    return { label: "In progress", className: "bg-blue-100 text-blue-800" };
+    return { label: "In progress", className: "bg-[var(--color-info-light)] text-[var(--color-info)]" };
   }
   if (status === "failed") {
-    return { label: "Failed", className: "bg-red-100 text-red-800" };
+    return { label: "Failed", className: "bg-[var(--color-error-light)] text-[var(--color-error)]" };
   }
-  return { label: "Success", className: "bg-emerald-100 text-emerald-800" };
+  return { label: "Success", className: "bg-[var(--color-success-light)] text-[var(--color-success)]" };
 }
 
 // ---------------------------------------------------------------------------
@@ -148,7 +148,7 @@ function FileDropZone({ label, accept, file, onFileSelect, disabled }) {
           </div>
           <button
             onClick={(e) => { e.stopPropagation(); onFileSelect(null); }}
-            className="ml-2 text-xs text-[var(--neutral-500)] hover:text-[#C62828] cursor-pointer"
+            className="ml-2 text-xs text-[var(--neutral-500)] hover:text-[var(--color-error)] cursor-pointer"
           >
             Remove
           </button>
@@ -240,7 +240,7 @@ function ValidationCard({ title, stats, errors, isLoading }) {
         <div className="mt-3 pt-3 border-t border-[var(--neutral-100)]">
           <button
             onClick={() => setShowErrors(!showErrors)}
-            className="text-xs font-medium text-[#C62828] hover:underline cursor-pointer flex items-center gap-1"
+            className="text-xs font-medium text-[var(--color-error)] hover:underline cursor-pointer flex items-center gap-1"
           >
             <svg className={`w-3 h-3 transition-transform ${showErrors ? "rotate-90" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -255,12 +255,12 @@ function ValidationCard({ title, stats, errors, isLoading }) {
                 exit={{ height: 0, opacity: 0 }}
                 className="overflow-hidden"
               >
-                <p className="text-xs text-[#C62828] opacity-80 mt-2 mb-1">
+                <p className="text-xs text-[var(--color-error)] opacity-80 mt-2 mb-1">
                   These rows were excluded from the upload. Fix the issues in your CSV file and re-upload to include them.
                 </p>
                 <div className="max-h-32 overflow-y-auto space-y-1">
                   {errors.map((err, i) => (
-                    <p key={i} className="text-xs text-[#C62828] font-mono">{err}</p>
+                    <p key={i} className="text-xs text-[var(--color-error)] font-mono">{err}</p>
                   ))}
                 </div>
               </motion.div>
@@ -472,7 +472,7 @@ function ConflictResolver({ conflicts, resolutions, onResolve }) {
                 <p className="text-xs text-[var(--neutral-500)]">{conflict.existing?.branch}</p>
               </div>
               {resolution && (
-                <span className="text-xs font-medium text-[#2E7D32] bg-[#E8F5E9] px-2 py-0.5 rounded">
+                <span className="text-xs font-medium text-[var(--color-success)] bg-[#E8F5E9] px-2 py-0.5 rounded">
                   Resolved: {resolution === "keep_enriched" ? "Keep Enriched" : resolution === "use_source" ? "Use Source" : "Skip"}
                 </span>
               )}
@@ -547,12 +547,12 @@ function OrphanActionSelector({ orphanedLeads, orphanAction, onOrphanAction }) {
             className={`flex-1 p-3 rounded-lg border text-left transition-colors cursor-pointer ${
               orphanAction === opt.value
                 ? opt.destructive
-                  ? "border-[#C62828] bg-[#FFEBEE]"
+                  ? "border-[var(--color-error)] bg-[#FFEBEE]"
                   : "border-[var(--hertz-black)] bg-[var(--neutral-50)]"
                 : "border-[var(--neutral-200)] hover:border-[var(--neutral-400)]"
             }`}
           >
-            <p className={`text-sm font-medium ${opt.destructive && orphanAction === opt.value ? "text-[#C62828]" : "text-[var(--hertz-black)]"}`}>{opt.label}</p>
+            <p className={`text-sm font-medium ${opt.destructive && orphanAction === opt.value ? "text-[var(--color-error)]" : "text-[var(--hertz-black)]"}`}>{opt.label}</p>
             <p className="text-xs text-[var(--neutral-500)]">{opt.desc}</p>
           </button>
         ))}
@@ -868,7 +868,7 @@ export default function InteractiveUploads() {
                   <button
                     onClick={handleValidate}
                     disabled={!hlesFile}
-                    className="px-5 py-2.5 bg-[var(--hertz-primary)] text-[var(--hertz-black)] rounded-lg text-sm font-semibold hover:bg-[#E6BC00] transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="px-5 py-2.5 bg-[var(--hertz-primary)] text-[var(--hertz-black)] rounded-lg text-sm font-semibold hover:bg-[var(--hertz-primary-hover)] transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     Upload & Validate
                   </button>
@@ -901,7 +901,7 @@ export default function InteractiveUploads() {
                             { label: "Rows parsed", value: hlesParsed.rawRowCount.toLocaleString() },
                             { label: "Valid leads", value: hlesParsed.leads.length.toLocaleString() },
                             { label: "Branches found", value: hlesParsed.orgRows.length.toLocaleString() },
-                            { label: "Validation errors", value: hlesParsed.errors.length.toString(), color: hlesParsed.errors.length ? "text-[#C62828] alert-pulse-red" : "" },
+                            { label: "Validation errors", value: hlesParsed.errors.length.toString(), color: hlesParsed.errors.length ? "text-[var(--color-error)] alert-pulse-red" : "" },
                           ]
                         : null
                     }
@@ -917,7 +917,7 @@ export default function InteractiveUploads() {
                   </button>
                   <button
                     onClick={() => setStep("preview")}
-                    className="px-5 py-2.5 bg-[var(--hertz-primary)] text-[var(--hertz-black)] rounded-lg text-sm font-semibold hover:bg-[#E6BC00] transition-colors cursor-pointer"
+                    className="px-5 py-2.5 bg-[var(--hertz-primary)] text-[var(--hertz-black)] rounded-lg text-sm font-semibold hover:bg-[var(--hertz-primary-hover)] transition-colors cursor-pointer"
                   >
                     Continue to Preview
                   </button>
@@ -934,9 +934,9 @@ export default function InteractiveUploads() {
 
             {commitError && (
               <div className="mt-6 rounded-lg p-4 bg-[#FFEBEE] alert-pulse-red">
-                <p className="text-sm font-semibold text-[#C62828] mb-1">Commit Failed</p>
-                <p className="text-xs text-[#C62828] mb-2">{commitError}</p>
-                <p className="text-xs text-[#C62828] opacity-80">
+                <p className="text-sm font-semibold text-[var(--color-error)] mb-1">Commit Failed</p>
+                <p className="text-xs text-[var(--color-error)] mb-2">{commitError}</p>
+                <p className="text-xs text-[var(--color-error)] opacity-80">
                   Try committing again. If the error persists, check the browser console for details or contact your system administrator.
                 </p>
               </div>
@@ -972,7 +972,7 @@ export default function InteractiveUploads() {
               <button
                 onClick={handleCommit}
                 disabled={!canProceedFromPreview}
-                className="px-5 py-2.5 bg-[var(--hertz-primary)] text-[var(--hertz-black)] rounded-lg text-sm font-semibold hover:bg-[#E6BC00] transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                className="px-5 py-2.5 bg-[var(--hertz-primary)] text-[var(--hertz-black)] rounded-lg text-sm font-semibold hover:bg-[var(--hertz-primary-hover)] transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {hlesReconciliation.conflicts.length > 0 && !allConflictsResolved
                   ? `Resolve ${hlesReconciliation.conflicts.length - Object.keys(conflictResolutions).length} Conflict(s) to Continue`
@@ -1067,11 +1067,11 @@ export default function InteractiveUploads() {
                 <div className="mb-8">
                   <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${isFailed ? "bg-[#FFEBEE]" : "bg-[#E8F5E9]"}`}>
                     {isFailed ? (
-                      <svg className="w-8 h-8 text-[#C62828]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-8 h-8 text-[var(--color-error)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
                     ) : isSuccess ? (
-                      <svg className="w-8 h-8 text-[#2E7D32]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-8 h-8 text-[var(--color-success)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
                     ) : (
@@ -1087,7 +1087,7 @@ export default function InteractiveUploads() {
                       <div className="flex justify-between items-center mb-1.5">
                         <span className="text-xs font-semibold text-[var(--neutral-600)] uppercase tracking-wide flex items-center gap-1.5">
                           {dbDone
-                            ? <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                            ? <svg className="w-3.5 h-3.5 text-[var(--color-success)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
                             : <span className="w-3.5 h-3.5 rounded-full border-2 border-[var(--hertz-primary)] border-t-transparent animate-spin inline-block" />
                           }
                           Rows ingested
@@ -1098,7 +1098,7 @@ export default function InteractiveUploads() {
                       </div>
                       <div className="w-full h-2 bg-[var(--neutral-100)] rounded-full overflow-hidden">
                         <motion.div
-                          className={`h-full rounded-full ${isFailed ? "bg-[#C62828]" : "bg-[var(--hertz-primary)]"}`}
+                          className={`h-full rounded-full ${isFailed ? "bg-[var(--color-error)]" : "bg-[var(--hertz-primary)]"}`}
                           initial={{ width: 0 }}
                           animate={{ width: `${dbPct}%` }}
                           transition={{ duration: 0.4, ease: "easeOut" }}
@@ -1112,7 +1112,7 @@ export default function InteractiveUploads() {
                       <div className="flex justify-between items-center mb-1.5">
                         <span className="text-xs font-semibold text-[var(--neutral-600)] uppercase tracking-wide flex items-center gap-1.5">
                           {snapshotDone
-                            ? <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                            ? <svg className="w-3.5 h-3.5 text-[var(--color-success)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
                             : dbDone
                               ? <span className="w-3.5 h-3.5 rounded-full border-2 border-[var(--hertz-primary)] border-t-transparent animate-spin inline-block" />
                               : <span className="w-3.5 h-3.5 rounded-full border-2 border-[var(--neutral-300)] inline-block" />
@@ -1137,7 +1137,7 @@ export default function InteractiveUploads() {
                     </div>
                   </div>
                   {ingestion.error && (
-                    <p className="text-xs text-[#C62828] mt-2">{ingestion.error}</p>
+                    <p className="text-xs text-[var(--color-error)] mt-2">{ingestion.error}</p>
                   )}
                 </div>
               );
@@ -1151,10 +1151,10 @@ export default function InteractiveUploads() {
                     { label: "New leads inserted", value: commitResult.hles.inserted },
                     { label: "Existing leads updated", value: commitResult.hles.updated },
                     { label: "Leads archived", value: commitResult.hles.archived ?? 0 },
-                    commitResult.hles.deleted > 0 && { label: "Leads removed", value: commitResult.hles.deleted, color: "text-[#C62828]" },
+                    commitResult.hles.deleted > 0 && { label: "Leads removed", value: commitResult.hles.deleted, color: "text-[var(--color-error)]" },
                     { label: "Leads skipped", value: commitResult.hles.skipped ?? 0 },
                     commitResult.hles.rowsParsed != null && { label: "Rows parsed", value: commitResult.hles.rowsParsed },
-                    (commitResult.hles.failed ?? 0) > 0 && { label: "Rows failed", value: commitResult.hles.failed, color: "text-[#C62828]" },
+                    (commitResult.hles.failed ?? 0) > 0 && { label: "Rows failed", value: commitResult.hles.failed, color: "text-[var(--color-error)]" },
                     commitResult.hles.landedPath && { label: "Landed in Volume", value: commitResult.hles.landedPath },
                   ].filter(Boolean).map((s) => (
                     <div key={s.label} className="flex justify-between text-sm">
@@ -1211,7 +1211,7 @@ export default function InteractiveUploads() {
             <div className="flex justify-center gap-3">
               <button
                 onClick={handleReset}
-                className="px-5 py-2.5 bg-[var(--hertz-primary)] text-[var(--hertz-black)] rounded-lg text-sm font-semibold hover:bg-[#E6BC00] transition-colors cursor-pointer"
+                className="px-5 py-2.5 bg-[var(--hertz-primary)] text-[var(--hertz-black)] rounded-lg text-sm font-semibold hover:bg-[var(--hertz-primary-hover)] transition-colors cursor-pointer"
               >
                 Start New Upload
               </button>
@@ -1258,7 +1258,7 @@ export default function InteractiveUploads() {
                             year: "2-digit",
                             hour: "numeric",
                             minute: "2-digit",
-                            timeZone: "America/Los_Angeles",
+                            timeZone: "America/New_York",
                             timeZoneName: "short",
                           })
                         : "—";
@@ -1270,10 +1270,10 @@ export default function InteractiveUploads() {
                           : "Failed";
                     const statusClass =
                       row.status === "success"
-                        ? "bg-emerald-100 text-emerald-800"
+                        ? "bg-[var(--color-success-light)] text-[var(--color-success)]"
                         : row.status === "partial"
-                          ? "bg-amber-100 text-amber-800"
-                          : "bg-red-100 text-red-800";
+                          ? "bg-[var(--color-warning-light)] text-[var(--color-warning)]"
+                          : "bg-[var(--color-error-light)] text-[var(--color-error)]";
                     const ingestion = ingestionBadge(row.ingestionStatus);
                     const m = row.metadata ?? {};
                     return (
@@ -1325,7 +1325,7 @@ export default function InteractiveUploads() {
                                 <li>Skipped / failed: {Number(m.failed ?? 0).toLocaleString()}</li>
                                 {row.dataAsOfDate && <li>Data as of: {row.dataAsOfDate}</li>}
                                 {row.landedPath && <li className="truncate" title={row.landedPath}>Landed: {row.landedPath}</li>}
-                                {row.ingestionError && <li className="text-[#C62828]">Ingestion error: {row.ingestionError}</li>}
+                                {row.ingestionError && <li className="text-[var(--color-error)]">Ingestion error: {row.ingestionError}</li>}
                               </ul>
                             </td>
                           </tr>

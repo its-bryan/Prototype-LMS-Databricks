@@ -79,7 +79,7 @@ export default function AppLayout({ children }) {
       <DataBanner />
       <div className="flex-1 flex overflow-hidden">
         <Sidebar />
-        <main ref={mainRef} className="flex-1 min-h-0 overflow-y-auto overscroll-none bg-white pl-6">
+        <main ref={mainRef} className="flex-1 min-h-0 overflow-y-auto overscroll-none bg-white px-6">
           {children}
         </main>
       </div>

@@ -14,7 +14,7 @@ function toYMD(d) {
 
 function parseYMD(str) {
   if (!str) return null;
-  const d = new Date(str + "T12:00:00");
+  const d = new Date(str + "T12:00:00Z");
   return isNaN(d.getTime()) ? null : d;
 }
 

@@ -90,26 +90,26 @@ export default function BMLeadsPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-1.5">
+          <div className="inline-flex rounded-md border border-[var(--neutral-200)] bg-[var(--neutral-50)] p-0.5">
             {presets.map((p) => (
               <button
                 key={p.key}
                 onClick={() => setSelectedPresetKey(p.key)}
-                className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
+                className={`px-3 py-1.5 text-xs font-semibold rounded transition-colors cursor-pointer ${
                   selectedPresetKey === p.key
-                    ? "bg-[var(--hertz-black)] text-white"
-                    : "bg-[var(--neutral-100)] text-[var(--neutral-600)] hover:bg-[var(--neutral-200)]"
+                    ? "bg-[var(--hertz-primary)] text-[var(--hertz-black)] shadow-sm"
+                    : "text-[var(--neutral-600)] hover:text-[var(--hertz-black)]"
                 }`}
               >
                 {p.label}
               </button>
             ))}
-            {currentPreset && (
-              <span className="text-xs text-[var(--neutral-400)] px-1">
-                {formatDateRange(currentPreset)}
-              </span>
-            )}
           </div>
+          {currentPreset && (
+            <span className="text-xs text-[var(--neutral-400)] px-1">
+              {formatDateRange(currentPreset)}
+            </span>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -200,7 +200,7 @@ export default function BMLeadsPage() {
                   className="border-b border-[var(--neutral-100)] cursor-pointer transition-colors hover:bg-[var(--neutral-50)]"
                 >
                   <td className="px-4 py-3 text-[var(--neutral-600)] text-xs">
-                    {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
+                    {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00Z")) : "—"}
                   </td>
                   <td className="px-4 py-3 font-medium text-[var(--hertz-black)]">
                     <div>{lead.customer}</div>

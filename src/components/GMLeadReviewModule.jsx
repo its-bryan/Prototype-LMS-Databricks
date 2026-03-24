@@ -35,7 +35,7 @@ export default function GMLeadReviewModule({ navigateTo, leads, dateRange, reduc
         whileTap={!reduceMotion ? { scale: 0.995 } : {}}
         className={`w-full h-full text-left border-2 rounded-xl p-5 transition-all duration-200 cursor-pointer group
           ${hasItems
-            ? "bg-[var(--hertz-primary-subtle)] border-[var(--hertz-primary)] shadow-[0_0_0_2px_rgba(255,209,0,0.4)] hover:shadow-[var(--shadow-lg)]"
+            ? "bg-[var(--hertz-primary-subtle)] border-[var(--hertz-primary)] ring-2 ring-[var(--hertz-primary)] hover:shadow-[var(--shadow-lg)]"
             : "border-[var(--neutral-200)] hover:border-[var(--hertz-primary)] hover:shadow-[var(--shadow-lg)] bg-white hover:bg-[var(--hertz-primary-subtle)]"
           }
           ${hasItems && !reduceMotion ? "animate-hertz-pulse" : ""}`}

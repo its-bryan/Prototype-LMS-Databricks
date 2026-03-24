@@ -32,7 +32,7 @@ export default function InteractiveLeadQueue() {
 
   const dateRange = useMemo(() => {
     if (useCustom && customStart && customEnd) {
-      return { start: new Date(customStart + "T12:00:00"), end: new Date(customEnd + "T23:59:59") };
+      return { start: new Date(customStart + "T12:00:00Z"), end: new Date(customEnd + "T23:59:59") };
     }
     const preset = presets.find((p) => p.key === selectedPresetKey);
     return preset ? { start: preset.start, end: preset.end } : { start: null, end: null };
@@ -117,68 +117,69 @@ export default function InteractiveLeadQueue() {
 
   return (
     <div>
-      <h2 className="text-xl font-semibold text-[#1A1A1A] mb-1">My Leads</h2>
-      <p className="text-sm text-[#6E6E6E] mb-4">{subtitle}</p>
+      <h2 className="text-xl font-semibold text-[var(--hertz-black)] mb-1">My Leads</h2>
+      <p className="text-sm text-[var(--neutral-600)] mb-4">{subtitle}</p>
 
-      <div className="flex items-center gap-1.5 flex-wrap mb-3">
-        {presets.map((p) => (
+      <div className="flex items-center gap-3 flex-wrap mb-3">
+        <div className="flex rounded-lg border border-[var(--neutral-200)] overflow-hidden">
+          {presets.map((p) => (
+            <button
+              key={p.key}
+              type="button"
+              onClick={() => {
+                setSelectedPresetKey(p.key);
+                setUseCustom(false);
+              }}
+              className={`px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
+                !useCustom && selectedPresetKey === p.key
+                  ? "bg-[var(--hertz-primary)] text-[var(--hertz-black)]"
+                  : "bg-white text-[var(--neutral-600)] hover:bg-[var(--neutral-50)]"
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
           <button
-            key={p.key}
             type="button"
-            onClick={() => {
-              setSelectedPresetKey(p.key);
-              setUseCustom(false);
-            }}
-            className={`px-2 py-1 rounded text-xs font-medium transition-colors cursor-pointer ${
-              !useCustom && selectedPresetKey === p.key
-                ? "bg-[#FFD100] text-[#1A1A1A]"
-                : "bg-gray-100 text-[#6E6E6E] hover:bg-gray-200"
+            onClick={() => setUseCustom(true)}
+            className={`px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
+              useCustom
+                ? "bg-[var(--hertz-primary)] text-[var(--hertz-black)]"
+                : "bg-white text-[var(--neutral-600)] hover:bg-[var(--neutral-50)]"
             }`}
           >
-            {p.label}
+            Custom
           </button>
-        ))}
-
-        <span className="text-[#E6E6E6] mx-0.5">|</span>
-
-        <button
-          type="button"
-          onClick={() => setUseCustom(true)}
-          className={`px-2 py-1 rounded text-xs font-medium transition-colors cursor-pointer ${
-            useCustom ? "bg-[#FFD100] text-[#1A1A1A]" : "bg-gray-100 text-[#6E6E6E] hover:bg-gray-200"
-          }`}
-        >
-          Custom
-        </button>
+        </div>
 
         {useCustom && (
-          <div className="flex items-center gap-1.5 ml-0.5">
+          <div className="flex items-center gap-1.5">
             <input
               type="date"
               value={customStart}
               onChange={(e) => setCustomStart(e.target.value)}
-              className="px-2 py-1 border border-[#E6E6E6] rounded text-xs text-[#1A1A1A] focus:outline-none focus:border-[#FFD100]"
+              className="px-2 py-1 border border-[var(--neutral-200)] rounded text-xs text-[var(--hertz-black)] focus:outline-none focus:border-[var(--hertz-primary)]"
             />
-            <span className="text-xs text-[#6E6E6E]">to</span>
+            <span className="text-xs text-[var(--neutral-600)]">to</span>
             <input
               type="date"
               value={customEnd}
               onChange={(e) => setCustomEnd(e.target.value)}
-              className="px-2 py-1 border border-[#E6E6E6] rounded text-xs text-[#1A1A1A] focus:outline-none focus:border-[#FFD100]"
+              className="px-2 py-1 border border-[var(--neutral-200)] rounded text-xs text-[var(--hertz-black)] focus:outline-none focus:border-[var(--hertz-primary)]"
             />
           </div>
         )}
       </div>
 
       <div className="flex items-center gap-3 flex-wrap mb-4">
-        <div className="flex rounded-lg border border-[#E6E6E6] overflow-hidden">
+        <div className="flex rounded-lg border border-[var(--neutral-200)] overflow-hidden">
           {STATUS_TABS.map((tab) => (
             <button
               key={tab}
               type="button"
               onClick={() => setStatusFilter(tab)}
               className={`px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
-                statusFilter === tab ? "bg-[#1A1A1A] text-white" : "bg-white text-[#6E6E6E] hover:bg-gray-50"
+                statusFilter === tab ? "bg-[var(--hertz-black)] text-white" : "bg-white text-[var(--neutral-600)] hover:bg-[var(--neutral-50)]"
               }`}
             >
               {tab}
@@ -187,7 +188,7 @@ export default function InteractiveLeadQueue() {
         </div>
       </div>
 
-      <div className="flex items-center justify-between text-xs text-[#6E6E6E] mb-4 px-0.5">
+      <div className="flex items-center justify-between text-xs text-[var(--neutral-600)] mb-4 px-0.5">
         <span>
           {pageLoading ? "Loading…" : totalLeads === 0 ? "0 results" : `Showing ${offset + 1}-${Math.min(offset + pageSize, totalLeads)} of ${totalLeads}`}
         </span>
@@ -196,7 +197,7 @@ export default function InteractiveLeadQueue() {
             type="button"
             onClick={() => setOffset((prev) => Math.max(0, prev - pageSize))}
             disabled={offset === 0 || pageLoading}
-            className="px-2.5 py-1 rounded border border-[#E6E6E6] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            className="px-2.5 py-1 rounded border border-[var(--neutral-200)] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--neutral-50)]"
           >
             Prev
           </button>
@@ -204,7 +205,7 @@ export default function InteractiveLeadQueue() {
             type="button"
             onClick={() => setOffset((prev) => prev + pageSize)}
             disabled={pageLoading || offset + pageSize >= totalLeads}
-            className="px-2.5 py-1 rounded border border-[#E6E6E6] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            className="px-2.5 py-1 rounded border border-[var(--neutral-200)] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--neutral-50)]"
           >
             Next
           </button>

@@ -66,7 +66,7 @@ export default function MeetingPrepLeadPanel({ lead, isReadOnly, onClose }) {
 
   const enrichmentSlot = isReadOnly ? (
     <div>
-      <h3 className="text-xs font-bold text-[#6E6E6E] uppercase tracking-wider mb-3">BM Comments</h3>
+      <h3 className="text-xs font-bold text-[var(--neutral-600)] uppercase tracking-wider mb-3">BM Comments</h3>
       {liveLead.enrichment?.reason || liveLead.enrichment?.notes ? (
         <div className="space-y-2 text-sm">
           {liveLead.enrichment.reason && (
@@ -131,7 +131,7 @@ export default function MeetingPrepLeadPanel({ lead, isReadOnly, onClose }) {
               enrichmentSlot={enrichmentSlot}
               tasksSlot={
                 <div data-onboarding="tasks-section">
-                  <h3 className="text-xs font-bold text-[#6E6E6E] uppercase tracking-wider mb-3">Tasks</h3>
+                  <h3 className="text-xs font-bold text-[var(--neutral-600)] uppercase tracking-wider mb-3">Tasks</h3>
                   {leadTasks.length === 0 ? (
                     <p className="text-sm text-[var(--neutral-600)]">No tasks for this lead.</p>
                   ) : (

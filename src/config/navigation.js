@@ -55,11 +55,11 @@ export const roleNav = {
   ],
   gm: [
     { id: "gm-overview", label: "SUMMARY", icon: "grid" },
-    { id: "gm-leaderboard", label: "Team Leaderboard", icon: "trophy", parentId: "gm-todos" },
-    { id: "gm-activity-report", label: "Activity Report", icon: "activity", parentId: "gm-todos" },
     { id: "gm-todos", label: "WORK", icon: "briefcase", sectionId: "todos" },
     { id: "gm-meeting-prep", label: "Meeting Prep", icon: "columns", parentId: "gm-todos" },
     { id: "gm-leads", label: "My Leads", icon: "list", parentId: "gm-todos" },
+    { id: "gm-leaderboard", label: "Team Leaderboard", icon: "trophy", parentId: "gm-todos" },
+    { id: "gm-activity-report", label: "Activity Report", icon: "activity", parentId: "gm-todos" },
     { id: "observatory", label: "OBSERVATORY TOWER", icon: "bar-chart" },
     { id: "obs-conversion", label: "Conversion %", icon: "bar-chart", parentId: "observatory" },
     { id: "obs-leads", label: "Total Leads", icon: "list", parentId: "observatory" },

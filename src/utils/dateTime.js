@@ -1,11 +1,22 @@
 /**
- * Centralized date/time formatting — all timestamps displayed in PST (San Francisco).
- * Uses America/Los_Angeles (handles PST/PDT automatically).
+ * Centralized date/time formatting — all timestamps displayed in Eastern Time.
+ * Uses America/New_York (handles EST/EDT automatically).
  */
-export const TZ_PST = "America/Los_Angeles";
+export const TZ = "America/New_York";
+/** @deprecated Use TZ instead */
+export const TZ_PST = TZ;
 
-const dateOpts = (opts = {}) => ({ timeZone: TZ_PST, ...opts });
-const timeOpts = (opts = {}) => ({ timeZone: TZ_PST, ...opts });
+const dateOpts = (opts = {}) => ({ timeZone: TZ, ...opts });
+const timeOpts = (opts = {}) => ({ timeZone: TZ, ...opts });
+
+/** Return YYYY-MM-DD string in ET (for date input values). */
+export function toISODatePST(d) {
+  if (!d) return "";
+  const date = d instanceof Date ? d : new Date(d);
+  if (isNaN(date.getTime())) return "";
+  // Use en-CA locale which formats as YYYY-MM-DD
+  return date.toLocaleDateString("en-CA", { timeZone: TZ_PST });
+}
 
 /** Format date only: "Feb 22" or "Feb 22, 2026" */
 export function formatDateShort(d, includeYear = false) {
@@ -22,7 +33,7 @@ export function formatDateShort(d, includeYear = false) {
 /** Whole calendar days from init date (YYYY-MM-DD) to `asOf`, using noon on the init date to avoid TZ boundary shifts. Returns null if missing/invalid. */
 export function daysSinceInitDateString(isoDateStr, asOf = new Date()) {
   if (!isoDateStr || typeof isoDateStr !== "string") return null;
-  const start = new Date(`${isoDateStr}T12:00:00`);
+  const start = new Date(`${isoDateStr}T12:00:00Z`);
   if (isNaN(start.getTime())) return null;
   const end = asOf instanceof Date ? asOf : new Date(asOf);
   if (isNaN(end.getTime())) return null;
@@ -123,7 +134,7 @@ export function formatDateRange(start, end, includeYearOnEnd = false) {
   return `${startStr} – ${endStr}`;
 }
 
-/** Format YYYYMMDDHHMMSS (translog upload) to display string in PST */
+/** Format YYYYMMDDHHMMSS (translog upload) to display string in ET */
 export function formatTranslogTimestamp(raw) {
   if (!raw) return "—";
   const str = String(raw).replace(/\D/g, "");
@@ -143,7 +154,7 @@ export function formatTranslogTimestamp(raw) {
 /** Format date-only string (YYYY-MM-DD) — no timezone conversion needed for calendar dates */
 export function formatDateOnly(isoStr) {
   if (!isoStr) return "—";
-  const d = new Date(isoStr + "T12:00:00");
+  const d = new Date(isoStr + "T12:00:00Z");
   if (isNaN(d.getTime())) return isoStr;
   return d.toLocaleDateString("en-US", dateOpts({
     month: "short",
@@ -152,7 +163,7 @@ export function formatDateOnly(isoStr) {
   }));
 }
 
-/** Format date for HTML date input (YYYY-MM-DD) in PST */
+/** Format date for HTML date input (YYYY-MM-DD) in ET */
 export function formatDateForInput(dateStr) {
   if (!dateStr) return "";
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;

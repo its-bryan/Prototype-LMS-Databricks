@@ -3,6 +3,8 @@ import { useData } from "../../context/DataContext";
 import MultiSelectFilter from "../observatory/MultiSelectFilter";
 import ObservatoryBarChart from "../observatory/ObservatoryBarChart";
 import UnusedLeadsDrilldown from "../observatory/UnusedLeadsDrilldown";
+import ViewToggle from "../observatory/ViewToggle";
+import useObservatoryViewToggle from "../observatory/useObservatoryViewToggle";
 import { buildTrendPoints, listFilters, periodToDateRange } from "../observatory/observatoryUtils";
 
 const DRILL_PAGE = 50;
@@ -16,6 +18,13 @@ export default function ObservatoryConversionPage() {
   const [selectedAms, setSelectedAms] = useState([]);
   const [selectedHertzZones, setSelectedHertzZones] = useState([]);
   const [selectedPeriod, setSelectedPeriod] = useState(null);
+
+  const { viewMode, setViewMode, myFilters } = useObservatoryViewToggle({
+    setSelectedZones,
+    setSelectedGms,
+    setSelectedAms,
+    setSelectedHertzZones,
+  });
 
   const [unusedDrillItems, setUnusedDrillItems] = useState([]);
   const [unusedDrillTotal, setUnusedDrillTotal] = useState(0);
@@ -161,26 +170,28 @@ export default function ObservatoryConversionPage() {
     <div className="px-6 py-5 space-y-4 text-[var(--hertz-black)]">
       <div>
         <h1 className="text-xl font-semibold">Observatory Tower</h1>
-        <p className="text-sm text-[var(--neutral-600)] mt-1">Company-wide trends for conversion and lead volume.</p>
+        <p className="text-sm text-[var(--neutral-600)] mt-1">Company-wide trends for conversion and lead volume. The Unused % represent opportunity that is yet to be converted to rented. A high Unused % means there is still a chance to improve the conversion numbers for that period - Let&apos;s go get it!</p>
       </div>
 
       <div className="rounded-xl border border-[var(--neutral-200)] bg-white p-4 space-y-3">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <ViewToggle viewMode={viewMode} setViewMode={setViewMode} disabled={!myFilters} />
+          <div className="w-px h-5 bg-[var(--neutral-200)]" />
           <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--neutral-600)]">Timeline</span>
           <div className="inline-flex rounded-md border border-[var(--neutral-200)] bg-[var(--neutral-50)] p-0.5">
             <button
               type="button"
-              onClick={() => setGranularity("month")}
-              className={`px-3 py-1.5 text-xs font-semibold rounded ${granularity === "month" ? "bg-white text-[var(--hertz-black)] shadow-sm" : "text-[var(--neutral-600)]"}`}
+              onClick={() => setGranularity("week")}
+              className={`px-3 py-1.5 text-xs font-semibold rounded ${granularity === "week" ? "bg-[var(--hertz-primary)] text-[var(--hertz-black)] shadow-sm" : "text-[var(--neutral-600)]"}`}
             >
-              Month by month
+              Week by week
             </button>
             <button
               type="button"
-              onClick={() => setGranularity("week")}
-              className={`px-3 py-1.5 text-xs font-semibold rounded ${granularity === "week" ? "bg-white text-[var(--hertz-black)] shadow-sm" : "text-[var(--neutral-600)]"}`}
+              onClick={() => setGranularity("month")}
+              className={`px-3 py-1.5 text-xs font-semibold rounded ${granularity === "month" ? "bg-[var(--hertz-primary)] text-[var(--hertz-black)] shadow-sm" : "text-[var(--neutral-600)]"}`}
             >
-              Week by week
+              Month by month
             </button>
           </div>
         </div>
@@ -217,12 +228,6 @@ export default function ObservatoryConversionPage() {
         />
       )}
 
-      {observatorySnapshot && points.some((p) => (p.value ?? 0) > 0 || (p.unusedPct ?? 0) > 0) && (
-        <p className="text-sm italic text-[var(--neutral-600)] px-1">
-          The Unused % represent opportunity that is yet to be converted to rented. A high Unused % means there is still a chance to improve
-          the conversion numbers for that period - Let&apos;s go get it!
-        </p>
-      )}
 
       {selectedPeriod && (
         <UnusedLeadsDrilldown

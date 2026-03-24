@@ -5,14 +5,20 @@ function parseDate(val) {
 }
 
 function safeDivide(n, d) {
-  if (!d) return 0;
+  if (!d) return null;
   return (n / d) * 100;
 }
 
 function compactWeekLabel(isoDate) {
   const d = parseDate(isoDate);
   if (!d) return isoDate;
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  // HLES weeks run Saturday–Friday; the ISO date is the Monday of that week,
+  // so Saturday (start) = Monday - 2 days, Friday (end) = Monday + 4 days.
+  const sat = new Date(d.getTime() - 2 * 86400000);
+  const fri = new Date(d.getTime() + 4 * 86400000);
+  const satStr = sat.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const friStr = fri.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return `${satStr}–${friStr}`;
 }
 
 function compactMonthLabel(monthKey) {
@@ -78,8 +84,11 @@ export function buildTrendPoints({
     }
   }
 
+  // Only include periods that have actual data (total > 0)
+  const hasData = points.filter((p) => p.total > 0);
+
   if (metricMode === "conversion") {
-    return points.map((p) => {
+    return hasData.map((p) => {
       const value = safeDivide(p.rented, p.total);
       const unusedPct = safeDivide(p.unused, p.total);
       return {
@@ -96,14 +105,14 @@ export function buildTrendPoints({
   }
 
   if (metricMode === "totalLeadsSingle") {
-    return points.map((p) => ({
+    return hasData.map((p) => ({
       label: p.label,
       value: p.total,
       tooltip: `${p.label}: ${p.total} total leads`,
     }));
   }
 
-  return points.map((p) => ({
+  return hasData.map((p) => ({
     label: p.label,
     total: p.total,
     rented: p.rented,
@@ -208,7 +217,7 @@ export function buildGMLeaderboard({
 
     const metric = metricValue(metricKey, current);
     const prevMetric = metricValue(metricKey, prev);
-    const delta = metric - prevMetric;
+    const delta = Math.round(metric - prevMetric);
 
     rows.push({
       gm: entry.gm,

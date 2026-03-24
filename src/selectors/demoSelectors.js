@@ -6,6 +6,11 @@ import {
 } from "../data/mockData";
 import { formatDateShort, formatWeekday, formatMonthYear, daysSinceInitDateString } from "../utils/dateTime";
 
+/** Round to 1 decimal place for percentage metrics. */
+function pctRound(val) {
+  return Math.round(val * 10) / 10;
+}
+
 /** Module-level data — updated by DataContext when Supabase provides real data. */
 export let orgMapping = [...defaultOrgMapping];
 let branchManagers = [...defaultBranchManagers];
@@ -36,7 +41,7 @@ let NOW = new Date("2026-02-22T09:00:00");
 
 /**
  * Derive NOW from the most recent week_of in the actual lead data.
- * Sets NOW to Sunday 9:00 AM of the most recent data week so that
+ * Sets NOW to Friday 9:00 AM of the most recent HLES data week so that
  * "This week" captures the latest uploaded data.
  */
 export function setNowFromLeads(leads) {
@@ -55,14 +60,15 @@ export function setNowFromLeads(leads) {
     }
   }
   if (!maxMondayStr) return;
-  const monday = new Date(maxMondayStr + "T00:00:00");
-  if (isNaN(monday.getTime())) return;
-  const dataSunday = new Date(monday.getTime() + 6 * 86400000);
-  dataSunday.setHours(9, 0, 0, 0);
-  const calMonday = getMonday(new Date());
-  const calSunday = new Date(calMonday.getTime() + 6 * 86400000);
-  calSunday.setHours(9, 0, 0, 0);
-  NOW = dataSunday.getTime() <= calSunday.getTime() ? dataSunday : calSunday;
+  const saturday = new Date(maxMondayStr + "T00:00:00");
+  if (isNaN(saturday.getTime())) return;
+  // HLES week = Sat–Fri, so week-end = Saturday + 6 days = Friday
+  const dataFriday = new Date(saturday.getTime() + 6 * 86400000);
+  dataFriday.setHours(9, 0, 0, 0);
+  const calSaturday = getSaturday(new Date());
+  const calFriday = new Date(calSaturday.getTime() + 6 * 86400000);
+  calFriday.setHours(9, 0, 0, 0);
+  NOW = dataFriday.getTime() <= calFriday.getTime() ? dataFriday : calFriday;
 }
 
 /**
@@ -73,7 +79,7 @@ export function setNowFromLeads(leads) {
 export function setNowFromDate(isoDateStr) {
   if (!isoDateStr) return;
   // Use noon UTC so the date is unambiguous across all timezones when
-  // rendered in PST (noon UTC = 4am PST, safely the correct calendar day).
+  // rendered in ET (noon UTC = 7/8am ET, safely the correct calendar day).
   const d = new Date(isoDateStr.length <= 10 ? isoDateStr + "T12:00:00Z" : isoDateStr);
   if (isNaN(d.getTime())) return;
   NOW = d;
@@ -91,13 +97,23 @@ export function isUnusedOpenOverFiveDays(lead) {
 
 const TREND_TIMEFRAME_WEEKS = { this_week: 1, trailing_4_weeks: 4, this_month: 5, this_year: 13 };
 
-function getMonday(date) {
+/**
+ * Return the Saturday that starts the HLES week containing `date`.
+ * HLES week runs Saturday–Friday (e.g. the "Mar 9" week = Mar 7 Sat – Mar 13 Fri).
+ */
+export function getSaturday(date) {
   const d = new Date(date);
-  const day = d.getDay();
-  const diff = day === 0 ? 6 : day - 1;
+  const day = d.getDay(); // 0=Sun,1=Mon,...,6=Sat
+  // Sat=0 offset, Sun=1, Mon=2, Tue=3, Wed=4, Thu=5, Fri=6
+  const diff = (day + 1) % 7; // days since last Saturday
   d.setDate(d.getDate() - diff);
-  d.setHours(12, 0, 0, 0); // noon avoids PST/EDT day-boundary shifts in formatDateShort
-  return d;
+  // Reconstruct as noon UTC so ET formatting never shifts the calendar day
+  return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0));
+}
+
+/** @deprecated alias – use getSaturday instead */
+function getMonday(date) {
+  return getSaturday(date);
 }
 
 /** Weekly compliance meeting is on Thursdays. Uses real calendar so the date is never stuck in demo month. */
@@ -106,35 +122,40 @@ export function getNextComplianceMeetingDate() {
   const today = new Date(real.getFullYear(), real.getMonth(), real.getDate());
   const dayOfWeek = today.getDay();
   const daysUntilThursday = (4 - dayOfWeek + 7) % 7;
-  const nextThursday = new Date(today);
-  nextThursday.setDate(today.getDate() + (daysUntilThursday === 0 ? 0 : daysUntilThursday));
-  const daysLeft = Math.ceil((nextThursday.getTime() - today.getTime()) / 86400000);
+  const thursdayLocal = new Date(today);
+  thursdayLocal.setDate(today.getDate() + (daysUntilThursday === 0 ? 0 : daysUntilThursday));
+  // Re-create as noon UTC so ET formatting stays on the same calendar day
+  const nextThursday = new Date(Date.UTC(thursdayLocal.getFullYear(), thursdayLocal.getMonth(), thursdayLocal.getDate(), 12, 0, 0));
+  const daysLeft = Math.round((nextThursday.getTime() - today.getTime()) / 86400000);
   const dateStr = formatWeekday(nextThursday, true, true);
   return { date: nextThursday, dateStr, daysLeft };
 }
 
 export function getDateRangePresets() {
-  const thisMonday = getMonday(NOW);
-  const thisMonthStart = new Date(NOW.getFullYear(), NOW.getMonth(), 1, 12, 0, 0);
-  const thisYearStart = new Date(NOW.getFullYear(), 0, 1, 12, 0, 0);
+  const thisSaturday = getSaturday(NOW);
+  // All preset dates use noon UTC so ET formatting never shifts the calendar day
+  const nowLocal = new Date(NOW);
+  const thisMonthStart = new Date(Date.UTC(nowLocal.getFullYear(), nowLocal.getMonth(), 1, 12, 0, 0));
+  const thisYearStart = new Date(Date.UTC(nowLocal.getFullYear(), 0, 1, 12, 0, 0));
 
-  // Trailing 4 weeks always ends on the most recent Sunday (clean Mon–Sun boundaries)
-  const nowDate = new Date(NOW.getFullYear(), NOW.getMonth(), NOW.getDate());
+  // Trailing 4 weeks always ends on the most recent Friday (clean Sat–Fri HLES boundaries)
+  const nowDate = new Date(nowLocal.getFullYear(), nowLocal.getMonth(), nowLocal.getDate());
   const dayOfWeek = nowDate.getDay(); // 0=Sun
-  const lastSunday = new Date(nowDate);
-  lastSunday.setDate(nowDate.getDate() - (dayOfWeek === 0 ? 0 : dayOfWeek));
-  const trailing4WeeksEnd = new Date(lastSunday);
-  trailing4WeeksEnd.setHours(23, 59, 59, 999);
-  const trailing4WeeksStart = new Date(trailing4WeeksEnd);
-  trailing4WeeksStart.setDate(trailing4WeeksEnd.getDate() - 27);
-  trailing4WeeksStart.setHours(12, 0, 0, 0); // noon avoids PST/EDT day-boundary shift in formatDateShort
+  // Days since last Friday: Fri=0, Sat=1, Sun=2, Mon=3, Tue=4, Wed=5, Thu=6
+  const daysSinceFriday = (dayOfWeek + 2) % 7;
+  const lastFridayLocal = new Date(nowDate);
+  lastFridayLocal.setDate(nowDate.getDate() - (daysSinceFriday === 0 ? 0 : daysSinceFriday));
+  // Reconstruct as noon UTC
+  const lastFriday = new Date(Date.UTC(lastFridayLocal.getFullYear(), lastFridayLocal.getMonth(), lastFridayLocal.getDate(), 12, 0, 0));
+  const trailing4WeeksEnd = new Date(Date.UTC(lastFridayLocal.getFullYear(), lastFridayLocal.getMonth(), lastFridayLocal.getDate(), 23, 59, 59, 999));
+  const startLocal = new Date(lastFridayLocal);
+  startLocal.setDate(lastFridayLocal.getDate() - 27);
+  const trailing4WeeksStart = new Date(Date.UTC(startLocal.getFullYear(), startLocal.getMonth(), startLocal.getDate(), 12, 0, 0));
 
-  const endLabelDate = new Date(lastSunday);
-  endLabelDate.setHours(12, 0, 0, 0); // noon avoids PST day-boundary shift
-  const endLabel = formatDateShort(endLabelDate);
+  const endLabel = formatDateShort(lastFriday);
 
   return [
-    { key: "this_week", label: "This week", start: thisMonday, end: new Date(thisMonday.getTime() + 6 * 86400000 + 86399999) },
+    { key: "this_week", label: "This week", start: thisSaturday, end: new Date(thisSaturday.getTime() + 6 * 86400000 + 86399999) },
     { key: "trailing_4_weeks", label: "Trailing 4 weeks", sublabel: `ending ${endLabel}`, start: trailing4WeeksStart, end: trailing4WeeksEnd },
     { key: "this_month", label: "This month", start: thisMonthStart, end: new Date(NOW) },
     { key: "this_year", label: "This Year", start: thisYearStart, end: new Date(NOW) },
@@ -148,10 +169,10 @@ export function getComparisonDateRange(selectedPresetKey, customStart, customEnd
   const preset = presets.find((p) => p.key === selectedPresetKey);
 
   if (selectedPresetKey === "this_week") {
-    const thisMonday = preset?.start;
-    if (!thisMonday) return null;
-    const lastMonday = new Date(thisMonday.getTime() - 7 * 86400000);
-    return { start: lastMonday, end: new Date(lastMonday.getTime() + 6 * 86400000 + 86399999) };
+    const thisSaturday = preset?.start;
+    if (!thisSaturday) return null;
+    const lastSaturday = new Date(thisSaturday.getTime() - 7 * 86400000);
+    return { start: lastSaturday, end: new Date(lastSaturday.getTime() + 6 * 86400000 + 86399999) };
   }
   if (selectedPresetKey === "trailing_4_weeks") {
     const end = preset?.end;
@@ -163,8 +184,11 @@ export function getComparisonDateRange(selectedPresetKey, customStart, customEnd
   if (selectedPresetKey === "this_month") {
     const thisMonthStart = preset?.start;
     if (!thisMonthStart) return null;
-    const prevMonthStart = new Date(thisMonthStart.getFullYear(), thisMonthStart.getMonth() - 1, 1);
-    const prevMonthEnd = new Date(thisMonthStart.getFullYear(), thisMonthStart.getMonth(), 0, 23, 59, 59);
+    // Use UTC year/month from the noon-UTC preset date
+    const y = thisMonthStart.getUTCFullYear();
+    const m = thisMonthStart.getUTCMonth();
+    const prevMonthStart = new Date(Date.UTC(y, m - 1, 1, 12, 0, 0));
+    const prevMonthEnd = new Date(Date.UTC(y, m, 0, 23, 59, 59));
     return { start: prevMonthStart, end: prevMonthEnd };
   }
   if (selectedPresetKey === "this_year") {
@@ -177,8 +201,8 @@ export function getComparisonDateRange(selectedPresetKey, customStart, customEnd
     return { start: prevYearStart, end: prevYearEnd };
   }
   if (selectedPresetKey === "custom" && customStart && customEnd) {
-    const start = new Date(customStart + "T00:00:00");
-    const end = new Date(customEnd + "T23:59:59");
+    const start = new Date(customStart + "T12:00:00Z");
+    const end = new Date(customEnd + "T23:59:59Z");
     const spanMs = end.getTime() - start.getTime();
     const priorEnd = new Date(start.getTime() - 1);
     const priorStart = new Date(priorEnd.getTime() - spanMs);
@@ -277,11 +301,11 @@ export function leadCancelledWithoutBmComment(lead) {
   const hasBm =
     String(lead.enrichment?.reason ?? "").trim().length > 0 ||
     String(lead.enrichment?.notes ?? "").trim().length > 0;
-  return lead.status === "Cancelled" && !lead.archived && !hasBm;
+  return lead.status === "Cancelled" && !hasBm;
 }
 
 export function leadUnusedWithoutBmTouchInPeriod(lead, start, end) {
-  if (lead.status !== "Unused" || lead.archived) return false;
+  if (lead.status !== "Unused") return false;
   const hasBm =
     String(lead.enrichment?.reason ?? "").trim().length > 0 ||
     String(lead.enrichment?.notes ?? "").trim().length > 0;
@@ -303,7 +327,7 @@ export function getLeadsWithOutstandingItemsForBranch(leads, dateRange, branch) 
 }
 
 export function getUnresolvedLeads(leads) {
-  return (leads ?? []).filter((l) => !l.enrichmentComplete && !l.archived);
+  return (leads ?? []).filter((l) => !l.enrichmentComplete);
 }
 
 export function getAllLeads(leads) {
@@ -312,7 +336,7 @@ export function getAllLeads(leads) {
 
 // GM selectors
 export function getCancelledLeads(leads) {
-  return (leads ?? []).filter((l) => l.status === "Cancelled" && !l.archived);
+  return (leads ?? []).filter((l) => l.status === "Cancelled");
 }
 
 export function getUnusedLeads(leads) {
@@ -461,23 +485,27 @@ export function getBranchManagers() {
 export function getBMStats(leads, dateRange = null, branch = null) {
   const filtered = getFilteredLeads(leads, dateRange, branch);
   const total = filtered.length;
-  const enriched = filtered.filter((l) => l.enrichmentComplete).length;
   const cancelled = filtered.filter((l) => l.status === "Cancelled").length;
   const unused = filtered.filter((l) => l.status === "Unused").length;
   const rented = filtered.filter((l) => l.status === "Rented").length;
-  return { total, enriched, cancelled, unused, rented, enrichmentRate: total ? Math.round((enriched / total) * 100) : 0 };
+  const actionable = filtered.filter((l) => l.status === "Cancelled" || l.status === "Unused");
+  const withComments = actionable.filter((l) => l.enrichment?.reason || l.enrichment?.notes);
+  const enrichmentRate = actionable.length ? pctRound((withComments.length / actionable.length) * 100) : (total > 0 ? 100 : null);
+  return { total, enriched: withComments.length, cancelled, unused, rented, enrichmentRate };
 }
 
 export function getGMStats(leads) {
   const list = leads ?? [];
-  const cancelledUnreviewed = list.filter((l) => l.status === "Cancelled" && !l.archived && !l.gmDirective).length;
+  const cancelledUnreviewed = list.filter((l) => l.status === "Cancelled" && !l.gmDirective).length;
   const unusedOverdue = list.filter(isUnusedOpenOverFiveDays).length;
-  const enriched = list.filter((l) => l.enrichmentComplete).length;
   const total = list.length;
+  const actionable = list.filter((l) => l.status === "Cancelled" || l.status === "Unused");
+  const withComments = actionable.filter((l) => l.enrichment?.reason || l.enrichment?.notes);
+  const enrichmentCompliance = actionable.length ? pctRound((withComments.length / actionable.length) * 100) : (total > 0 ? 100 : null);
   return {
     cancelledUnreviewed,
     unusedOverdue,
-    enrichmentCompliance: total ? Math.round((enriched / total) * 100) : 0,
+    enrichmentCompliance,
   };
 }
 
@@ -557,7 +585,7 @@ export function getZoneConversionRate(leads, branch) {
   const total = zoneLeads.length;
   if (total === 0) return null;
   const rented = zoneLeads.filter((l) => l.status === "Rented").length;
-  return Math.round((rented / total) * 100);
+  return pctRound((rented / total) * 100);
 }
 
 /** Branch trailing 4-week conversion rate average. Uses week_of (or initDtFinal fallback) to group by week. */
@@ -579,7 +607,7 @@ export function getBranchTrailing4WeekConversionRate(leads, branch) {
     .slice(-4);
   if (weeks.length === 0) return null;
   const avg = weeks.reduce((s, w) => s + w.rate, 0) / weeks.length;
-  return Math.round(avg);
+  return pctRound(avg);
 }
 
 // ——— Meeting Prep selectors ———
@@ -613,7 +641,7 @@ export function getPctContactedWithin30Min(leads) {
   const list = leads ?? [];
   if (list.length === 0) return null;
   const within30 = list.filter((l) => (l.contactRange ?? l.contact_range) === "(a)<30min").length;
-  return Math.round((within30 / list.length) * 100);
+  return pctRound((within30 / list.length) * 100);
 }
 
 /** Branch vs HRD split for first_contact_by. Returns { branch: n, hrd: n } */
@@ -634,7 +662,7 @@ export function getOverdueFollowUpCount(leads) {
   const list = leads ?? [];
   let count = 0;
   for (const l of list) {
-    if (l.status === "Rented" || l.archived) continue;
+    if (l.status === "Rented") continue;
     const fd = l.enrichment?.followUpDate;
     if (!fd) continue;
     // Support "Feb 22, 2026" or "2026-02-22"
@@ -648,7 +676,7 @@ export function getOverdueFollowUpCount(leads) {
 /** Follow-up breakdown: overdue, due today, due this week — for dashboard surfacing. */
 export function getFollowUpBreakdown(leads, branch) {
   const list = (leads ?? []).filter((l) => {
-    if (l.status === "Rented" || l.archived) return false;
+    if (l.status === "Rented") return false;
     if (branch && !leadBranchMatches(l.branch, branch)) return false;
     return !!l.enrichment?.followUpDate;
   });
@@ -703,7 +731,7 @@ export function getActivityReportData(leads, limitPerCategory = 10) {
     const ts = lead.lastActivity
       ? new Date(lead.lastActivity).getTime()
       : lead.initDtFinal
-        ? new Date(lead.initDtFinal + "T12:00:00").getTime()
+        ? new Date(lead.initDtFinal + "T12:00:00Z").getTime()
         : 0;
     if (ts > 0) {
       comments.push({
@@ -827,7 +855,7 @@ export function getRecentActivity(leads, branch, limit = 8) {
 export function getDirectiveCount(leads, branch) {
   return (leads ?? []).filter((l) => {
     if (branch && !leadBranchMatches(l.branch, branch)) return false;
-    return !!l.gmDirective && !l.archived;
+    return !!l.gmDirective;
   }).length;
 }
 
@@ -835,7 +863,7 @@ export function getDirectiveCount(leads, branch) {
 export function getLeadsWithDirectives(leads, branch) {
   return (leads ?? []).filter((l) => {
     if (branch && !leadBranchMatches(l.branch, branch)) return false;
-    return !!l.gmDirective && !l.archived;
+    return !!l.gmDirective;
   });
 }
 
@@ -902,13 +930,13 @@ export function getBranchConversionRateForWeek(leads, branch, weekOf) {
   const total = weekLeads.length;
   if (total === 0) return null;
   const rented = weekLeads.filter((l) => l.status === "Rented").length;
-  return Math.round((rented / total) * 100);
+  return pctRound((rented / total) * 100);
 }
 
 /** Format week date for display (e.g. "Feb 17–23") */
 export function formatWeekLabel(weekOf) {
   if (!weekOf) return "—";
-  const d = new Date(weekOf + "T12:00:00");
+  const d = new Date(weekOf + "T12:00:00Z");
   const mon = formatDateShort(d);
   const sun = new Date(d.getTime() + 6 * 86400000);
   const sunStr = formatDateShort(sun);
@@ -942,7 +970,7 @@ export function getTaskCompletionRate(tasksList) {
   const list = tasksList ?? [];
   if (list.length === 0) return null;
   const done = list.filter((t) => t.status === "Done").length;
-  return Math.round((done / list.length) * 100);
+  return pctRound((done / list.length) * 100);
 }
 
 /** Filter tasks by createdAt within date range */
@@ -963,7 +991,6 @@ export function getFilteredLeads(leads, dateRange = null, branch = null) {
   if (dateRange?.start || dateRange?.end) {
     filtered = filtered.filter((l) => leadInDateRange(l, dateRange.start, dateRange.end));
   }
-  filtered = filtered.filter((l) => l.status !== "Reviewed");
   return filtered;
 }
 
@@ -975,16 +1002,18 @@ export function getSummaryDataWithChart(leads, branchTasks, dateRange, branch, p
   const filtered = getFilteredLeads(leads, dateRange, branch);
   const total = filtered.length;
   const rented = filtered.filter((l) => l.status === "Rented").length;
-  const enriched = filtered.filter((l) => l.enrichmentComplete).length;
   const cancelled = filtered.filter((l) => l.status === "Cancelled").length;
   const unused = filtered.filter((l) => l.status === "Unused").length;
+  const actionable = filtered.filter((l) => l.status === "Cancelled" || l.status === "Unused");
+  const withComments = actionable.filter((l) => l.enrichment?.reason || l.enrichment?.notes);
+  const enrichmentRate = actionable.length ? pctRound((withComments.length / actionable.length) * 100) : (total > 0 ? 100 : null);
   const stats = {
     total,
     rented,
-    enriched,
+    enriched: withComments.length,
     cancelled,
     unused,
-    enrichmentRate: total ? Math.round((enriched / total) * 100) : 0,
+    enrichmentRate,
   };
   const chartData =
     trendsGroupBy === "period"
@@ -995,33 +1024,36 @@ export function getSummaryDataWithChart(leads, branchTasks, dateRange, branch, p
 
 /**
  * Build rolling trailing-4-week chart data.  Each bar represents a 28-day
- * window ending on a given Sunday.  Returns `numWeeks` data points from
- * the most recent Sunday backwards.
+ * window ending on a given Friday (HLES Sat–Fri week).  Returns `numWeeks`
+ * data points from the most recent Friday backwards.
  */
 export function buildRolling4WeekChartData(leads, branchTasks, branch, numWeeks = 8) {
   const today = new Date(NOW.getFullYear(), NOW.getMonth(), NOW.getDate());
-  const dayOfWeek = today.getDay();
-  const lastSunday = new Date(today);
-  lastSunday.setDate(today.getDate() - (dayOfWeek === 0 ? 0 : dayOfWeek));
+  const dayOfWeek = today.getDay(); // 0=Sun
+  // Days since last Friday: Fri=0, Sat=1, Sun=2, Mon=3, Tue=4, Wed=5, Thu=6
+  const daysSinceFriday = (dayOfWeek + 2) % 7;
+  const lastFriday = new Date(today);
+  lastFriday.setDate(today.getDate() - (daysSinceFriday === 0 ? 0 : daysSinceFriday));
 
   const result = [];
   for (let i = numWeeks - 1; i >= 0; i--) {
-    const sundayEnd = new Date(lastSunday);
-    sundayEnd.setDate(lastSunday.getDate() - i * 7);
-    sundayEnd.setHours(23, 59, 59, 999);
+    const fridayEnd = new Date(lastFriday);
+    fridayEnd.setDate(lastFriday.getDate() - i * 7);
+    fridayEnd.setHours(23, 59, 59, 999);
 
-    const windowStart = new Date(sundayEnd);
-    windowStart.setDate(sundayEnd.getDate() - 27);
+    const windowStart = new Date(fridayEnd);
+    windowStart.setDate(fridayEnd.getDate() - 27);
     windowStart.setHours(0, 0, 0, 0);
 
-    const dateRange = { start: windowStart, end: sundayEnd };
+    const dateRange = { start: windowStart, end: fridayEnd };
     const filtered = getFilteredLeads(leads, dateRange, branch);
 
     const total = filtered.length;
     const rented = filtered.filter((l) => l.status === "Rented").length;
-    const enriched = filtered.filter((l) => l.enrichmentComplete).length;
-    const conversionRate = total > 0 ? Math.round((rented / total) * 100) : 0;
-    const commentRate = total > 0 ? Math.round((enriched / total) * 100) : 0;
+    const actionable = filtered.filter((l) => l.status === "Cancelled" || l.status === "Unused");
+    const withComments = actionable.filter((l) => l.enrichment?.reason || l.enrichment?.notes);
+    const conversionRate = total > 0 ? pctRound((rented / total) * 100) : 0;
+    const commentRate = actionable.length > 0 ? pctRound((withComments.length / actionable.length) * 100) : (total > 0 ? 100 : 0);
 
     const windowTasks = tasksInDateRange(branchTasks, dateRange);
     const openTasks = getOpenTasksCount(windowTasks);
@@ -1035,7 +1067,7 @@ export function buildRolling4WeekChartData(leads, branchTasks, branch, numWeeks 
         ? Math.round(minutes.reduce((s, m) => s + m, 0) / minutes.length)
         : 0;
 
-    const labelDate = new Date(sundayEnd.getFullYear(), sundayEnd.getMonth(), sundayEnd.getDate(), 12);
+    const labelDate = new Date(fridayEnd.getFullYear(), fridayEnd.getMonth(), fridayEnd.getDate(), 12);
     result.push({
       label: formatDateShort(labelDate),
       totalLeads: total,
@@ -1085,10 +1117,6 @@ export function getConversionBreakdown(leads, opts = {}) {
       ? getLeadsForZoneInRange(leads ?? [], dateRange, gmZone)
       : getFilteredLeads(leads, dateRange, branch);
 
-  if (!includeReviewed) {
-    filtered = filtered.filter((l) => l.status !== "Reviewed");
-  }
-
   if (filtered.length === 0) {
     return { rows: [], zoneBenchmark: null };
   }
@@ -1105,7 +1133,7 @@ export function getConversionBreakdown(leads, opts = {}) {
   const zoneBenchmark =
     zoneTotal > 0
       ? {
-          conversionRate: Math.round((zoneRented / zoneTotal) * 100),
+          conversionRate: pctRound((zoneRented / zoneTotal) * 100),
           total: zoneTotal,
           rented: zoneRented,
         }
@@ -1125,9 +1153,9 @@ export function getConversionBreakdown(leads, opts = {}) {
           rented,
           unused,
           cancelled,
-          conversionRate: total ? Math.round((rented / total) * 100) : 0,
-          unusedPct: total ? Math.round((unused / total) * 100) : 0,
-          cancelledPct: total ? Math.round((cancelled / total) * 100) : 0,
+          conversionRate: total ? pctRound((rented / total) * 100) : 0,
+          unusedPct: total ? pctRound((unused / total) * 100) : 0,
+          cancelledPct: total ? pctRound((cancelled / total) * 100) : 0,
           isSecondary: false,
         },
       ],
@@ -1167,9 +1195,9 @@ export function getConversionBreakdown(leads, opts = {}) {
       rented,
       unused,
       cancelled,
-      conversionRate: total ? Math.round((rented / total) * 100) : 0,
-      unusedPct: total ? Math.round((unused / total) * 100) : 0,
-      cancelledPct: total ? Math.round((cancelled / total) * 100) : 0,
+      conversionRate: total ? pctRound((rented / total) * 100) : 0,
+      unusedPct: total ? pctRound((unused / total) * 100) : 0,
+      cancelledPct: total ? pctRound((cancelled / total) * 100) : 0,
       isSecondary: false,
     });
 
@@ -1200,9 +1228,9 @@ export function getConversionBreakdown(leads, opts = {}) {
           rented: subRented,
           unused: subUnused,
           cancelled: subCancelled,
-          conversionRate: subTotal ? Math.round((subRented / subTotal) * 100) : 0,
-          unusedPct: subTotal ? Math.round((subUnused / subTotal) * 100) : 0,
-          cancelledPct: subTotal ? Math.round((subCancelled / subTotal) * 100) : 0,
+          conversionRate: subTotal ? pctRound((subRented / subTotal) * 100) : 0,
+          unusedPct: subTotal ? pctRound((subUnused / subTotal) * 100) : 0,
+          cancelledPct: subTotal ? pctRound((subCancelled / subTotal) * 100) : 0,
           isSecondary: true,
         });
       }
@@ -1318,7 +1346,7 @@ export function getGMTasksProgress(tasksList, gmName = "D. Williams", leads = nu
   const total = gmTasks.length;
   const completed = gmTasks.filter((t) => t.status === "Done").length;
   const open = total - completed;
-  const progressPct = total > 0 ? Math.round((completed / total) * 100) : 100;
+  const progressPct = total > 0 ? pctRound((completed / total) * 100) : 100;
   return { total, completed, open, progressPct };
 }
 
@@ -1352,14 +1380,15 @@ function computeBranchMetrics(leads, branch, dateRange) {
   const filtered = getLeadsForBranchInRange(leads ?? [], dateRange, branch);
   const total = filtered.length;
   const rented = filtered.filter((l) => l.status === "Rented").length;
-  const conversionRate = total ? Math.round((rented / total) * 100) : null;
+  const conversionRate = total ? pctRound((rented / total) * 100) : null;
 
   const pctWithin30 = getPctContactedWithin30Min(filtered);
   const { branch: branchContact, hrd: hrdContact } = getBranchVsHrdSplit(filtered);
-  const branchHrdPct = (branchContact + hrdContact) > 0 ? Math.round((branchContact / (branchContact + hrdContact)) * 100) : null;
+  const branchHrdPct = (branchContact + hrdContact) > 0 ? pctRound((branchContact / (branchContact + hrdContact)) * 100) : null;
 
-  const enriched = filtered.filter((l) => l.enrichmentComplete).length;
-  const commentRate = total > 0 ? Math.round((enriched / total) * 100) : null;
+  const actionable = filtered.filter((l) => l.status === "Cancelled" || l.status === "Unused");
+  const withComments = actionable.filter((l) => l.enrichment?.reason || l.enrichment?.notes);
+  const commentRate = actionable.length > 0 ? pctRound((withComments.length / actionable.length) * 100) : (total > 0 ? 100 : null);
 
   return {
     branch,
@@ -1404,14 +1433,14 @@ export function getBMLeaderboardData(leads, branch, dateRange, metricKey = "conv
   );
   const regionTotal = regionLeads.length;
   const regionRented = regionLeads.filter((l) => l.status === "Rented").length;
-  const regionConversionRate = regionTotal ? Math.round((regionRented / regionTotal) * 100) : null;
+  const regionConversionRate = regionTotal ? pctRound((regionRented / regionTotal) * 100) : null;
   const regionPctWithin30 = getPctContactedWithin30Min(regionLeads);
   const { branch: rBranch, hrd: rHrd } = getBranchVsHrdSplit(regionLeads);
-  const regionBranchHrdPct = rBranch + rHrd > 0 ? Math.round((rBranch / (rBranch + rHrd)) * 100) : null;
+  const regionBranchHrdPct = rBranch + rHrd > 0 ? pctRound((rBranch / (rBranch + rHrd)) * 100) : null;
   const regionActionable = regionLeads.filter((l) => l.status === "Cancelled" || l.status === "Unused");
   const regionWithComments = regionActionable.filter((l) => l.enrichment?.reason || l.enrichment?.notes);
   const regionCommentRate =
-    regionActionable.length > 0 ? Math.round((regionWithComments.length / regionActionable.length) * 100) : null;
+    regionActionable.length > 0 ? pctRound((regionWithComments.length / regionActionable.length) * 100) : null;
 
   const regionBenchmark = {
     conversionRate: regionConversionRate,
@@ -1467,8 +1496,9 @@ export function getTrendsChartDataByDimension(leads, branchTasks, dateRange, bra
     .map(([label, { leads: groupLeads, taskIds }]) => {
       const total = groupLeads.length;
       const rented = groupLeads.filter((l) => l.status === "Rented").length;
-      const enriched = groupLeads.filter((l) => l.enrichmentComplete).length;
-      const commentRate = total > 0 ? Math.round((enriched / total) * 100) : 0;
+      const actionable = groupLeads.filter((l) => l.status === "Cancelled" || l.status === "Unused");
+      const withComments = actionable.filter((l) => l.enrichment?.reason || l.enrichment?.notes);
+      const commentRate = actionable.length > 0 ? pctRound((withComments.length / actionable.length) * 100) : (total > 0 ? 100 : 0);
 
       const groupTasks = [...taskIds].map((id) => taskById.get(id)).filter(Boolean);
       const openTasks = getOpenTasksCount(groupTasks);
@@ -1484,7 +1514,7 @@ export function getTrendsChartDataByDimension(leads, branchTasks, dateRange, bra
       return {
         label,
         totalLeads: total,
-        conversionRate: total ? Math.round((rented / total) * 100) : 0,
+        conversionRate: total ? pctRound((rented / total) * 100) : 0,
         commentRate,
         openTasks: openTasks || 0,
         taskCompletionRate: taskCompletionRate ?? 0,
@@ -1523,16 +1553,16 @@ function getPeriodsForRange(dateRange, presetKey) {
       periods.push({ key, label });
     }
   } else if (gran === "week") {
-    let cur = getMonday(start);
-    const endMonday = getMonday(end);
-    while (cur <= endMonday) {
+    let cur = getSaturday(start);
+    const endSaturday = getSaturday(end);
+    while (cur <= endSaturday) {
       const key = cur.toISOString().split("T")[0];
       if (!seen.has(key)) {
         seen.add(key);
-        const sunday = new Date(cur);
-        sunday.setDate(cur.getDate() + 6);
-        sunday.setHours(12, 0, 0, 0);
-        periods.push({ key, label: formatDateShort(sunday) });
+        const friday = new Date(cur);
+        friday.setDate(cur.getDate() + 6);
+        friday.setHours(12, 0, 0, 0);
+        periods.push({ key, label: formatDateShort(friday) });
       }
       cur.setDate(cur.getDate() + 7);
     }
@@ -1596,7 +1626,7 @@ function buildChartDataByPeriodFromFiltered(filtered, branchTasks, dateRange, br
     if (lead.status === "Rented") row.rented += 1;
     if (lead.status === "Cancelled") row.cancelled += 1;
     if (lead.status === "Unused") row.unused += 1;
-    if (lead.enrichmentComplete) row.enriched += 1;
+    if ((lead.status === "Cancelled" || lead.status === "Unused") && (lead.enrichment?.reason || lead.enrichment?.notes)) row.enriched += 1;
   }
 
   for (const task of tasksInRange) {
@@ -1621,8 +1651,9 @@ function buildChartDataByPeriodFromFiltered(filtered, branchTasks, dateRange, br
       const cancelled = row?.cancelled ?? 0;
       const unused = row?.unused ?? 0;
       const enriched = row?.enriched ?? 0;
-      const conversionRate = total > 0 ? Math.round((rented / total) * 100) : 0;
-      const commentRate = total > 0 ? Math.round((enriched / total) * 100) : 0;
+      const actionableCount = cancelled + unused;
+      const conversionRate = total > 0 ? pctRound((rented / total) * 100) : 0;
+      const commentRate = actionableCount > 0 ? pctRound((enriched / actionableCount) * 100) : (total > 0 ? 100 : 0);
 
       const groupTasks = [...(row?.taskIds ?? [])].map((id) => taskById.get(id)).filter(Boolean);
       const openTasks = getOpenTasksCount(groupTasks);
@@ -1661,9 +1692,9 @@ function buildChartDataStackedFromFiltered(filtered, dateRange, branch, groupBy,
   const periodMap = new Map();
 
   for (const p of periods) {
-    periodMap.set(p.key, { label: p.label, segments: {}, total: 0, rented: 0, enriched: 0 });
+    periodMap.set(p.key, { label: p.label, segments: {}, total: 0, rented: 0, enriched: 0, actionable: 0 });
   }
-  periodMap.set("__unassigned__", { label: "Unassigned", segments: {}, total: 0, rented: 0, enriched: 0 });
+  periodMap.set("__unassigned__", { label: "Unassigned", segments: {}, total: 0, rented: 0, enriched: 0, actionable: 0 });
 
   for (const lead of filtered) {
     const pk = gran === "week" ? getWeekOfForLead(lead) : (getLeadDateForPeriod(lead) ? leadToPeriodKey(getLeadDateForPeriod(lead), gran) : null);
@@ -1674,7 +1705,8 @@ function buildChartDataStackedFromFiltered(filtered, dateRange, branch, groupBy,
     row.segments[groupKey] = (row.segments[groupKey] ?? 0) + 1;
     row.total += 1;
     if (lead.status === "Rented") row.rented += 1;
-    if (lead.enrichmentComplete) row.enriched += 1;
+    if (lead.status === "Cancelled" || lead.status === "Unused") row.actionable += 1;
+    if ((lead.status === "Cancelled" || lead.status === "Unused") && (lead.enrichment?.reason || lead.enrichment?.notes)) row.enriched += 1;
   }
 
   const allPeriods = [...periods, { key: "__unassigned__", label: "Unassigned" }];
@@ -1685,12 +1717,13 @@ function buildChartDataStackedFromFiltered(filtered, dateRange, branch, groupBy,
       const segments = row?.segments ?? {};
       const segmentsPct = {};
       for (const [k, v] of Object.entries(segments)) {
-        segmentsPct[k] = total > 0 ? Math.round((v / total) * 100) : 0;
+        segmentsPct[k] = total > 0 ? pctRound((v / total) * 100) : 0;
       }
       const rented = row?.rented ?? 0;
       const enriched = row?.enriched ?? 0;
-      const conversionRate = total > 0 ? Math.round((rented / total) * 100) : 0;
-      const commentRate = total > 0 ? Math.round((enriched / total) * 100) : 0;
+      const actionableCount = row?.actionable ?? 0;
+      const conversionRate = total > 0 ? pctRound((rented / total) * 100) : 0;
+      const commentRate = actionableCount > 0 ? pctRound((enriched / actionableCount) * 100) : (total > 0 ? 100 : 0);
       return {
         period: p.label,
         segments: segmentsPct,
@@ -1729,25 +1762,23 @@ export function getGMDashboardStats(leads, dateRange = null, gmName = null) {
   if (dateRange?.start || dateRange?.end) {
     filtered = filtered.filter((l) => leadInDateRange(l, dateRange.start, dateRange.end));
   }
-  filtered = filtered.filter((l) => l.status !== "Reviewed");
-
   const total = filtered.length;
   const rented = filtered.filter((l) => l.status === "Rented").length;
-  const conversionRate = total ? Math.round((rented / total) * 100) : 0;
+  const conversionRate = total ? pctRound((rented / total) * 100) : 0;
 
   const within30 = filtered.filter((l) => (l.contactRange ?? l.contact_range) === "(a)<30min").length;
-  const pctWithin30 = total ? Math.round((within30 / total) * 100) : 0;
+  const pctWithin30 = total ? pctRound((within30 / total) * 100) : 0;
 
   const branchContact = filtered.filter((l) => (l.firstContactBy ?? l.first_contact_by) === "branch").length;
   const hrdContact = filtered.filter((l) => (l.firstContactBy ?? l.first_contact_by) === "hrd").length;
   const contactTotal = branchContact + hrdContact;
-  const branchPct = total ? Math.round((branchContact / total) * 100) : 0;
+  const branchPct = total ? pctRound((branchContact / total) * 100) : 0;
 
   const actionable = filtered.filter((l) => l.status === "Cancelled" || l.status === "Unused");
   const withComments = actionable.filter((l) => l.enrichment?.reason || l.enrichment?.notes);
-  const commentCompliance = actionable.length ? Math.round((withComments.length / actionable.length) * 100) : (total > 0 ? 100 : 0);
+  const commentCompliance = actionable.length ? pctRound((withComments.length / actionable.length) * 100) : (total > 0 ? 100 : 0);
 
-  const cancelledUnreviewed = filtered.filter((l) => l.status === "Cancelled" && !l.archived && !l.gmDirective).length;
+  const cancelledUnreviewed = filtered.filter((l) => l.status === "Cancelled" && !l.gmDirective).length;
   const unusedOverdue = filtered.filter(isUnusedOpenOverFiveDays).length;
   const noContactAttempt = getUnreachableLeads(leads, dateRange, gmName).length;
 
@@ -1805,12 +1836,11 @@ export function getUnreachableLeadsStats(leads, dateRange = null, gmName = null)
   if (dateRange?.start || dateRange?.end) {
     allFiltered = allFiltered.filter((l) => leadInDateRange(l, dateRange.start, dateRange.end));
   }
-  allFiltered = allFiltered.filter((l) => l.status !== "Reviewed");
   const actionable = allFiltered.filter((l) => l.status === "Cancelled" || l.status === "Unused");
 
   const unreachable = getUnreachableLeads(leads, dateRange, gmName);
   const count = unreachable.length;
-  const pct = actionable.length ? Math.round((count / actionable.length) * 100) : 0;
+  const pct = actionable.length ? pctRound((count / actionable.length) * 100) : 0;
 
   const byBranch = {};
   for (const lead of unreachable) {
@@ -1830,7 +1860,6 @@ export function getContactRangeDistribution(leads, dateRange = null) {
   if (dateRange?.start || dateRange?.end) {
     filtered = filtered.filter((l) => leadInDateRange(l, dateRange.start, dateRange.end));
   }
-  filtered = filtered.filter((l) => l.status !== "Reviewed");
   const total = filtered.length || 1;
 
   const buckets = [
@@ -1846,7 +1875,7 @@ export function getContactRangeDistribution(leads, dateRange = null) {
 
   return buckets.map((b) => {
     const count = filtered.filter((l) => (l.contactRange ?? l.contact_range) === b.key).length;
-    return { ...b, count, pct: Math.round((count / total) * 100) };
+    return { ...b, count, pct: pctRound((count / total) * 100) };
   });
 }
 
@@ -1866,7 +1895,7 @@ export function getGMMetricTrendByWeek(leads, opts = {}) {
   const weeks = periods.map((p) => p.key);
   const weekLabels = periods.map((p) => p.label);
 
-  let filtered = (leads ?? []).filter((l) => l.status !== "Reviewed");
+  let filtered = leads ?? [];
   if (gmName) {
     const myBranches = getBranchesForGM(gmName);
     filtered = filtered.filter((l) => leadInGmBranchList(l.branch, myBranches));
@@ -1876,17 +1905,17 @@ export function getGMMetricTrendByWeek(leads, opts = {}) {
     if (weekLeads.length === 0) return null;
     if (metricKey === "conversion_rate") {
       const r = weekLeads.filter((l) => l.status === "Rented").length;
-      return Math.round((r / weekLeads.length) * 100);
+      return pctRound((r / weekLeads.length) * 100);
     }
     if (metricKey === "comment_rate") {
       const actionable = weekLeads.filter((l) => l.status === "Cancelled" || l.status === "Unused");
       if (actionable.length === 0) return weekLeads.length > 0 ? 100 : null;
       const withComments = actionable.filter((l) => l.enrichment?.reason || l.enrichment?.notes);
-      return Math.round((withComments.length / actionable.length) * 100);
+      return pctRound((withComments.length / actionable.length) * 100);
     }
     if (metricKey === "contacted_within_30_min") {
       const w30 = weekLeads.filter((l) => (l.contactRange ?? l.contact_range) === "(a)<30min").length;
-      return Math.round((w30 / weekLeads.length) * 100);
+      return pctRound((w30 / weekLeads.length) * 100);
     }
     if (metricKey === "branch_vs_hrd_split") {
       const withContact = weekLeads.filter((l) => {
@@ -1895,10 +1924,10 @@ export function getGMMetricTrendByWeek(leads, opts = {}) {
       });
       if (withContact.length === 0) return null;
       const bc = withContact.filter((l) => (l.firstContactBy ?? l.first_contact_by) === "branch").length;
-      return Math.round((bc / withContact.length) * 100);
+      return pctRound((bc / withContact.length) * 100);
     }
     if (metricKey === "cancelled_unreviewed") {
-      return weekLeads.filter((l) => l.status === "Cancelled" && !l.archived && !l.gmDirective).length;
+      return weekLeads.filter((l) => l.status === "Cancelled" && !l.gmDirective).length;
     }
     if (metricKey === "unused_overdue") {
       return weekLeads.filter(isUnusedOpenOverFiveDays).length;
@@ -1966,18 +1995,18 @@ export function getGMBranchLeaderboard(leads, dateRange, sortMetric = "conversio
     const rented = branchLeads.filter((l) => l.status === "Rented").length;
     const cancelled = branchLeads.filter((l) => l.status === "Cancelled").length;
     const unused = branchLeads.filter((l) => l.status === "Unused").length;
-    const conversionRate = total ? Math.round((rented / total) * 100) : null;
+    const conversionRate = total ? pctRound((rented / total) * 100) : null;
 
     const w30 = branchLeads.filter((l) => (l.contactRange ?? l.contact_range) === "(a)<30min").length;
-    const pctWithin30 = total ? Math.round((w30 / total) * 100) : null;
+    const pctWithin30 = total ? pctRound((w30 / total) * 100) : null;
 
     const bc = branchLeads.filter((l) => (l.firstContactBy ?? l.first_contact_by) === "branch").length;
     const hc = branchLeads.filter((l) => (l.firstContactBy ?? l.first_contact_by) === "hrd").length;
-    const branchHrdPct = (bc + hc) > 0 ? Math.round((bc / (bc + hc)) * 100) : null;
+    const branchHrdPct = (bc + hc) > 0 ? pctRound((bc / (bc + hc)) * 100) : null;
 
     const actionable = branchLeads.filter((l) => l.status === "Cancelled" || l.status === "Unused");
     const withComments = actionable.filter((l) => l.enrichment?.reason || l.enrichment?.notes);
-    const commentRate = actionable.length > 0 ? Math.round((withComments.length / actionable.length) * 100) : (total > 0 ? 100 : null);
+    const commentRate = actionable.length > 0 ? pctRound((withComments.length / actionable.length) * 100) : (total > 0 ? 100 : null);
 
     const row = orgMapping.find((r) => leadBranchMatches(r.branch, branch));
     return {
@@ -2006,26 +2035,26 @@ export function getGMBranchLeaderboard(leads, dateRange, sortMetric = "conversio
       const prevLeads = getLeadsForBranchInRange(leads ?? [], prevRange, row.branch);
       const prevTotal = prevLeads.length;
       const prevRented = prevLeads.filter((l) => l.status === "Rented").length;
-      const prevConversion = prevTotal > 0 ? Math.round((prevRented / prevTotal) * 100) : null;
+      const prevConversion = prevTotal > 0 ? pctRound((prevRented / prevTotal) * 100) : null;
       row.improvementDelta = (row.conversionRate != null && prevConversion != null)
-        ? row.conversionRate - prevConversion
+        ? Math.round(row.conversionRate - prevConversion)
         : null;
 
       const prevW30 = prevLeads.filter((l) => (l.contactRange ?? l.contact_range) === "(a)<30min").length;
-      row.prevPctWithin30 = prevTotal > 0 ? Math.round((prevW30 / prevTotal) * 100) : null;
+      row.prevPctWithin30 = prevTotal > 0 ? pctRound((prevW30 / prevTotal) * 100) : null;
       const prevBc = prevLeads.filter((l) => (l.firstContactBy ?? l.first_contact_by) === "branch").length;
       const prevHc = prevLeads.filter((l) => (l.firstContactBy ?? l.first_contact_by) === "hrd").length;
-      row.prevBranchHrdPct = (prevBc + prevHc) > 0 ? Math.round((prevBc / (prevBc + prevHc)) * 100) : null;
+      row.prevBranchHrdPct = (prevBc + prevHc) > 0 ? pctRound((prevBc / (prevBc + prevHc)) * 100) : null;
       const prevActionable = prevLeads.filter((l) => l.status === "Cancelled" || l.status === "Unused");
       const prevWithComments = prevActionable.filter((l) => l.enrichment?.reason || l.enrichment?.notes);
-      row.prevCommentRate = prevActionable.length > 0 ? Math.round((prevWithComments.length / prevActionable.length) * 100) : (prevTotal > 0 ? 100 : null);
-      row.prevCancelledUnreviewed = prevLeads.filter((l) => l.status === "Cancelled" && !l.archived && !l.gmDirective).length;
+      row.prevCommentRate = prevActionable.length > 0 ? pctRound((prevWithComments.length / prevActionable.length) * 100) : (prevTotal > 0 ? 100 : null);
+      row.prevCancelledUnreviewed = prevLeads.filter((l) => l.status === "Cancelled" && !l.gmDirective).length;
       row.prevUnusedOverdue = prevLeads.filter(isUnusedOpenOverFiveDays).length;
       row.prevConversionRate = prevConversion;
       row.cancelledUnreviewed = branchData.find((b) => leadBranchMatches(b.branch, row.branch))
-        ? (leads ?? []).filter((l) => leadBranchMatches(l.branch, row.branch) && leadInDateRange(l, dateRange.start, dateRange.end) && l.status !== "Reviewed" && l.status === "Cancelled" && !l.archived && !l.gmDirective).length
+        ? (leads ?? []).filter((l) => leadBranchMatches(l.branch, row.branch) && leadInDateRange(l, dateRange.start, dateRange.end) && l.status === "Cancelled" && !l.gmDirective).length
         : 0;
-      row.unusedOverdue = (leads ?? []).filter((l) => leadBranchMatches(l.branch, row.branch) && leadInDateRange(l, dateRange.start, dateRange.end) && l.status !== "Reviewed" && isUnusedOpenOverFiveDays(l)).length;
+      row.unusedOverdue = (leads ?? []).filter((l) => leadBranchMatches(l.branch, row.branch) && leadInDateRange(l, dateRange.start, dateRange.end) && isUnusedOpenOverFiveDays(l)).length;
     }
   } else {
     for (const row of branchData) {
@@ -2065,10 +2094,10 @@ export function getGMBranchLeaderboard(leads, dateRange, sortMetric = "conversio
   const benchWithComments = benchActionable.filter((l) => l.enrichment?.reason || l.enrichment?.notes);
 
   const benchmark = {
-    conversionRate: benchTotal ? Math.round((benchRented / benchTotal) * 100) : null,
-    pctWithin30: benchTotal ? Math.round((benchW30 / benchTotal) * 100) : null,
-    branchHrdPct: (benchBc + benchHc) > 0 ? Math.round((benchBc / (benchBc + benchHc)) * 100) : null,
-    commentRate: benchActionable.length > 0 ? Math.round((benchWithComments.length / benchActionable.length) * 100) : null,
+    conversionRate: benchTotal ? pctRound((benchRented / benchTotal) * 100) : null,
+    pctWithin30: benchTotal ? pctRound((benchW30 / benchTotal) * 100) : null,
+    branchHrdPct: (benchBc + benchHc) > 0 ? pctRound((benchBc / (benchBc + benchHc)) * 100) : null,
+    commentRate: benchActionable.length > 0 ? pctRound((benchWithComments.length / benchActionable.length) * 100) : null,
     total: benchTotal,
   };
 
@@ -2142,7 +2171,7 @@ export function getGMMeetingPrepData(leads, dateRange = null, gmName = "D. Willi
       total,
       cancelledNoBmComment,
       unusedNoBmThisPeriod,
-      cancelledUnreviewed: branchLeadsAll.filter((l) => l.status === "Cancelled" && !l.archived && !l.gmDirective).length,
+      cancelledUnreviewed: branchLeadsAll.filter((l) => l.status === "Cancelled" && !l.gmDirective).length,
       unusedOverdue: branchLeadsAll.filter(isUnusedOpenOverFiveDays).length,
       missingComments: cancelledNoBmComment + unusedNoBmThisPeriod,
       mismatchCount,
@@ -2180,7 +2209,7 @@ export function getGMLeadsToReviewCount(leads, dateRange = null, gmName = null) 
   if (dateRange?.start || dateRange?.end) {
     filtered = filtered.filter((l) => leadInDateRange(l, dateRange.start, dateRange.end));
   }
-  const cancelled = filtered.filter((l) => l.status === "Cancelled" && !l.archived && !l.gmDirective).length;
+  const cancelled = filtered.filter((l) => l.status === "Cancelled" && !l.gmDirective).length;
   const unusedOverdue = filtered.filter(isUnusedOpenOverFiveDays).length;
   return cancelled + unusedOverdue;
 }
@@ -2202,13 +2231,13 @@ export function getConversionByBranch(leads, dateRange, compRange = null, gmName
     const rented = curr.filter((l) => l.status === "Rented").length;
     const cancelled = curr.filter((l) => l.status === "Cancelled").length;
     const unused = curr.filter((l) => l.status === "Unused").length;
-    const conversionRate = total ? Math.round((rented / total) * 100) : null;
+    const conversionRate = total ? pctRound((rented / total) * 100) : null;
 
     const prevTotal = prev.length;
     const prevRented = prev.filter((l) => l.status === "Rented").length;
-    const prevConversionRate = prevTotal ? Math.round((prevRented / prevTotal) * 100) : null;
+    const prevConversionRate = prevTotal ? pctRound((prevRented / prevTotal) * 100) : null;
 
-    const delta = conversionRate !== null && prevConversionRate !== null ? conversionRate - prevConversionRate : null;
+    const delta = conversionRate !== null && prevConversionRate !== null ? Math.round(conversionRate - prevConversionRate) : null;
     const row = orgMapping.find((r) => leadBranchMatches(r.branch, branch));
     const allBranchLeads = (leads ?? []).filter((l) => leadBranchMatches(l.branch, branch));
 
@@ -2249,12 +2278,12 @@ export function getConversionByInsurer(leads, dateRange, compRange = null, gmNam
     const rented = curr.filter((l) => l.status === "Rented").length;
     const cancelled = curr.filter((l) => l.status === "Cancelled").length;
     const unused = curr.filter((l) => l.status === "Unused").length;
-    const conversionRate = total ? Math.round((rented / total) * 100) : null;
+    const conversionRate = total ? pctRound((rented / total) * 100) : null;
 
     const prevTotal = prev.length;
     const prevRented = prev.filter((l) => l.status === "Rented").length;
-    const prevConversionRate = prevTotal ? Math.round((prevRented / prevTotal) * 100) : null;
-    const delta = conversionRate !== null && prevConversionRate !== null ? conversionRate - prevConversionRate : null;
+    const prevConversionRate = prevTotal ? pctRound((prevRented / prevTotal) * 100) : null;
+    const delta = conversionRate !== null && prevConversionRate !== null ? Math.round(conversionRate - prevConversionRate) : null;
 
     return { insurer, total, rented, cancelled, unused, conversionRate, prevConversionRate, delta };
   });
@@ -2289,12 +2318,12 @@ export function getConversionByBodyShop(leads, dateRange, compRange = null, gmNa
     const rented = curr.filter((l) => l.status === "Rented").length;
     const cancelled = curr.filter((l) => l.status === "Cancelled").length;
     const unused = curr.filter((l) => l.status === "Unused").length;
-    const conversionRate = total ? Math.round((rented / total) * 100) : null;
+    const conversionRate = total ? pctRound((rented / total) * 100) : null;
 
     const prevTotal = prev.length;
     const prevRented = prev.filter((l) => l.status === "Rented").length;
-    const prevConversionRate = prevTotal ? Math.round((prevRented / prevTotal) * 100) : null;
-    const delta = conversionRate !== null && prevConversionRate !== null ? conversionRate - prevConversionRate : null;
+    const prevConversionRate = prevTotal ? pctRound((prevRented / prevTotal) * 100) : null;
+    const delta = conversionRate !== null && prevConversionRate !== null ? Math.round(conversionRate - prevConversionRate) : null;
 
     return { bodyShop: shop, total, rented, cancelled, unused, conversionRate, prevConversionRate, delta };
   });
@@ -2366,17 +2395,18 @@ export function getSpotCheckData(leads, branch, dateRange = null) {
   const branchLeads = getLeadsForBranchInRange(leads ?? [], dateRange, branch);
   const total = branchLeads.length;
   const rented = branchLeads.filter((l) => l.status === "Rented").length;
-  const conversionRate = total > 0 ? Math.round((rented / total) * 100) : 0;
+  const conversionRate = total > 0 ? pctRound((rented / total) * 100) : 0;
   const contacted = branchLeads.filter((l) => {
     const cr = String(l.contactRange ?? l.contact_range ?? "").trim().toUpperCase();
     return cr && cr !== "NO CONTACT";
   }).length;
   const within30 = branchLeads.filter((l) => (l.contactRange ?? l.contact_range) === "(a)<30min").length;
-  const pctWithin30 = total > 0 ? Math.round((within30 / total) * 100) : 0;
+  const pctWithin30 = total > 0 ? pctRound((within30 / total) * 100) : 0;
   const branchContact = branchLeads.filter((l) => (l.firstContactBy ?? l.first_contact_by) === "branch").length;
-  const branchPct = contacted > 0 ? Math.round((branchContact / contacted) * 100) : 0;
-  const enriched = branchLeads.filter((l) => l.enrichmentComplete || (l.enrichment?.reason || l.enrichment?.notes)).length;
-  const commentRate = total > 0 ? Math.round((enriched / total) * 100) : 0;
+  const branchPct = contacted > 0 ? pctRound((branchContact / contacted) * 100) : 0;
+  const actionable = branchLeads.filter((l) => l.status === "Cancelled" || l.status === "Unused");
+  const withComments = actionable.filter((l) => l.enrichment?.reason || l.enrichment?.notes);
+  const commentRate = actionable.length > 0 ? pctRound((withComments.length / actionable.length) * 100) : (total > 0 ? 100 : null);
 
   // Untouched: cancelled or unused with zero contact attempt
   const untouched = branchLeads.filter((l) => {

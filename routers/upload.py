@@ -8,7 +8,10 @@ import os
 import re
 import time as _time
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from db import execute, query, with_connection
+
+_ET = ZoneInfo("America/New_York")
 from etl.clean import clean_hles_data, clean_translog_data
 from services.snapshot import compute_and_store_snapshot
 from services.observatory_snapshot import compute_observatory_snapshot
@@ -45,7 +48,7 @@ def _land_file_in_volume(contents: bytes, original_filename: str, base_path: str
     if not base_path or not contents:
         return None
     safe_name = re.sub(r"[^\w\-\.]", "_", original_filename or "upload.xlsx")
-    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(_ET).strftime("%Y%m%d_%H%M%S")
     filename = f"{timestamp}_{safe_name}"
     base = base_path.rstrip("/")
     path = f"{base}/{filename}" if base else None
@@ -116,7 +119,7 @@ def _set_ingestion_status(upload_id, state: str, error: str | None = None, count
         return
     hles = dict(rows[0].get("hles") or {})
     hles["ingestion_status"] = state
-    hles["ingestion_updated_at"] = datetime.utcnow().isoformat()
+    hles["ingestion_updated_at"] = datetime.now(_ET).isoformat()
     if error:
         hles["ingestion_error"] = error
     else:
@@ -288,7 +291,7 @@ async def upload_hles(
     if uploaded_by:
         stats["uploaded_by"] = uploaded_by
     stats["ingestion_status"] = "in_progress"
-    stats["ingestion_started_at"] = datetime.utcnow().isoformat()
+    stats["ingestion_started_at"] = datetime.now(_ET).isoformat()
 
     # Validate rows — reject bad confirm_nums before queuing background work
     rows_to_process = []
@@ -302,7 +305,7 @@ async def upload_hles(
     if not rows_to_process:
         stats["ingestion_status"] = "failed"
         stats["ingestion_error"] = "No valid rows to ingest."
-        stats["ingestion_updated_at"] = datetime.utcnow().isoformat()
+        stats["ingestion_updated_at"] = datetime.now(_ET).isoformat()
         execute(
             "INSERT INTO upload_summary (hles, translog, data_as_of_date) VALUES (%s::jsonb, %s::jsonb, %s)",
             (json.dumps(stats), "{}", str(pd.Timestamp.now().date())),

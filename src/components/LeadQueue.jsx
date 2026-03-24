@@ -52,26 +52,26 @@ export default function LeadQueue({
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-4 px-4 py-2 bg-amber-50 border border-amber-200 rounded text-sm text-[#1A1A1A]"
+          className="mb-4 px-4 py-2 bg-[var(--color-warning-light)] border border-[var(--color-warning)]/40 rounded text-sm text-[var(--hertz-black)]"
         >
-          <span className="font-semibold text-[#FFD100]">{bannerCount}</span> lead{bannerCount !== 1 ? "s" : ""} need comments
+          <span className="font-semibold text-[var(--hertz-primary)]">{bannerCount}</span> lead{bannerCount !== 1 ? "s" : ""} need comments
         </motion.div>
       )}
       {mismatchCount !== null && mismatchCount > 0 && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-4 px-4 py-2 bg-amber-50 border border-amber-300 rounded text-sm text-[#1A1A1A]"
+          className="mb-4 px-4 py-2 bg-[var(--color-warning-light)] border border-[var(--color-warning)]/40 rounded text-sm text-[var(--hertz-black)]"
         >
-          <span className="font-semibold text-amber-700">⚠</span>{" "}
+          <span className="font-semibold text-[var(--color-warning)]">⚠</span>{" "}
           <span className="font-semibold">{mismatchCount}</span> lead{mismatchCount !== 1 ? "s" : ""} with data mismatch{mismatchCount !== 1 ? "es" : ""} — address before your GM meeting
         </motion.div>
       )}
 
-      <div className="border border-[#E6E6E6] rounded-lg overflow-hidden">
+      <div className="border border-[var(--neutral-200)] rounded-lg overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-gray-50 text-left text-xs text-[#6E6E6E] uppercase tracking-wide">
+            <tr className="bg-[var(--neutral-50)] text-left text-xs text-[var(--neutral-600)] uppercase tracking-wide">
               <th className="px-4 py-3">Date</th>
               <th className="px-4 py-3">Customer</th>
               <th className="px-4 py-3">Reservation ID</th>
@@ -99,24 +99,24 @@ export default function LeadQueue({
                     backgroundColor: isHighlighted ? "#FFF9E0" : "transparent",
                   }}
                   transition={{ delay: i * 0.05 }}
-                  className={`border-t border-[#E6E6E6] ${
-                    onLeadClick ? "cursor-pointer hover:bg-gray-50" : ""
-                  } ${isHighlighted ? "ring-2 ring-[#FFD100] ring-inset" : ""}`}
+                  className={`border-t border-[var(--neutral-200)] ${
+                    onLeadClick ? "cursor-pointer hover:bg-[var(--neutral-50)]" : ""
+                  } ${isHighlighted ? "ring-2 ring-[var(--hertz-primary)] ring-inset" : ""}`}
                   onClick={() => onLeadClick?.(lead)}
                 >
-                  <td className="px-4 py-3 text-[#6E6E6E] text-xs">
-                    {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
+                  <td className="px-4 py-3 text-[var(--neutral-600)] text-xs">
+                    {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00Z")) : "—"}
                   </td>
-                  <td className="px-4 py-3 font-medium text-[#1A1A1A]">{lead.customer}</td>
-                  <td className="px-4 py-3 text-[#6E6E6E] font-mono text-xs">{lead.reservationId}</td>
-                  <td className="px-4 py-3 text-[#6E6E6E] text-xs">{lead.reservationType || "—"}</td>
-                  <td className="px-4 py-3 text-[#6E6E6E] font-mono text-xs">{lead.cdp || "—"}</td>
+                  <td className="px-4 py-3 font-medium text-[var(--hertz-black)]">{lead.customer}</td>
+                  <td className="px-4 py-3 text-[var(--neutral-600)] font-mono text-xs">{lead.reservationId}</td>
+                  <td className="px-4 py-3 text-[var(--neutral-600)] text-xs">{lead.reservationType || "—"}</td>
+                  <td className="px-4 py-3 text-[var(--neutral-600)] font-mono text-xs">{lead.cdp || "—"}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <StatusBadge status={lead.status} />
                       {lead.mismatch && (
                         <span
-                          className="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200"
+                          className="px-2 py-0.5 rounded text-xs font-medium bg-[var(--color-warning-light)] text-[var(--color-warning)] border border-[var(--color-warning)]/40"
                           title="Data mismatch — HLES, TRANSLOG, and BM comments don't align"
                         >
                           Mismatch
@@ -125,14 +125,14 @@ export default function LeadQueue({
                     </div>
                   </td>
                   <td className="px-4 py-3">{lead.timeToFirstContact}</td>
-                  <td className={`px-4 py-3 ${isStale ? "text-[#C62828] font-medium" : "text-[#6E6E6E]"}`}>
+                  <td className={`px-4 py-3 ${isStale ? "text-[var(--color-error)] font-medium" : "text-[var(--neutral-600)]"}`}>
                     {relativeTime}
                   </td>
                   <td className="px-4 py-3">
                     {isEnriched ? (
-                      <span className="text-[#2E7D32]">✓</span>
+                      <span className="text-[var(--color-success)]">✓</span>
                     ) : (
-                      <span className="text-[#C62828]">—</span>
+                      <span className="text-[var(--color-error)]">—</span>
                     )}
                   </td>
                 </motion.tr>

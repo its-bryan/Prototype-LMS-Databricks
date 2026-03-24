@@ -76,7 +76,7 @@ function LeadTable({ leads, onLeadClick }) {
                   }`}
                 >
                   <td className="px-4 py-3 text-[var(--neutral-600)] text-xs">
-                    {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
+                    {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00Z")) : "—"}
                   </td>
                   <td className="px-4 py-3 font-medium text-[var(--hertz-black)]">{lead.customer ?? "—"}</td>
                   <td className="px-4 py-3 text-center font-mono text-xs text-[var(--neutral-600)]">
@@ -226,7 +226,7 @@ export default function BranchComplianceDetailPane({ branchRow, dateRange, leads
                   <span
                     className={`ml-1.5 px-1.5 py-0.5 rounded text-xs ${
                       s.count > 0
-                        ? "bg-amber-100 text-amber-800"
+                        ? "bg-[var(--color-warning-light)] text-[var(--color-warning)]"
                         : "bg-[var(--neutral-200)] text-[var(--neutral-500)]"
                     }`}
                   >

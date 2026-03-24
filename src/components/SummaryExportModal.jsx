@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DateRangeCalendar } from "./DateRangeCalendar";
 import {
@@ -15,7 +15,7 @@ import { formatDateRange } from "../utils/dateTime";
 const METRIC_DEFS = [
   { key: "total_leads", label: "Total Leads", getValue: (stats) => stats.total },
   { key: "conversion_rate", label: "Conversion Rate", getValue: (stats) => `${stats.rented && stats.total ? Math.round((stats.rented / stats.total) * 100) : 0}%` },
-  { key: "comment_rate", label: "Comment Rate", getValue: (stats) => `${stats.enrichmentRate}%` },
+  { key: "comment_rate", label: "Comment Compliance %", getValue: (stats) => stats.enrichmentRate != null ? `${stats.enrichmentRate}%` : "—" },
   { key: "open_tasks", label: "Open Tasks", getValue: (_, taskCount) => taskCount },
   { key: "task_completion_rate", label: "Task Completion Rate", getValue: (_, __, compRate) => compRate != null ? `${compRate}%` : "—" },
   { key: "avg_time_to_contact", label: "Avg. Time to First Contact", getValue: (_, __, ___, avgTime) => avgTime ?? "—" },
@@ -29,6 +29,12 @@ export default function SummaryExportModal({ onClose, leads, branchTasks, branch
   const [customEnd, setCustomEnd] = useState("");
   const [showCalendar, setShowCalendar] = useState(false);
   const calendarAnchorRef = useRef(null);
+
+  useEffect(() => {
+    const onKeyDown = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
 
   const allChecked = METRIC_DEFS.map((m) => m.key);
   const [selectedMetrics, setSelectedMetrics] = useState(allChecked);
@@ -53,7 +59,7 @@ export default function SummaryExportModal({ onClose, leads, branchTasks, branch
 
   const periodLabel = useMemo(() => {
     if (useCustom && customStart && customEnd) {
-      return formatDateRange(new Date(customStart + "T12:00:00"), new Date(customEnd + "T12:00:00"), true);
+      return formatDateRange(new Date(customStart + "T12:00:00Z"), new Date(customEnd + "T12:00:00Z"), true);
     }
     const preset = presets.find((p) => p.key === selectedPreset);
     return preset?.label ?? "—";

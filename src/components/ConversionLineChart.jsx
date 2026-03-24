@@ -55,8 +55,8 @@ export default function ConversionLineChart({ data }) {
   const toX = (i) => PADDING.left + i * stepX;
   const toY = (v) => PADDING.top + chartH - (v / 100) * chartH;
 
-  const convPoints = data.map((d, i) => ({ x: toX(i), y: toY(d.conversionRate) }));
-  const commentPoints = data.map((d, i) => ({ x: toX(i), y: toY(d.commentRate) }));
+  const convPoints = data.map((d, i) => d.conversionRate != null ? { x: toX(i), y: toY(d.conversionRate) } : null).filter(Boolean);
+  const commentPoints = data.map((d, i) => d.commentRate != null ? { x: toX(i), y: toY(d.commentRate) } : null).filter(Boolean);
 
   const convPath = buildSmoothPath(convPoints);
   const commentPath = buildSmoothPath(commentPoints);
@@ -71,7 +71,10 @@ export default function ConversionLineChart({ data }) {
       const idx = Math.round(mouseX / stepX);
       const clamped = Math.max(0, Math.min(data.length - 1, idx));
       setHoveredIdx(clamped);
-      setTooltipPos({ x: toX(clamped), y: Math.min(toY(data[clamped].conversionRate), toY(data[clamped].commentRate)) });
+      const cr = data[clamped].conversionRate;
+      const cmr = data[clamped].commentRate;
+      const yVals = [cr != null ? toY(cr) : null, cmr != null ? toY(cmr) : null].filter(v => v != null);
+      setTooltipPos({ x: toX(clamped), y: yVals.length ? Math.min(...yVals) : 0 });
     },
     [data, stepX],
   );
@@ -82,7 +85,7 @@ export default function ConversionLineChart({ data }) {
     <div className="border border-[var(--neutral-200)] rounded-lg bg-white shadow-[var(--shadow-md)] overflow-hidden">
       <div className="px-5 pt-5 pb-1 flex items-center justify-between">
         <p className="text-xs font-bold text-[var(--neutral-600)] uppercase tracking-wider">
-          Conversion &amp; Comment Rate
+          Conversion &amp; Comment Compliance %
         </p>
         <div className="flex items-center gap-5">
           <div className="flex items-center gap-1.5">
@@ -91,7 +94,7 @@ export default function ConversionLineChart({ data }) {
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-4 h-[2px] rounded-sm bg-[var(--chart-primary)]" style={{ backgroundImage: "repeating-linear-gradient(90deg, var(--chart-primary) 0, var(--chart-primary) 4px, transparent 4px, transparent 7px)", backgroundColor: "transparent" }} />
-            <span className="text-xs text-[var(--neutral-600)] font-medium">Comment Rate</span>
+            <span className="text-xs text-[var(--neutral-600)] font-medium">Comment Compliance %</span>
           </div>
         </div>
       </div>
@@ -150,7 +153,7 @@ export default function ConversionLineChart({ data }) {
             stroke="var(--neutral-200)"
           />
 
-          {/* Comment Rate line (behind conversion) */}
+          {/* Comment Compliance % line (behind conversion) */}
           <motion.path
             d={commentPath}
             fill="none"
@@ -244,12 +247,12 @@ export default function ConversionLineChart({ data }) {
               <div className="flex items-center gap-2 mb-1">
                 <div className="w-2 h-2 rounded-full bg-[var(--chart-black)] flex-shrink-0" />
                 <span className="text-xs text-[var(--neutral-600)]">Conversion</span>
-                <span className="text-xs font-bold ml-auto text-[var(--chart-black)]">{hovered.conversionRate}%</span>
+                <span className="text-xs font-bold ml-auto text-[var(--chart-black)]">{hovered.conversionRate != null ? `${hovered.conversionRate}%` : "—"}</span>
               </div>
               <div className="flex items-center gap-2 mb-1">
                 <div className="w-2 h-2 rounded-full bg-[var(--chart-primary)] flex-shrink-0" />
-                <span className="text-xs text-[var(--neutral-600)]">Comment Rate</span>
-                <span className="text-xs font-bold ml-auto text-[var(--chart-primary)]">{hovered.commentRate}%</span>
+                <span className="text-xs text-[var(--neutral-600)]">Comment Compliance %</span>
+                <span className="text-xs font-bold ml-auto text-[var(--chart-primary)]">{hovered.commentRate != null ? `${hovered.commentRate}%` : "—"}</span>
               </div>
               <div className="border-t border-[var(--neutral-100)] mt-1.5 pt-1.5">
                 <p className="text-xs text-[var(--neutral-600)]">

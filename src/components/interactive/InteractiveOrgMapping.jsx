@@ -88,7 +88,7 @@ export default function InteractiveOrgMapping() {
             <motion.span
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="text-[#2E7D32] text-sm font-medium"
+              className="text-[var(--color-success)] text-sm font-medium"
             >
               Saved
             </motion.span>
@@ -105,7 +105,7 @@ export default function InteractiveOrgMapping() {
 
       {/* Seed result banner */}
       {seedStatus && seedStatus !== "loading" && (
-        <div className={`mb-4 px-4 py-3 rounded-lg text-sm ${seedStatus.error ? "bg-[#FFEBEE] text-[#C62828] border border-[#FFCDD2]" : "bg-[#E8F5E9] text-[#2E7D32] border border-[#C8E6C9]"}`}>
+        <div className={`mb-4 px-4 py-3 rounded-lg text-sm ${seedStatus.error ? "bg-[#FFEBEE] text-[var(--color-error)] border border-[#FFCDD2]" : "bg-[#E8F5E9] text-[var(--color-success)] border border-[#C8E6C9]"}`}>
           {seedStatus.error ? (
             <span>Seed failed: {seedStatus.error}</span>
           ) : (
@@ -136,11 +136,11 @@ export default function InteractiveOrgMapping() {
           onClick={() => { setFilterUnassigned(!filterUnassigned); setPage(0); }}
           className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors cursor-pointer ${
             filterUnassigned
-              ? "border-[#C62828] bg-[#FFEBEE] text-[#C62828]"
+              ? "border-[var(--color-error)] bg-[#FFEBEE] text-[var(--color-error)]"
               : "border-[var(--neutral-200)] text-[var(--neutral-500)] hover:border-[var(--neutral-400)]"
           }`}
         >
-          <span className={`w-2 h-2 rounded-full ${unassignedCount > 0 ? "bg-[#C62828]" : "bg-[var(--neutral-300)]"}`} />
+          <span className={`w-2 h-2 rounded-full ${unassignedCount > 0 ? "bg-[var(--color-error)]" : "bg-[var(--neutral-300)]"}`} />
           {unassignedCount} Unassigned
         </button>
         <span className="text-xs text-[var(--neutral-400)]">
@@ -204,7 +204,7 @@ export default function InteractiveOrgMapping() {
                         />
                         <button
                           onClick={() => handleEditSave(row.branch)}
-                          className="text-xs font-medium text-[var(--hertz-black)] bg-[var(--hertz-primary)] px-2 py-1 rounded hover:bg-[#E6BC00] cursor-pointer"
+                          className="text-xs font-medium text-[var(--hertz-black)] bg-[var(--hertz-primary)] px-2 py-1 rounded hover:bg-[var(--hertz-primary-hover)] cursor-pointer"
                         >
                           Save
                         </button>
@@ -218,7 +218,7 @@ export default function InteractiveOrgMapping() {
                     ) : isUnassigned ? (
                       <button
                         onClick={() => handleEditStart(row)}
-                        className="text-[#C62828] italic cursor-pointer hover:underline text-sm"
+                        className="text-[var(--color-error)] italic cursor-pointer hover:underline text-sm"
                       >
                         — Unassigned — click to assign
                       </button>

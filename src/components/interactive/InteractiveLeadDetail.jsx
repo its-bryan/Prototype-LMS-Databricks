@@ -57,7 +57,7 @@ export default function InteractiveLeadDetail() {
 
   if (!lead) {
     return (
-      <div className="h-full flex items-center justify-center text-[#6E6E6E]">
+      <div className="h-full flex items-center justify-center text-[var(--neutral-600)]">
         No lead selected.
         <BackButton onClick={() => navigate(-1)} label={backLabel} className="ml-2 mb-0" />
       </div>

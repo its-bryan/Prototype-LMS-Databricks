@@ -44,7 +44,7 @@ export default function DemoTopBar({ onHelpClick }) {
   };
 
   return (
-    <div className="h-[52px] bg-[#1A1A1A] flex items-center px-6 shrink-0 relative z-50">
+    <div className="h-[52px] bg-[var(--hertz-black)] flex items-center px-6 shrink-0 relative z-50">
       <div className="flex items-center gap-3">
         <button
           onClick={() => {
@@ -67,7 +67,7 @@ export default function DemoTopBar({ onHelpClick }) {
           <button
             onClick={onHelpClick}
             data-onboarding="help-button"
-            className="p-2 text-white/70 hover:text-[#FFD100] hover:bg-white/10 rounded-md transition-colors duration-200 cursor-pointer"
+            className="p-2 text-white/70 hover:text-[var(--hertz-primary)] hover:bg-white/10 rounded-md transition-colors duration-200 cursor-pointer"
             title="Replay onboarding tour"
             aria-label="Replay onboarding tour"
           >
@@ -92,7 +92,7 @@ export default function DemoTopBar({ onHelpClick }) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                 </svg>
                 {directiveCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-[#FFD100] text-[#272425] text-[10px] font-bold px-1">
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-[var(--hertz-primary)] text-[var(--hertz-black)] text-[10px] font-bold px-1">
                     {directiveCount}
                   </span>
                 )}
@@ -105,7 +105,7 @@ export default function DemoTopBar({ onHelpClick }) {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -8, scale: 0.97 }}
                     transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-                    className="absolute right-6 top-[52px] w-[720px] max-h-[480px] overflow-y-auto bg-white rounded-lg shadow-[0_12px_40px_rgba(0,0,0,0.2)] border border-[#E5E5E5] z-50"
+                    className="absolute right-6 top-[52px] w-[720px] max-h-[480px] overflow-y-auto bg-white rounded-lg shadow-[var(--shadow-xl)] border border-[var(--neutral-200)] z-50"
                   >
                     <div className="p-5">
                       <Suspense fallback={<div className="py-8 text-center text-sm text-neutral-500">Loading inbox…</div>}>
@@ -124,7 +124,7 @@ export default function DemoTopBar({ onHelpClick }) {
             <span className="text-white/70 text-xs hidden sm:inline">{userProfile.displayName}</span>
             <button
               onClick={signOut}
-              className="p-2 text-white/70 hover:text-[#FFD100] hover:bg-white/10 rounded-md transition-colors duration-200 cursor-pointer"
+              className="p-2 text-white/70 hover:text-[var(--hertz-primary)] hover:bg-white/10 rounded-md transition-colors duration-200 cursor-pointer"
               title="Sign out"
               aria-label="Sign out"
             >

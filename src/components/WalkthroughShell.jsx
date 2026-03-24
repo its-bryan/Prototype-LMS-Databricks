@@ -29,7 +29,7 @@ export default function WalkthroughShell({ steps, title, onBack }) {
     <div className="h-full bg-white flex flex-col relative">
       <div className="px-8 py-4 flex items-center justify-between">
         <BackButton onClick={onBack} label="Back to Interactive Demo" className="mb-0" />
-        <span className="text-[#6E6E6E] text-sm">{title}</span>
+        <span className="text-[var(--neutral-600)] text-sm">{title}</span>
       </div>
 
       <div className="flex-1 relative overflow-hidden">
@@ -50,7 +50,7 @@ export default function WalkthroughShell({ steps, title, onBack }) {
       {currentStep > 0 && (
         <button
           onClick={goPrev}
-          className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-[#E6E6E6] hover:bg-[#FFD100] flex items-center justify-center text-[#1A1A1A] opacity-40 hover:opacity-100 transition-opacity cursor-pointer z-10"
+          className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-[var(--neutral-200)] hover:bg-[var(--hertz-primary)] flex items-center justify-center text-[var(--hertz-black)] opacity-40 hover:opacity-100 transition-opacity cursor-pointer z-10"
         >
           ‹
         </button>
@@ -58,7 +58,7 @@ export default function WalkthroughShell({ steps, title, onBack }) {
       {currentStep < total - 1 && (
         <button
           onClick={goNext}
-          className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-[#E6E6E6] hover:bg-[#FFD100] flex items-center justify-center text-[#1A1A1A] opacity-40 hover:opacity-100 transition-opacity cursor-pointer z-10"
+          className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-[var(--neutral-200)] hover:bg-[var(--hertz-primary)] flex items-center justify-center text-[var(--hertz-black)] opacity-40 hover:opacity-100 transition-opacity cursor-pointer z-10"
         >
           ›
         </button>
@@ -71,14 +71,14 @@ export default function WalkthroughShell({ steps, title, onBack }) {
             onClick={() => setCurrentStep(i)}
             className={`w-2.5 h-2.5 rounded-full transition-colors cursor-pointer ${
               i === currentStep
-                ? "bg-[#FFD100]"
+                ? "bg-[var(--hertz-primary)]"
                 : i < currentStep
-                ? "bg-[#1A1A1A]"
-                : "bg-[#E6E6E6]"
+                ? "bg-[var(--hertz-black)]"
+                : "bg-[var(--neutral-200)]"
             }`}
           />
         ))}
-        <span className="ml-4 text-xs text-[#6E6E6E]">
+        <span className="ml-4 text-xs text-[var(--neutral-600)]">
           {currentStep + 1} of {total}
         </span>
       </div>

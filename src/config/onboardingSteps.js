@@ -18,7 +18,7 @@ export const BM_ONBOARDING_STEPS = [
     target: "[data-onboarding=summary]",
     requiredView: "bm-dashboard",
     title: "Your numbers at a glance",
-    content: "Total Leads, Conversion Rate, and Comment Rate — everything you need to track performance.",
+    content: "Total Leads, Conversion Rate, and Comment Compliance % — everything you need to track performance.",
     actionType: null,
   },
   {

@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useData } from "../../context/DataContext";
 import { useAuth } from "../../context/AuthContext";
 import BackButton from "../BackButton";
@@ -8,6 +8,7 @@ import {
   getTasksForGMBranches,
   getGMTasksProgress,
   getDateRangePresets,
+  getComparisonDateRange,
   getNextComplianceMeetingDate,
   getWinsLearningsForGM,
   resolveGMName,
@@ -16,7 +17,7 @@ import {
 } from "../../selectors/demoSelectors";
 import StatusBadge from "../StatusBadge";
 
-import { formatDateShort } from "../../utils/dateTime";
+import { formatDateShort, toISODatePST } from "../../utils/dateTime";
 import ThreeColumnReview from "../ThreeColumnReview";
 import BranchComplianceDetailPane from "./BranchComplianceDetailPane";
 import GMPresentationMode from "./GMPresentationMode";
@@ -27,8 +28,8 @@ const easeOut = [0.4, 0, 0.2, 1];
 /** Color code modules by progress %: 0-50% red, 50-99% yellow, 100% neutral (done = no attention needed) */
 function getProgressModuleColors(progressPct) {
   if (progressPct >= 100) return { bg: "bg-[var(--neutral-50)]", border: "border-[var(--neutral-200)]", bar: "var(--neutral-400)" };
-  if (progressPct >= 50) return { bg: "bg-amber-50", border: "border-amber-200", bar: "var(--hertz-primary)" };
-  return { bg: "bg-red-50", border: "border-red-200", bar: "#C62828" };
+  if (progressPct >= 50) return { bg: "bg-[var(--color-warning-light)]", border: "border-[var(--color-warning)]/40", bar: "var(--hertz-primary)" };
+  return { bg: "bg-[var(--color-error-light)]", border: "border-[var(--color-error)]/40", bar: "var(--color-error)" };
 }
 
 const cardAnim = (i, reduced = false) => ({
@@ -54,10 +55,22 @@ function formatDueDate(dueStr) {
 export default function InteractiveGMMeetingPrepPage() {
   const { loading, orgMapping, createComplianceTasksForBranch, winsLearnings, updateLeadDirective, markLeadReviewed, gmTasks, fetchGMTasks, fetchLeadsPage, fetchGMTasksPage, fetchGMMeetingPrepStats, initialDataReady } = useData();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { userProfile } = useAuth();
   const reduceMotion = useReducedMotion();
   const presets = useMemo(() => getDateRangePresets(), [loading]);
-  const selectedPresetKey = "trailing_4_weeks";
+
+  // Allow URL ?start=YYYY-MM-DD&end=YYYY-MM-DD to override the default preset
+  const urlStart = searchParams.get("start");
+  const urlEnd = searchParams.get("end");
+  const hasUrlDateRange = !!(urlStart && urlEnd);
+
+  const [selectedPresetKey, setSelectedPresetKey] = useState(
+    hasUrlDateRange ? "__url_override__" : "trailing_4_weeks"
+  );
+  const [meetingDateOverride, setMeetingDateOverride] = useState("");
+  const [pendingMeetingDate, setPendingMeetingDate] = useState(null);
+  const [showDateConfirm, setShowDateConfirm] = useState(false);
   const [branchComplianceExpanded, setBranchComplianceExpanded] = useState(false);
   const [selectedBranchForDetail, setSelectedBranchForDetail] = useState(null);
   const [tasksExpanded, setTasksExpanded] = useState(false);
@@ -88,6 +101,7 @@ export default function InteractiveGMMeetingPrepPage() {
   });
   const [leadsToReviewTotal, setLeadsToReviewTotal] = useState(0);
   const [leadsReviewed, setLeadsReviewed] = useState(0);
+  const [allLeadsForPresentation, setAllLeadsForPresentation] = useState([]);
 
   const [directive, setDirective] = useState("");
   const [directiveSaved, setDirectiveSaved] = useState(false);
@@ -96,10 +110,22 @@ export default function InteractiveGMMeetingPrepPage() {
   const panelRef = useRef(null);
 
   const currentPreset = presets.find((p) => p.key === selectedPresetKey);
-  const dateRange = useMemo(
-    () => (currentPreset ? { start: currentPreset.start, end: currentPreset.end } : null),
-    [currentPreset],
-  );
+  const dateRange = useMemo(() => {
+    if (hasUrlDateRange && selectedPresetKey === "__url_override__") {
+      return {
+        start: new Date(urlStart + "T12:00:00Z"),
+        end: new Date(urlEnd + "T23:59:59Z"),
+      };
+    }
+    return currentPreset ? { start: currentPreset.start, end: currentPreset.end } : null;
+  }, [currentPreset, hasUrlDateRange, selectedPresetKey, urlStart, urlEnd]);
+
+  const compRange = useMemo(() => {
+    if (hasUrlDateRange && selectedPresetKey === "__url_override__") {
+      return getComparisonDateRange("custom", urlStart, urlEnd);
+    }
+    return getComparisonDateRange(selectedPresetKey);
+  }, [selectedPresetKey, hasUrlDateRange, urlStart, urlEnd]);
 
   const gmName = useMemo(() => {
     const name = userProfile?.displayName;
@@ -224,6 +250,40 @@ export default function InteractiveGMMeetingPrepPage() {
     };
   }, [fetchLeadsPage, gmName, dateRange?.start, dateRange?.end, leadsPageOffset]);
 
+  // Fetch ALL leads (including Rented + prior period) for use in presentation slides
+  // Use the earlier of dateRange.start and compRange.start so delta calculations work
+  const presentationFetchStart = useMemo(() => {
+    const ds = dateRange?.start;
+    const cs = compRange?.start;
+    if (!cs) return ds ?? null;
+    if (!ds) return cs;
+    return cs < ds ? cs : ds;
+  }, [dateRange?.start, compRange?.start]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!gmName) {
+      setAllLeadsForPresentation([]);
+      return;
+    }
+    fetchLeadsPage({
+      gmName,
+      startDate: presentationFetchStart,
+      endDate: dateRange?.end ?? null,
+      limit: 500,
+      offset: 0,
+    })
+      .then((res) => {
+        if (!cancelled) setAllLeadsForPresentation(res?.items ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setAllLeadsForPresentation([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchLeadsPage, gmName, presentationFetchStart, dateRange?.end]);
+
   useEffect(() => {
     let cancelled = false;
     if (!gmBranches.length) {
@@ -260,8 +320,17 @@ export default function InteractiveGMMeetingPrepPage() {
   const openTasks = useMemo(() => getTasksForGMBranches(effectiveGmTasks, gmName), [effectiveGmTasks, gmName]);
   const tasksProgress = useMemo(() => getGMTasksProgress(effectiveGmTasks, gmName), [effectiveGmTasks, gmName]);
   const leadsProgressPct = leadsToReviewTotal > 0 ? Math.round((leadsReviewed / leadsToReviewTotal) * 100) : 100;
-  const { dateStr: meetingDateStr, daysLeft, date: meetingDate } = useMemo(() => getNextComplianceMeetingDate(), []);
-  const meetingDueDateStr = meetingDate ? meetingDate.toISOString().slice(0, 10) : null;
+  const defaultMeeting = useMemo(() => getNextComplianceMeetingDate(), []);
+  const { dateStr: meetingDateStr, daysLeft, date: meetingDate } = useMemo(() => {
+    if (!meetingDateOverride) return defaultMeeting;
+    // Parse as noon UTC so ET formatting stays on the same calendar day
+    const d = new Date(meetingDateOverride + "T12:00:00Z");
+    if (isNaN(d)) return defaultMeeting;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const dl = Math.round((d - today) / 86400000);
+    return { date: d, dateStr: formatDateShort(d), daysLeft: dl };
+  }, [meetingDateOverride, defaultMeeting]);
+  const meetingDueDateStr = toISODatePST(meetingDate);
 
   const selectedLead = selectedLeadId ? pagedLeadsToReview.find((l) => l.id === selectedLeadId) : null;
   const winsLearningsForGM = useMemo(() => getWinsLearningsForGM(winsLearnings ?? [], gmName), [winsLearnings, gmName]);
@@ -269,15 +338,15 @@ export default function InteractiveGMMeetingPrepPage() {
   // Freeze data snapshot when opening presentation so it can't change mid-meeting
   const handleOpenPresentation = useCallback(() => {
     setPresentationSnapshot({
-      frozenLeads: [...pagedLeadsToReview],
+      frozenLeads: [...allLeadsForPresentation],
       frozenWinsLearnings: [...(winsLearnings ?? [])],
       dateRange,
-      compRange: null,
+      compRange: compRange ?? null,
       meetingDateStr,
       gmName,
     });
     setShowPresentation(true);
-  }, [pagedLeadsToReview, winsLearnings, dateRange, meetingDateStr, gmName]);
+  }, [allLeadsForPresentation, winsLearnings, dateRange, compRange, meetingDateStr, gmName]);
 
   useEffect(() => {
     if (selectedLead && panelRef.current) {
@@ -350,7 +419,8 @@ export default function InteractiveGMMeetingPrepPage() {
             </h1>
             <p className="text-sm text-[var(--neutral-600)]">
               Review outstanding tasks assigned to your team and follow up before the Thursday compliance meeting.
-              Weekly Compliance Meeting: {meetingDateStr}
+              <br className="mb-1" />
+              <span className="inline-block mt-1">Weekly Compliance Meeting: {meetingDateStr}</span>
               {daysLeft >= 0 && (
                 <span className="font-semibold text-[var(--hertz-black)]">
                   — {daysLeft === 0 ? "today" : `${daysLeft} day${daysLeft !== 1 ? "s" : ""} left`}
@@ -358,20 +428,137 @@ export default function InteractiveGMMeetingPrepPage() {
               )}
             </p>
           </div>
-          {/* Present button — opens fullscreen branded slide deck */}
-          <motion.button
-            onClick={handleOpenPresentation}
-            whileHover={!reduceMotion ? { scale: 1.03 } : {}}
-            whileTap={!reduceMotion ? { scale: 0.97 } : {}}
-            className="shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm bg-[var(--hertz-black)] text-[var(--hertz-primary)] border border-[var(--hertz-black)] hover:bg-[var(--hertz-primary)] hover:text-[var(--hertz-black)] transition-all duration-200 shadow-sm"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
-            </svg>
-            Present
-          </motion.button>
         </div>
       </motion.div>
+
+      {/* All Meetings & Present buttons */}
+      <div className="mb-4 flex items-center gap-2">
+        {/* All Meetings — view meeting prep for every HLES week */}
+        <motion.button
+          onClick={() => navigate("/gm/meeting-prep/all")}
+          whileHover={!reduceMotion ? { scale: 1.03 } : {}}
+          whileTap={!reduceMotion ? { scale: 0.97 } : {}}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm bg-[var(--hertz-black)] text-[var(--hertz-primary)] border border-[var(--hertz-black)] hover:bg-[var(--hertz-primary)] hover:text-[var(--hertz-black)] transition-all duration-200 shadow-sm"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          All Meetings
+        </motion.button>
+        {/* Present button — opens fullscreen branded slide deck */}
+        <motion.button
+          onClick={handleOpenPresentation}
+          whileHover={!reduceMotion ? { scale: 1.03 } : {}}
+          whileTap={!reduceMotion ? { scale: 0.97 } : {}}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm bg-[var(--hertz-black)] text-[var(--hertz-primary)] border border-[var(--hertz-black)] hover:bg-[var(--hertz-primary)] hover:text-[var(--hertz-black)] transition-all duration-200 shadow-sm"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+          </svg>
+          Present
+        </motion.button>
+      </div>
+
+      {/* Data period & meeting date selectors */}
+      <motion.div {...cardAnim(0.5, reduceMotion)} className="mb-6 flex flex-wrap items-end gap-4">
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-semibold text-[var(--neutral-500)] uppercase tracking-wider">Data Period</label>
+          <div className="flex items-center rounded-lg border border-[var(--neutral-200)] bg-[var(--neutral-100)] shadow-sm overflow-hidden opacity-60 cursor-not-allowed">
+            <input
+              type="date"
+              value={dateRange?.start ? new Date(dateRange.start.getTime() - dateRange.start.getTimezoneOffset() * 60000).toISOString().slice(0, 10) : ""}
+              readOnly
+              disabled
+              tabIndex={-1}
+              className="border-none bg-transparent pl-3 pr-1 py-2 text-sm font-medium text-[var(--neutral-500)] cursor-not-allowed focus:outline-none"
+            />
+            <span className="text-sm text-[var(--neutral-400)] select-none">—</span>
+            <input
+              type="date"
+              value={dateRange?.end ? new Date(dateRange.end.getTime() - dateRange.end.getTimezoneOffset() * 60000).toISOString().slice(0, 10) : ""}
+              readOnly
+              disabled
+              tabIndex={-1}
+              className="border-none bg-transparent pl-1 pr-3 py-2 text-sm font-medium text-[var(--neutral-500)] cursor-not-allowed focus:outline-none"
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-semibold text-[var(--neutral-500)] uppercase tracking-wider">Meeting Date</label>
+          <input
+            type="date"
+            value={pendingMeetingDate ?? (meetingDateOverride || meetingDueDateStr || "")}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val && val !== (meetingDateOverride || meetingDueDateStr)) {
+                setPendingMeetingDate(val);
+                setShowDateConfirm(true);
+              }
+            }}
+            className="rounded-lg border border-[var(--neutral-300)] bg-white px-3 py-2 text-sm font-medium text-[var(--hertz-black)] shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--hertz-primary)] cursor-pointer transition-shadow hover:shadow-md"
+          />
+        </div>
+      </motion.div>
+
+      {/* Meeting date change confirmation modal */}
+      <AnimatePresence>
+        {showDateConfirm && pendingMeetingDate && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+            onClick={() => { setShowDateConfirm(false); setPendingMeetingDate(null); }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl shadow-xl max-w-sm w-full mx-4 overflow-hidden"
+            >
+              <div className="px-6 pt-6 pb-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-full bg-[var(--color-warning-light)] flex items-center justify-center shrink-0">
+                    <svg className="w-5 h-5 text-[var(--color-warning)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-base font-bold text-[var(--hertz-black)]">Change Meeting Date?</h3>
+                </div>
+                <p className="text-sm text-[var(--neutral-600)] mb-1">
+                  Change meeting date to <span className="font-semibold text-[var(--hertz-black)]">{formatDateShort(new Date(pendingMeetingDate + "T12:00:00Z"), true)}</span>?
+                </p>
+                <p className="text-sm text-[var(--neutral-600)]">
+                  This will send a notification to all BMs under your management.
+                </p>
+              </div>
+              <div className="px-6 pb-5 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setShowDateConfirm(false); setPendingMeetingDate(null); }}
+                  className="px-4 py-2 rounded-lg text-sm font-semibold border border-[var(--neutral-300)] text-[var(--neutral-600)] hover:bg-[var(--neutral-100)] transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMeetingDateOverride(pendingMeetingDate);
+                    setPendingMeetingDate(null);
+                    setShowDateConfirm(false);
+                  }}
+                  className="px-4 py-2 rounded-lg text-sm font-bold bg-[var(--hertz-primary)] text-[var(--hertz-black)] hover:bg-[var(--hertz-primary-hover)] transition-colors shadow-sm"
+                >
+                  Confirm
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* 1. Leads needing review — first */}
       <motion.div {...cardAnim(1, reduceMotion)} className="mb-6">
@@ -458,7 +645,7 @@ export default function InteractiveGMMeetingPrepPage() {
                                   className={`border-t border-[var(--neutral-100)] cursor-pointer transition-colors ${selectedLeadId === lead.id ? "bg-[var(--hertz-primary-subtle)]" : "hover:bg-[var(--neutral-50)]"}`}
                                 >
                                   <td className="px-4 py-3 text-[var(--neutral-600)] text-xs">
-                                    {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
+                                    {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00Z")) : "—"}
                                   </td>
                                   <td className="px-4 py-3 font-semibold text-[var(--hertz-black)]">{lead.customer}</td>
                                   <td className="px-4 py-3"><StatusBadge status={lead.status} /></td>
@@ -781,7 +968,7 @@ export default function InteractiveGMMeetingPrepPage() {
                                     key={task.id}
                                     onClick={() => handleViewTask(task.id)}
                                     className={`border-t border-[var(--neutral-100)] cursor-pointer transition-colors hover:bg-[var(--neutral-50)] ${
-                                      overdue ? "bg-red-50/50" : ""
+                                      overdue ? "bg-[var(--color-error-light)]/50" : ""
                                     }`}
                                   >
                                     <td className="px-4 py-3">
@@ -805,7 +992,7 @@ export default function InteractiveGMMeetingPrepPage() {
                                       )}
                                     </td>
                                     <td className="px-4 py-3 text-center">
-                                      <span className={overdue ? "text-red-600 font-semibold" : "text-[var(--neutral-600)]"}>
+                                      <span className={overdue ? "text-[var(--color-error)] font-semibold" : "text-[var(--neutral-600)]"}>
                                         {formatDueDate(task.dueDate)}
                                       </span>
                                     </td>
@@ -813,7 +1000,7 @@ export default function InteractiveGMMeetingPrepPage() {
                                       <span
                                         className={`px-2 py-0.5 rounded text-xs font-semibold ${
                                           task.priority === "High"
-                                            ? "bg-amber-100 text-amber-800"
+                                            ? "bg-[var(--color-warning-light)] text-[var(--color-warning)]"
                                             : task.priority === "Medium"
                                               ? "bg-[var(--neutral-100)] text-[var(--neutral-600)]"
                                               : "bg-[var(--neutral-100)] text-[var(--neutral-500)]"
@@ -879,7 +1066,7 @@ export default function InteractiveGMMeetingPrepPage() {
           const hasLeads = unreachableStats.count > 0;
           // This is an alert state — even 1 lead here is a problem worth surfacing
           const alertColors = hasLeads
-            ? { bg: "bg-red-50", border: "border-red-200" }
+            ? { bg: "bg-[var(--color-error-light)]", border: "border-[var(--color-error)]/40" }
             : { bg: "bg-[var(--neutral-50)]", border: "border-[var(--neutral-200)]" };
           return (
             <>
@@ -901,11 +1088,18 @@ export default function InteractiveGMMeetingPrepPage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
-                  {hasLeads && (
-                    <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-[#C62828]/15 text-[#C62828] text-xs font-bold">
-                      {unreachableStats.count}
-                    </span>
-                  )}
+                  <div className="w-32 h-2 bg-[var(--neutral-200)] rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{
+                        width: `${hasLeads ? unreachableStats.pct : 0}%`,
+                        backgroundColor: hasLeads ? "var(--color-error)" : "var(--neutral-400)",
+                      }}
+                    />
+                  </div>
+                  <span className="text-xs font-semibold text-[var(--hertz-black)] w-8">
+                    {hasLeads ? `${unreachableStats.pct}%` : "0%"}
+                  </span>
                   <motion.svg
                     className="w-5 h-5 text-[var(--hertz-black)] shrink-0"
                     fill="none"
@@ -941,7 +1135,7 @@ export default function InteractiveGMMeetingPrepPage() {
                               {unreachableStats.branchBreakdown.map(({ branch, count }) => (
                                 <span
                                   key={branch}
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#C62828]/10 text-[#C62828]"
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[var(--color-error)]/10 text-[var(--color-error)]"
                                 >
                                   {branch}
                                   <span className="font-bold">{count}</span>
@@ -968,7 +1162,7 @@ export default function InteractiveGMMeetingPrepPage() {
                                   className="border-t border-[var(--neutral-100)] cursor-pointer transition-colors hover:bg-[var(--neutral-50)] group"
                                 >
                                   <td className="px-4 py-3 text-[var(--neutral-600)] text-xs">
-                                    {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
+                                    {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00Z")) : "—"}
                                   </td>
                                   <td className="px-4 py-3">
                                     <div className="font-semibold text-[var(--hertz-black)]">{lead.customer}</div>
@@ -1055,6 +1249,8 @@ export default function InteractiveGMMeetingPrepPage() {
         </div>
       </motion.div>
 
+      <div className="pb-12" />
+
       {/* Branch compliance detail pane — line-level data from row click */}
       <AnimatePresence>
         {selectedBranchForDetail && (
@@ -1125,12 +1321,12 @@ function BranchChecklistRow({
       </td>
       <td className="px-4 py-3 text-center">
         {row.isComplete ? (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-[var(--color-success-light)] text-[var(--color-success)]">
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
             Complete
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-[var(--color-warning-light)] text-[var(--color-warning)]">
             Pending
           </span>
         )}
@@ -1164,7 +1360,7 @@ function BranchChecklistRow({
                 ✓ {[createResult.created > 0 && `${createResult.created} created`, createResult.reminded > 0 && `${createResult.reminded} reminded`].filter(Boolean).join(", ")}
               </span>
             ) : (
-              <span className="text-red-600" title={createResult.errors?.[0]?.error ?? "Request failed"}>
+              <span className="text-[var(--color-error)]" title={createResult.errors?.[0]?.error ?? "Request failed"}>
                 {createResult.errors?.length ? "Failed: " + (createResult.errors[0].error || "see tooltip").slice(0, 60) : "Failed"}
               </span>
             )

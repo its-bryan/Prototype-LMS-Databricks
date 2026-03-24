@@ -9,7 +9,7 @@ import { TaskDetailSkeleton, usePageTransition } from "../DashboardSkeleton";
 
 const STATUS_OPTIONS = ["Open", "In Progress", "Done"];
 const PRIORITY_COLORS = {
-  High: "bg-amber-100 text-amber-800",
+  High: "bg-[var(--color-warning-light)] text-[var(--color-warning)]",
   Medium: "bg-[var(--neutral-100)] text-[var(--neutral-600)]",
   Low: "bg-[var(--neutral-100)] text-[var(--neutral-600)]",
 };
@@ -243,7 +243,7 @@ export default function InteractiveTaskDetail() {
                     <div className="flex flex-col items-center">
                       <div
                         className="w-2.5 h-2.5 rounded-full mt-1 shrink-0"
-                        style={{ backgroundColor: "#2E7D32" }}
+                        style={{ backgroundColor: "var(--color-success)" }}
                       />
                       {i < (task.notesLog ?? []).length - 1 && (
                         <div className="w-px h-6 bg-[var(--neutral-200)]" />

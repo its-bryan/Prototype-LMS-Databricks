@@ -214,7 +214,7 @@ export function BMDashboard({ navigateTo }) {
   const rateTiles = [
     { label: "Total Leads", value: stats.total, color: "text-[var(--hertz-black)]", isCount: true, relChange: relChange(stats.total, comparisonStats.total), metricKey: "total_leads" },
     { label: "Conversion Rate", value: `${convRate}%`, color: "text-[var(--color-success)]", isCount: false, relChange: convRate != null && prevConvRate != null ? Math.round(convRate - prevConvRate) : null, metricKey: "conversion_rate" },
-    { label: "Comment Rate", value: `${stats.enrichmentRate}%`, color: "text-[var(--hertz-primary)]", isCount: false, relChange: stats.enrichmentRate != null && prevCommentRate != null ? Math.round(stats.enrichmentRate - prevCommentRate) : null, metricKey: "comment_rate" },
+    { label: "Comment Compliance %", value: stats.enrichmentRate != null ? `${stats.enrichmentRate}%` : "—", color: "text-[var(--hertz-primary)]", isCount: false, relChange: stats.enrichmentRate != null && prevCommentRate != null ? Math.round(stats.enrichmentRate - prevCommentRate) : null, metricKey: "comment_rate" },
   ];
 
   const secondaryTiles = [
@@ -302,7 +302,7 @@ export function BMDashboard({ navigateTo }) {
               {comparisonRange != null && (
                 <span
                   className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
-                    tile.relChange > 0 ? "bg-emerald-400/25 text-emerald-200" : tile.relChange < 0 ? "bg-rose-400/25 text-rose-200" : "bg-white/15 text-white/70"
+                    tile.relChange > 0 ? "bg-[var(--color-success)]/25 text-[var(--color-success-light)]" : tile.relChange < 0 ? "bg-[var(--color-error)]/25 text-[var(--color-error-light)]" : "bg-white/15 text-white/70"
                   }`}
                 >
                   {tile.relChange > 0 ? "↑" : tile.relChange < 0 ? "↓" : "—"}
@@ -333,7 +333,7 @@ export function BMDashboard({ navigateTo }) {
               {comparisonRange != null && tile.relChange != null && (
                 <span
                   className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
-                    tile.relChange > 0 ? "bg-emerald-400/25 text-emerald-200" : tile.relChange < 0 ? "bg-rose-400/25 text-rose-200" : "bg-white/15 text-white/70"
+                    tile.relChange > 0 ? "bg-[var(--color-success)]/25 text-[var(--color-success-light)]" : tile.relChange < 0 ? "bg-[var(--color-error)]/25 text-[var(--color-error-light)]" : "bg-white/15 text-white/70"
                   }`}
                 >
                   {tile.lowerIsBetter
@@ -519,7 +519,7 @@ export function BMDashboardInbox({ navigateTo }) {
                   className="border-t border-[var(--neutral-200)] cursor-pointer hover:bg-[var(--neutral-50)] transition-colors duration-150"
                 >
                   <td className="px-4 py-3 text-sm text-[var(--neutral-600)]">
-                    {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
+                    {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00Z")) : "—"}
                   </td>
                   <td className="px-4 py-3 text-sm font-semibold text-[var(--hertz-black)]">{lead.customer}</td>
                   <td className="px-4 py-3 text-sm font-mono text-[var(--neutral-600)]">{lead.reservationId}</td>
@@ -604,10 +604,10 @@ export function GMDashboardPage({ navigateTo }) {
   // Count metrics show relative % change.
   const ptChange = (cur, prev) => (cur != null && prev != null ? Math.round(cur - prev) : null);
   const gmTiles = [
-    { label: "Conversion Rate", value: `${stats.conversionRate}%`, relChange: ptChange(stats.conversionRate, prevStats?.conversionRate), metricKey: "conversion_rate" },
-    { label: "Contacted < 30 min", value: `${stats.pctWithin30}%`, relChange: ptChange(stats.pctWithin30, prevStats?.pctWithin30), metricKey: "contacted_within_30_min" },
-    { label: "Comment Compliance", value: `${stats.commentCompliance}%`, relChange: ptChange(stats.commentCompliance, prevStats?.commentCompliance), metricKey: "comment_rate" },
-    { label: "Branch Contact %", value: `${stats.branchPct}%`, relChange: ptChange(stats.branchPct, prevStats?.branchPct), metricKey: "branch_vs_hrd_split" },
+    { label: "Conversion Rate", value: stats.conversionRate != null ? `${stats.conversionRate}%` : "—", relChange: ptChange(stats.conversionRate, prevStats?.conversionRate), metricKey: "conversion_rate" },
+    { label: "Contacted < 30 min", value: stats.pctWithin30 != null ? `${stats.pctWithin30}%` : "—", relChange: ptChange(stats.pctWithin30, prevStats?.pctWithin30), metricKey: "contacted_within_30_min" },
+    { label: "Comment Compliance", value: stats.commentCompliance != null ? `${stats.commentCompliance}%` : "—", relChange: ptChange(stats.commentCompliance, prevStats?.commentCompliance), metricKey: "comment_rate" },
+    { label: "Branch Contact %", value: stats.branchPct != null ? `${stats.branchPct}%` : "—", relChange: ptChange(stats.branchPct, prevStats?.branchPct), metricKey: "branch_vs_hrd_split" },
     { label: "Cancelled Unreviewed", value: stats.cancelledUnreviewed, relChange: relChange(stats.cancelledUnreviewed, prevStats?.cancelledUnreviewed), isAlert: stats.cancelledUnreviewed > 0, lowerIsBetter: true, metricKey: "cancelled_unreviewed" },
     { label: "No Contact Attempt", value: stats.noContactAttempt, relChange: relChange(stats.noContactAttempt, prevStats?.noContactAttempt), isAlert: stats.noContactAttempt > 0, lowerIsBetter: true, metricKey: "no_contact_attempt" },
   ];
@@ -715,7 +715,7 @@ export function GMDashboardPage({ navigateTo }) {
                 <p className="text-xl font-extrabold tracking-tight text-white">{tile.value}</p>
                 {prevRange != null && tile.relChange != null && tile.relChange !== 0 && (
                   <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
-                    tile.relChange > 0 ? "bg-emerald-400/25 text-emerald-200" : "bg-rose-400/25 text-rose-200"
+                    tile.relChange > 0 ? "bg-[var(--color-success)]/25 text-[var(--color-success-light)]" : "bg-[var(--color-error)]/25 text-[var(--color-error-light)]"
                   }`}>
                     {tile.relChange > 0 ? "↑" : "↓"}
                     {`${Math.abs(tile.relChange)}%`}
@@ -744,8 +744,8 @@ export function GMDashboardPage({ navigateTo }) {
                 {prevRange != null && tile.relChange != null && tile.relChange !== 0 && (
                   <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
                     tile.lowerIsBetter
-                      ? (tile.relChange > 0 ? "bg-rose-400/25 text-rose-200" : "bg-emerald-400/25 text-emerald-200")
-                      : (tile.relChange > 0 ? "bg-emerald-400/25 text-emerald-200" : "bg-rose-400/25 text-rose-200")
+                      ? (tile.relChange > 0 ? "bg-[var(--color-error)]/25 text-[var(--color-error-light)]" : "bg-[var(--color-success)]/25 text-[var(--color-success-light)]")
+                      : (tile.relChange > 0 ? "bg-[var(--color-success)]/25 text-[var(--color-success-light)]" : "bg-[var(--color-error)]/25 text-[var(--color-error-light)]")
                   }`}>
                     {tile.lowerIsBetter
                       ? (tile.relChange > 0 ? "↑" : "↓")

@@ -11,9 +11,9 @@ const STATUS_ORDER = { Open: 0, "In Progress": 1, Done: 2 };
 const TABS = ["All", "Open", "Done"];
 
 const taskStatusClass = {
-  Open: "bg-amber-100 text-amber-800",
-  "In Progress": "bg-blue-100 text-blue-800",
-  Done: "bg-green-100 text-green-800",
+  Open: "bg-[var(--color-warning-light)] text-[var(--color-warning)]",
+  "In Progress": "bg-[var(--color-info-light)] text-[var(--color-info)]",
+  Done: "bg-[var(--color-success-light)] text-[var(--color-success)]",
 };
 
 const sourceLabels = {
@@ -208,7 +208,7 @@ export default function BMTasksPage() {
                   <div key={task.id} className="px-4 py-3 flex items-start gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
-                        <span className={`shrink-0 px-2 py-0.5 rounded text-xs font-medium ${taskStatusClass[task.status] ?? "bg-gray-100 text-gray-700"}`}>
+                        <span className={`shrink-0 px-2 py-0.5 rounded text-xs font-medium ${taskStatusClass[task.status] ?? "bg-[var(--neutral-100)] text-[var(--neutral-700)]"}`}>
                           {task.status}
                         </span>
                         {task.source && task.source !== "gm_assigned" && (
@@ -229,7 +229,7 @@ export default function BMTasksPage() {
                           <span>From {task.createdBy}</span>
                         )}
                         {task.priority && task.priority !== "Normal" && (
-                          <span className="text-red-500 font-medium">{task.priority}</span>
+                          <span className="text-[var(--color-error)] font-medium">{task.priority}</span>
                         )}
                       </div>
                     </div>
@@ -238,7 +238,7 @@ export default function BMTasksPage() {
                       <button
                         onClick={() => handleMarkDone(task.id)}
                         disabled={updatingId === task.id}
-                        className="shrink-0 mt-1 px-3 py-1.5 text-xs font-medium rounded-lg border border-green-200 text-green-700 bg-green-50 hover:bg-green-100 transition-colors cursor-pointer disabled:opacity-50"
+                        className="shrink-0 mt-1 px-3 py-1.5 text-xs font-medium rounded-lg border border-[var(--color-success)]/40 text-[var(--color-success)] bg-[var(--color-success-light)] hover:bg-[var(--color-success-light)] transition-colors cursor-pointer disabled:opacity-50"
                       >
                         {updatingId === task.id ? "Saving…" : "Mark Done"}
                       </button>

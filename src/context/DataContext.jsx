@@ -29,6 +29,7 @@ const {
   fetchObservatorySnapshot: apiFetchObservatorySnapshot,
   fetchLeadById: apiFetchLeadById,
   fetchLeadsPage: apiFetchLeadsPage,
+  fetchLeadWeeks: apiFetchLeadWeeks,
   fetchGMMeetingPrepStats: apiFetchGMMeetingPrepStats,
   fetchUploadSummary,
   fetchAllConfig: apiFetchAllConfig,
@@ -249,6 +250,14 @@ export function DataProvider({ children }) {
     [USE_LIVE_API, leads]
   );
 
+  const fetchLeadWeeks = useCallback(
+    async (params = {}) => {
+      if (USE_LIVE_API) return apiFetchLeadWeeks(params);
+      return [];
+    },
+    [USE_LIVE_API]
+  );
+
   const fetchLeadById = useCallback(
     async (leadId) => {
       if (!USE_LIVE_API) {
@@ -430,7 +439,7 @@ export function DataProvider({ children }) {
     [USE_LIVE_API]
   );
 
-  /** Mark a lead as reviewed (status=Reviewed, archived=true) */
+  /** Archive a lead (mark it as reviewed). Sets archived=true only. */
   const markLeadReviewed = useCallback(
     async (leadId) => {
       if (USE_LIVE_API) {
@@ -443,7 +452,7 @@ export function DataProvider({ children }) {
       setLeads((prev) =>
         prev.map((l) => {
           if (l.id !== leadId) return l;
-          updatedLead = { ...l, status: "Reviewed", archived: true };
+          updatedLead = { ...l, archived: true };
           return updatedLead;
         })
       );
@@ -683,6 +692,7 @@ export function DataProvider({ children }) {
     insertGmDirective,
     fetchLeadActivities,
     fetchLeadsPage,
+    fetchLeadWeeks,
     fetchGMMeetingPrepStats,
     fetchLeadById,
     fetchTasksForBranch,

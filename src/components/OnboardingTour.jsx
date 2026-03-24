@@ -24,7 +24,7 @@ function Spotlight({ targetRect, reducedMotion }) {
         exit={{ opacity: 0 }}
         transition={{ duration: reducedMotion ? 0.01 : 0.25, ease: EASE_OUT }}
         className="fixed inset-0 bg-black/40"
-        style={{ zIndex: 9998 }}
+        style={{ zIndex: 69 }}
       />
     );
   }
@@ -34,7 +34,7 @@ function Spotlight({ targetRect, reducedMotion }) {
     <motion.div
       className="fixed pointer-events-none"
       style={{
-        zIndex: 9998,
+        zIndex: 69,
         top: top - pad,
         left: left - pad,
         width: width + pad * 2,
@@ -113,7 +113,7 @@ function Callout({ step, stepIndex, totalSteps, onNext, onBack, onSkip, onQuit, 
         duration: reducedMotion ? 0.01 : 0.35,
         ease: EASE_OUT,
       }}
-      className="fixed z-[10000] bg-white rounded-xl shadow-2xl border border-[var(--neutral-200)] max-w-sm w-[384px] p-6"
+      className="fixed z-[70] bg-white rounded-xl shadow-[var(--shadow-xl)] border border-[var(--neutral-200)] max-w-sm w-[384px] p-6"
       style={{
         ...positionStyle,
         boxShadow: "0 24px 48px rgba(39,36,37,0.12), 0 0 0 1px rgba(39,36,37,0.04)",
@@ -233,7 +233,7 @@ function QuitConfirmModal({ onConfirm, onCancel, reducedMotion }) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: reducedMotion ? 0.01 : 0.2 }}
-      className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/40"
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40"
       onClick={onCancel}
     >
       <motion.div

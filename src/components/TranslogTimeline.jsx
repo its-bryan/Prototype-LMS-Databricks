@@ -3,10 +3,10 @@ import { motion } from "framer-motion";
 import { formatTranslogTimestamp } from "../utils/dateTime";
 
 const typeColors = {
-  system: "#6E6E6E",
-  contact: "#FFD100",
-  enrichment: "#2E7D32",
-  translog: "#6E6E6E",
+  system: "var(--neutral-600)",
+  contact: "var(--hertz-primary)",
+  enrichment: "var(--color-success)",
+  translog: "var(--neutral-600)",
 };
 
 /** Parse translog time to timestamp for sorting. Handles:
@@ -131,7 +131,7 @@ export default function TranslogTimeline({ events = [], enrichmentLog = [], cont
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: "auto" }}
-                      className="mt-2 pl-3 border-l-2 border-amber-200 space-y-2"
+                      className="mt-2 pl-3 border-l-2 border-[var(--color-warning)]/40 space-y-2"
                     >
                       <div className="text-xs">
                         <p className="font-medium text-[var(--neutral-600)] uppercase mb-0.5">Subject</p>

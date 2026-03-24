@@ -49,19 +49,19 @@ const METRIC_CONFIG = {
     denominatorLabel: "Total",
   },
   comment_rate: {
-    label: "Comment Rate",
+    label: "Comment Compliance %",
     type: "leads",
-    description: "Percentage of leads with enrichment/comments completed",
+    description: "Percentage of actionable leads (cancelled + unused) with enrichment comments",
     getValue: (leads) => {
-      const total = leads.length;
-      const enriched = leads.filter((l) => l.enrichmentComplete).length;
-      return total ? Math.round((enriched / total) * 100) : 0;
+      const actionable = leads.filter((l) => l.status === "Cancelled" || l.status === "Unused");
+      const withComments = actionable.filter((l) => l.enrichment?.reason || l.enrichment?.notes);
+      return actionable.length ? Math.round(withComments.length / actionable.length * 100 * 10) / 10 : (leads.length > 0 ? 100 : null);
     },
-    format: (v) => `${v}%`,
-    getRelevant: (leads) => leads,
+    format: (v) => v != null ? `${v}%` : "—",
+    getRelevant: (leads) => leads.filter((l) => l.status === "Cancelled" || l.status === "Unused"),
     numeratorLabel: "Commented",
-    numeratorFilter: (l) => l.enrichmentComplete,
-    denominatorLabel: "Total",
+    numeratorFilter: (l) => (l.status === "Cancelled" || l.status === "Unused") && (l.enrichment?.reason || l.enrichment?.notes),
+    denominatorLabel: "Actionable",
   },
   open_tasks: {
     label: "Open Tasks",
@@ -153,12 +153,12 @@ const METRIC_CONFIG = {
   cancelled_unreviewed: {
     label: "Cancelled Unreviewed",
     type: "leads",
-    description: "Cancelled leads not yet archived or with GM directive",
+    description: "Cancelled leads without GM directive",
     getValue: (leads) =>
-      (leads ?? []).filter((l) => l.status === "Cancelled" && !l.archived && !l.gmDirective).length,
+      (leads ?? []).filter((l) => l.status === "Cancelled" && !l.gmDirective).length,
     format: (v) => `${v ?? 0}`,
     getRelevant: (leads) =>
-      (leads ?? []).filter((l) => l.status === "Cancelled" && !l.archived && !l.gmDirective),
+      (leads ?? []).filter((l) => l.status === "Cancelled" && !l.gmDirective),
   },
   unused_overdue: {
     label: "Unused Overdue",
@@ -217,7 +217,7 @@ function LeadTable({ leads, config, allLeads, onLeadClick }) {
       <div className="overflow-x-auto max-h-[45vh]">
         <table className="w-full text-sm">
           <thead className="sticky top-0 z-10">
-            <tr className="bg-[#272425] text-xs text-white font-semibold uppercase tracking-wider">
+            <tr className="bg-[var(--hertz-black)] text-xs text-white font-semibold uppercase tracking-wider">
               {showHighlight && <th className="px-3 py-3 text-center w-[60px]">{config.numeratorLabel}</th>}
               <th className="px-3 py-3 text-left">Date</th>
               <th className="px-3 py-3 text-left">Customer</th>
@@ -244,7 +244,7 @@ function LeadTable({ leads, config, allLeads, onLeadClick }) {
                     key={lead.id}
                     onClick={onLeadClick ? () => onLeadClick(lead) : undefined}
                     className={`border-t border-[var(--neutral-200)] transition-colors ${
-                      isNumerator ? "bg-[#2E7D32]/5" : ""
+                      isNumerator ? "bg-[var(--color-success)]/5" : ""
                     } ${
                       onLeadClick ? "cursor-pointer hover:bg-[var(--neutral-50)]" : ""
                     }`}
@@ -252,7 +252,7 @@ function LeadTable({ leads, config, allLeads, onLeadClick }) {
                     {showHighlight && (
                       <td className="px-3 py-3 text-center">
                         {isNumerator ? (
-                          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#2E7D32]/15 text-[#2E7D32]">
+                          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[var(--color-success)]/15 text-[var(--color-success)]">
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
                           </span>
                         ) : (
@@ -263,7 +263,7 @@ function LeadTable({ leads, config, allLeads, onLeadClick }) {
                       </td>
                     )}
                     <td className="px-3 py-3 text-[var(--neutral-600)] text-xs">
-                      {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
+                      {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00Z")) : "—"}
                     </td>
                     <td className="px-3 py-3 font-semibold text-[var(--hertz-black)]">{lead.customer ?? "—"}</td>
                     <td className="px-3 py-3 text-center font-mono text-xs text-[var(--neutral-600)]">{lead.reservationId ?? "—"}</td>
@@ -307,7 +307,7 @@ function TaskTable({ tasks, config, allLeads }) {
       <div className="overflow-x-auto max-h-[45vh]">
         <table className="w-full text-sm">
           <thead className="sticky top-0 z-10">
-            <tr className="bg-[#272425] text-xs text-white font-semibold uppercase tracking-wider">
+            <tr className="bg-[var(--hertz-black)] text-xs text-white font-semibold uppercase tracking-wider">
               {showHighlight && <th className="px-3 py-3 text-center w-[60px]">{config.numeratorLabel}</th>}
               <th className="px-3 py-3 text-left">Title</th>
               <th className="px-3 py-3 text-left">Lead</th>
@@ -332,13 +332,13 @@ function TaskTable({ tasks, config, allLeads }) {
                   <tr
                     key={task.id}
                     className={`border-t border-[var(--neutral-200)] transition-colors ${
-                      isNumerator ? "bg-[#2E7D32]/5" : ""
+                      isNumerator ? "bg-[var(--color-success)]/5" : ""
                     }`}
                   >
                     {showHighlight && (
                       <td className="px-3 py-3 text-center">
                         {isNumerator ? (
-                          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#2E7D32]/15 text-[#2E7D32]">
+                          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[var(--color-success)]/15 text-[var(--color-success)]">
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
                           </span>
                         ) : (
@@ -356,14 +356,14 @@ function TaskTable({ tasks, config, allLeads }) {
                     </td>
                     <td className="px-3 py-3 text-center">
                       <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
-                        task.status === "Done" ? "bg-[#2E7D32]/15 text-[#2E7D32]" :
+                        task.status === "Done" ? "bg-[var(--color-success)]/15 text-[var(--color-success)]" :
                         task.status === "In Progress" ? "bg-[var(--hertz-primary)]/25 text-[var(--hertz-black)]" :
-                        "bg-[#C62828]/15 text-[#C62828]"
+                        "bg-[var(--color-error)]/15 text-[var(--color-error)]"
                       }`}>{task.status}</span>
                     </td>
                     <td className="px-3 py-3 text-center">
                       <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
-                        task.priority === "High" ? "bg-amber-100 text-amber-800" :
+                        task.priority === "High" ? "bg-[var(--color-warning-light)] text-[var(--color-warning)]" :
                         "bg-[var(--neutral-100)] text-[var(--neutral-600)]"
                       }`}>{task.priority ?? "Medium"}</span>
                     </td>
@@ -405,7 +405,7 @@ function WeeklyBreakdownTable({ rows }) {
           <tr className="border-b border-[var(--neutral-200)]">
             <th className="text-left font-semibold text-[var(--neutral-500)] uppercase tracking-wider py-1.5 pr-3 whitespace-nowrap">Week</th>
             <th className="text-right font-semibold text-[var(--neutral-500)] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Total</th>
-            <th className="text-right font-semibold text-[#2E7D32] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Rented</th>
+            <th className="text-right font-semibold text-[var(--color-success)] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Rented</th>
             <th className="text-right font-semibold text-[#B45309] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Cancelled</th>
             <th className="text-right font-semibold text-[var(--neutral-500)] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Unused</th>
             <th className="text-right font-semibold text-[var(--hertz-black)] uppercase tracking-wider py-1.5 pl-3 whitespace-nowrap">Rate</th>
@@ -416,7 +416,7 @@ function WeeklyBreakdownTable({ rows }) {
             <tr key={i} className="border-b border-[var(--neutral-100)]">
               <td className="py-1.5 pr-3 text-[var(--neutral-700)] whitespace-nowrap">{row.label}</td>
               <td className="py-1.5 px-3 text-right text-[var(--neutral-700)]">{row.totalLeads ?? 0}</td>
-              <td className="py-1.5 px-3 text-right text-[#2E7D32]">{row.rented ?? 0}</td>
+              <td className="py-1.5 px-3 text-right text-[var(--color-success)]">{row.rented ?? 0}</td>
               <td className="py-1.5 px-3 text-right text-[#B45309]">{row.cancelled ?? 0}</td>
               <td className="py-1.5 px-3 text-right text-[var(--neutral-500)]">{row.unused ?? 0}</td>
               <td className="py-1.5 pl-3 text-right font-bold text-[var(--hertz-black)]">
@@ -427,7 +427,7 @@ function WeeklyBreakdownTable({ rows }) {
           <tr className="border-t-2 border-[var(--neutral-300)] bg-[var(--neutral-50)]">
             <td className="py-1.5 pr-3 font-semibold text-[var(--neutral-700)] whitespace-nowrap">Total</td>
             <td className="py-1.5 px-3 text-right font-semibold text-[var(--neutral-700)]">{totalLeads}</td>
-            <td className="py-1.5 px-3 text-right font-semibold text-[#2E7D32]">{totalRented}</td>
+            <td className="py-1.5 px-3 text-right font-semibold text-[var(--color-success)]">{totalRented}</td>
             <td className="py-1.5 px-3 text-right font-semibold text-[#B45309]">{totalCancelled}</td>
             <td className="py-1.5 px-3 text-right font-semibold text-[var(--neutral-500)]">{totalUnused}</td>
             <td className="py-1.5 pl-3 text-right font-bold text-[var(--hertz-black)]">{totalRate}%</td>
@@ -454,7 +454,7 @@ function BmCommentRateBreakdownTable({ rows }) {
           <tr className="border-b border-[var(--neutral-200)]">
             <th className="text-left font-semibold text-[var(--neutral-500)] uppercase tracking-wider py-1.5 pr-3 whitespace-nowrap">Week</th>
             <th className="text-right font-semibold text-[var(--neutral-500)] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Total</th>
-            <th className="text-right font-semibold text-[#2E7D32] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Commented</th>
+            <th className="text-right font-semibold text-[var(--color-success)] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Commented</th>
             <th className="text-right font-semibold text-[var(--hertz-black)] uppercase tracking-wider py-1.5 pl-3 whitespace-nowrap">Rate</th>
           </tr>
         </thead>
@@ -467,7 +467,7 @@ function BmCommentRateBreakdownTable({ rows }) {
               <tr key={i} className="border-b border-[var(--neutral-100)]">
                 <td className="py-1.5 pr-3 text-[var(--neutral-700)] whitespace-nowrap">{row.label}</td>
                 <td className="py-1.5 px-3 text-right text-[var(--neutral-700)]">{row.totalLeads ?? 0}</td>
-                <td className="py-1.5 px-3 text-right text-[#2E7D32]">{row.enriched ?? 0}</td>
+                <td className="py-1.5 px-3 text-right text-[var(--color-success)]">{row.enriched ?? 0}</td>
                 <td className="py-1.5 pl-3 text-right font-bold text-[var(--hertz-black)]">
                   {weekRate != null ? `${weekRate}%` : "—"}
                 </td>
@@ -477,7 +477,7 @@ function BmCommentRateBreakdownTable({ rows }) {
           <tr className="border-t-2 border-[var(--neutral-300)] bg-[var(--neutral-50)]">
             <td className="py-1.5 pr-3 font-semibold text-[var(--neutral-700)] whitespace-nowrap">Total</td>
             <td className="py-1.5 px-3 text-right font-semibold text-[var(--neutral-700)]">{totalLeads}</td>
-            <td className="py-1.5 px-3 text-right font-semibold text-[#2E7D32]">{totalEnriched}</td>
+            <td className="py-1.5 px-3 text-right font-semibold text-[var(--color-success)]">{totalEnriched}</td>
             <td className="py-1.5 pl-3 text-right font-bold text-[var(--hertz-black)]">{totalRate}%</td>
           </tr>
         </tbody>
@@ -502,7 +502,7 @@ function BmContactedWithin30BreakdownTable({ rows }) {
           <tr className="border-b border-[var(--neutral-200)]">
             <th className="text-left font-semibold text-[var(--neutral-500)] uppercase tracking-wider py-1.5 pr-3 whitespace-nowrap">Week</th>
             <th className="text-right font-semibold text-[var(--neutral-500)] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Total</th>
-            <th className="text-right font-semibold text-[#2E7D32] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Within 30 min</th>
+            <th className="text-right font-semibold text-[var(--color-success)] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Within 30 min</th>
             <th className="text-right font-semibold text-[var(--hertz-black)] uppercase tracking-wider py-1.5 pl-3 whitespace-nowrap">Rate</th>
           </tr>
         </thead>
@@ -514,7 +514,7 @@ function BmContactedWithin30BreakdownTable({ rows }) {
               <tr key={i} className="border-b border-[var(--neutral-100)]">
                 <td className="py-1.5 pr-3 text-[var(--neutral-700)] whitespace-nowrap">{row.label}</td>
                 <td className="py-1.5 px-3 text-right text-[var(--neutral-700)]">{den}</td>
-                <td className="py-1.5 px-3 text-right text-[#2E7D32]">{row.within30 ?? 0}</td>
+                <td className="py-1.5 px-3 text-right text-[var(--color-success)]">{row.within30 ?? 0}</td>
                 <td className="py-1.5 pl-3 text-right font-bold text-[var(--hertz-black)]">
                   {weekRate != null ? `${weekRate}%` : "—"}
                 </td>
@@ -524,7 +524,7 @@ function BmContactedWithin30BreakdownTable({ rows }) {
           <tr className="border-t-2 border-[var(--neutral-300)] bg-[var(--neutral-50)]">
             <td className="py-1.5 pr-3 font-semibold text-[var(--neutral-700)] whitespace-nowrap">Total</td>
             <td className="py-1.5 px-3 text-right font-semibold text-[var(--neutral-700)]">{totalDen}</td>
-            <td className="py-1.5 px-3 text-right font-semibold text-[#2E7D32]">{totalWithin30}</td>
+            <td className="py-1.5 px-3 text-right font-semibold text-[var(--color-success)]">{totalWithin30}</td>
             <td className="py-1.5 pl-3 text-right font-bold text-[var(--hertz-black)]">{totalRate}%</td>
           </tr>
         </tbody>
@@ -550,7 +550,7 @@ function BmBranchContactBreakdownTable({ rows }) {
           <tr className="border-b border-[var(--neutral-200)]">
             <th className="text-left font-semibold text-[var(--neutral-500)] uppercase tracking-wider py-1.5 pr-3 whitespace-nowrap">Week</th>
             <th className="text-right font-semibold text-[var(--neutral-500)] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Total Contacts</th>
-            <th className="text-right font-semibold text-[#2E7D32] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Branch</th>
+            <th className="text-right font-semibold text-[var(--color-success)] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">Branch</th>
             <th className="text-right font-semibold text-[var(--neutral-500)] uppercase tracking-wider py-1.5 px-3 whitespace-nowrap">HRD</th>
             <th className="text-right font-semibold text-[var(--hertz-black)] uppercase tracking-wider py-1.5 pl-3 whitespace-nowrap">Branch %</th>
           </tr>
@@ -563,7 +563,7 @@ function BmBranchContactBreakdownTable({ rows }) {
               <tr key={i} className="border-b border-[var(--neutral-100)]">
                 <td className="py-1.5 pr-3 text-[var(--neutral-700)] whitespace-nowrap">{row.label}</td>
                 <td className="py-1.5 px-3 text-right text-[var(--neutral-700)]">{contact}</td>
-                <td className="py-1.5 px-3 text-right text-[#2E7D32]">{row.branchContact ?? 0}</td>
+                <td className="py-1.5 px-3 text-right text-[var(--color-success)]">{row.branchContact ?? 0}</td>
                 <td className="py-1.5 px-3 text-right text-[var(--neutral-500)]">{row.hrdContact ?? 0}</td>
                 <td className="py-1.5 pl-3 text-right font-bold text-[var(--hertz-black)]">
                   {weekRate != null ? `${weekRate}%` : "—"}
@@ -574,7 +574,7 @@ function BmBranchContactBreakdownTable({ rows }) {
           <tr className="border-t-2 border-[var(--neutral-300)] bg-[var(--neutral-50)]">
             <td className="py-1.5 pr-3 font-semibold text-[var(--neutral-700)] whitespace-nowrap">Total</td>
             <td className="py-1.5 px-3 text-right font-semibold text-[var(--neutral-700)]">{totalContact}</td>
-            <td className="py-1.5 px-3 text-right font-semibold text-[#2E7D32]">{totalBranch}</td>
+            <td className="py-1.5 px-3 text-right font-semibold text-[var(--color-success)]">{totalBranch}</td>
             <td className="py-1.5 px-3 text-right font-semibold text-[var(--neutral-500)]">{totalHrd}</td>
             <td className="py-1.5 pl-3 text-right font-bold text-[var(--hertz-black)]">{totalRate}%</td>
           </tr>
@@ -694,6 +694,12 @@ export default function MetricDrilldownModal({
   const previousTasks = useMemo(() => (comparisonRange ? tasksInDateRange(branchTasks, comparisonRange) : []), [branchTasks, comparisonRange]);
   const taskStatsCurrent = currentTaskStats ?? {};
   const taskStatsPrevious = previousTaskStats ?? {};
+
+  useEffect(() => {
+    const onKeyDown = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
 
   useEffect(() => {
     setCurrentLimit(INITIAL_ROWS);

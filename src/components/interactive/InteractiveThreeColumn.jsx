@@ -66,8 +66,8 @@ export default function InteractiveThreeColumn() {
             onClick={() => handleLeadSwitch(l)}
             className={`px-3 py-1 rounded text-xs font-medium transition-colors cursor-pointer ${
               lead?.id === l.id
-                ? "bg-[#FFD100] text-[#1A1A1A]"
-                : "bg-gray-100 text-[#6E6E6E] hover:bg-gray-200"
+                ? "bg-[var(--hertz-primary)] text-[var(--hertz-black)]"
+                : "bg-[var(--neutral-100)] text-[var(--neutral-600)] hover:bg-[var(--neutral-200)]"
             }`}
           >
             {l.customer}
@@ -86,7 +86,7 @@ export default function InteractiveThreeColumn() {
             className="max-w-md space-y-3"
           >
             <div>
-              <label className="text-xs text-[#6E6E6E] uppercase tracking-wide block mb-1">
+              <label className="text-xs text-[var(--neutral-600)] uppercase tracking-wide block mb-1">
                 GM Directive
               </label>
               <textarea
@@ -94,17 +94,17 @@ export default function InteractiveThreeColumn() {
                 onChange={(e) => setDirective(e.target.value)}
                 rows={2}
                 placeholder="Add directive for BM..."
-                className="w-full border border-[#FFD100] bg-amber-50 rounded px-3 py-2 text-sm focus:outline-none resize-none"
+                className="w-full border border-[var(--hertz-primary)] bg-[var(--color-warning-light)] rounded px-3 py-2 text-sm focus:outline-none resize-none"
               />
             </div>
             <div className="flex items-center gap-3">
               <button
                 onClick={handleArchive}
-                className="px-3 py-1.5 bg-[#6E6E6E] text-white rounded text-sm hover:bg-[#555] transition-colors cursor-pointer"
+                className="px-3 py-1.5 bg-[var(--neutral-600)] text-white rounded text-sm hover:bg-[#555] transition-colors cursor-pointer"
               >
                 ✓ Archive — Reviewed
               </button>
-              {isArchived && <StatusBadge status="Reviewed" />}
+              {isArchived && <StatusBadge status="Archived" />}
             </div>
           </Motion.div>
         </div>

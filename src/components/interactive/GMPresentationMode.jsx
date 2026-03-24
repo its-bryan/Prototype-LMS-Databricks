@@ -27,9 +27,9 @@ import { formatDateShort } from "../../utils/dateTime";
 
 // ─── Design tokens (2024 Hertz Sustainability Report palette) ──────────────────
 const GOLD = "#F4C300";
-const BLACK = "#141618";
-const RENTED_COLOR = "#2E7D32";
-const CANCELLED_COLOR = "#C62828";
+const BLACK = "var(--hertz-black)";
+const RENTED_COLOR = "var(--color-success)";
+const CANCELLED_COLOR = "var(--color-error)";
 const UNUSED_COLOR = GOLD;
 const LINE_COLOR = "#FFFFFF";
 
@@ -146,7 +146,7 @@ function StackedBarsChart({ weeks, maxBarHeightPx = 200 }) {
               </div>
               <div className="relative flex items-center justify-center" style={{ height: `${unusedPct}%`, background: UNUSED_COLOR, opacity: 0.8 }}>
                 {w.unused > 0 && unusedH > 18 && (
-                  <span className="text-[#141618] text-[10px] font-bold">{w.unused}</span>
+                  <span className="text-[var(--hertz-black)] text-[10px] font-bold">{w.unused}</span>
                 )}
               </div>
             </div>
@@ -283,7 +283,7 @@ function DeltaTag({ delta }) {
   return (
     <span
       className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
-        isUp ? "bg-[#2E7D32]/20 text-[#2E7D32]" : isDown ? "bg-[#C62828]/20 text-[#C62828]" : "bg-white/10 text-white/50"
+        isUp ? "bg-[var(--color-success)]/20 text-[var(--color-success)]" : isDown ? "bg-[var(--color-error)]/20 text-[var(--color-error)]" : "bg-white/10 text-white/50"
       }`}
     >
       {isUp ? "↑" : isDown ? "↓" : "—"}
@@ -661,8 +661,8 @@ function BranchLeadDetailPanel({ branch, leads, leaderboardRow, onBack }) {
       <div className="grid grid-cols-5 gap-4 mb-8">
         {[
           { label: "Total Leads", value: stats.total, color: "text-white" },
-          { label: "Rented", value: stats.rented, color: "text-[#2E7D32]" },
-          { label: "Cancelled", value: stats.cancelled, color: "text-[#C62828]" },
+          { label: "Rented", value: stats.rented, color: "text-[var(--color-success)]" },
+          { label: "Cancelled", value: stats.cancelled, color: "text-[var(--color-error)]" },
           { label: "Unused", value: stats.unused, color: "text-[#F4C300]" },
           { label: "Conversion Rate", value: stats.convRate !== null ? `${stats.convRate}%` : "—", color: "text-white" },
         ].map(({ label, value, color }) => (
@@ -700,17 +700,17 @@ function BranchLeadDetailPanel({ branch, leads, leaderboardRow, onBack }) {
                 return (
                   <tr key={lead.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                     <td className="py-2.5 pr-3 text-white/50 text-xs whitespace-nowrap">
-                      {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
+                      {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00Z")) : "—"}
                     </td>
                     <td className="py-2.5 pr-3 text-white font-medium truncate max-w-[160px]">{lead.customer}</td>
                     <td className="py-2.5 pr-3">
                       <span
                         className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
                           lead.status === "Rented"
-                            ? "bg-[#2E7D32]/20 text-[#2E7D32]"
+                            ? "bg-[var(--color-success)]/20 text-[var(--color-success)]"
                             : lead.status === "Cancelled"
-                            ? "bg-[#C62828]/20 text-[#C62828]"
-                            : "bg-yellow-500/20 text-yellow-400"
+                            ? "bg-[var(--color-error)]/20 text-[var(--color-error)]"
+                            : "bg-[var(--hertz-primary)]/20 text-[var(--hertz-primary-light)]"
                         }`}
                       >
                         {lead.status}
@@ -734,8 +734,7 @@ function BranchLeadDetailPanel({ branch, leads, leaderboardRow, onBack }) {
 function SlideBranch({ frozenLeads, dateRange, compRange, gmName }) {
   const leaderboardRaw = useMemo(
     () => getConversionByBranch(frozenLeads, dateRange, compRange, gmName),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
+    [frozenLeads, dateRange, compRange, gmName]
   );
 
   const [sortCol, setSortCol] = useState("conversionRate");
@@ -917,8 +916,8 @@ function InsurerLeadDetailPanel({ insurer, leads, onBack }) {
       <div className="grid grid-cols-4 gap-4 mb-8">
         {[
           { label: "Total Leads", value: stats.total, color: "text-white" },
-          { label: "Rented", value: stats.rented, color: "text-[#2E7D32]" },
-          { label: "Cancelled", value: stats.cancelled, color: "text-[#C62828]" },
+          { label: "Rented", value: stats.rented, color: "text-[var(--color-success)]" },
+          { label: "Cancelled", value: stats.cancelled, color: "text-[var(--color-error)]" },
           { label: "Unused", value: stats.unused, color: "text-[#F4C300]" },
         ].map(({ label, value, color }) => (
           <div key={label} className="rounded-xl p-4 bg-white/5 border border-white/10">
@@ -956,7 +955,7 @@ function InsurerLeadDetailPanel({ insurer, leads, onBack }) {
                 return (
                   <tr key={lead.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                     <td className="py-2.5 pr-3 text-white/50 text-xs whitespace-nowrap">
-                      {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
+                      {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00Z")) : "—"}
                     </td>
                     <td className="py-2.5 pr-3 text-white font-medium truncate max-w-[140px]">{lead.customer}</td>
                     <td className="py-2.5 pr-3 text-white/60">{lead.branch}</td>
@@ -964,10 +963,10 @@ function InsurerLeadDetailPanel({ insurer, leads, onBack }) {
                       <span
                         className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
                           lead.status === "Rented"
-                            ? "bg-[#2E7D32]/20 text-[#2E7D32]"
+                            ? "bg-[var(--color-success)]/20 text-[var(--color-success)]"
                             : lead.status === "Cancelled"
-                            ? "bg-[#C62828]/20 text-[#C62828]"
-                            : "bg-yellow-500/20 text-yellow-400"
+                            ? "bg-[var(--color-error)]/20 text-[var(--color-error)]"
+                            : "bg-[var(--hertz-primary)]/20 text-[var(--hertz-primary-light)]"
                         }`}
                       >
                         {lead.status}
@@ -994,8 +993,7 @@ function SlideInsurer({ frozenLeads, dateRange, compRange, gmName }) {
 
   const dataRaw = useMemo(
     () => getConversionByInsurer(frozenLeads, dateRange, compRange, gmName),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
+    [frozenLeads, dateRange, compRange, gmName]
   );
 
   const CHROME_PX = 280;
@@ -1087,7 +1085,7 @@ function SlideInsurer({ frozenLeads, dateRange, compRange, gmName }) {
                     <tr
                       key={row.insurer}
                       onClick={() => handleInsurerSelect(row.insurer)}
-                      className={`border-b border-white/5 hover:bg-white/5 cursor-pointer group transition-colors ${isStateFarm ? "bg-yellow-500/5" : ""}`}
+                      className={`border-b border-white/5 hover:bg-white/5 cursor-pointer group transition-colors ${isStateFarm ? "bg-[var(--hertz-primary)]/5" : ""}`}
                       title={`View leads for ${row.insurer}`}
                     >
                       <td className="py-3 pr-3 text-white/60 text-sm font-bold">{idx + 1}</td>
@@ -1193,8 +1191,8 @@ function BodyShopLeadDetailPanel({ bodyShop, leads, onBack }) {
       <div className="grid grid-cols-5 gap-4 mb-8">
         {[
           { label: "Total Leads", value: stats.total, color: "text-white" },
-          { label: "Rented", value: stats.rented, color: "text-[#2E7D32]" },
-          { label: "Cancelled", value: stats.cancelled, color: "text-[#C62828]" },
+          { label: "Rented", value: stats.rented, color: "text-[var(--color-success)]" },
+          { label: "Cancelled", value: stats.cancelled, color: "text-[var(--color-error)]" },
           { label: "Unused", value: stats.unused, color: "text-[#F4C300]" },
           { label: "Conversion Rate", value: stats.convRate !== null ? `${stats.convRate}%` : "—", color: "text-white" },
         ].map(({ label, value, color }) => (
@@ -1232,7 +1230,7 @@ function BodyShopLeadDetailPanel({ bodyShop, leads, onBack }) {
                 return (
                   <tr key={lead.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                     <td className="py-2.5 pr-3 text-white/50 text-xs whitespace-nowrap">
-                      {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
+                      {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00Z")) : "—"}
                     </td>
                     <td className="py-2.5 pr-3 text-white font-medium truncate max-w-[140px]">{lead.customer}</td>
                     <td className="py-2.5 pr-3 text-white/60">{lead.branch}</td>
@@ -1240,10 +1238,10 @@ function BodyShopLeadDetailPanel({ bodyShop, leads, onBack }) {
                       <span
                         className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
                           lead.status === "Rented"
-                            ? "bg-[#2E7D32]/20 text-[#2E7D32]"
+                            ? "bg-[var(--color-success)]/20 text-[var(--color-success)]"
                             : lead.status === "Cancelled"
-                            ? "bg-[#C62828]/20 text-[#C62828]"
-                            : "bg-yellow-500/20 text-yellow-400"
+                            ? "bg-[var(--color-error)]/20 text-[var(--color-error)]"
+                            : "bg-[var(--hertz-primary)]/20 text-[var(--hertz-primary-light)]"
                         }`}
                       >
                         {lead.status}
@@ -1270,8 +1268,7 @@ function SlideBodyShop({ frozenLeads, dateRange, compRange, gmName }) {
 
   const dataRaw = useMemo(
     () => getConversionByBodyShop(frozenLeads, dateRange, compRange, gmName),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
+    [frozenLeads, dateRange, compRange, gmName]
   );
 
   const CHROME_PX = 280;
@@ -1466,8 +1463,8 @@ function SpotCheckLeadDetailPanel({ lead, onBack }) {
       <div className="grid grid-cols-4 gap-4 mb-8">
         {[
           { label: "Reservation #", value: lead.reservationId ?? lead.confirmNum ?? "—", color: "text-white" },
-          { label: "Status", value: lead.status, color: lead.status === "Rented" ? "text-[#2E7D32]" : lead.status === "Cancelled" ? "text-[#C62828]" : "text-[#F4C300]" },
-          { label: "Date", value: lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—", color: "text-white" },
+          { label: "Status", value: lead.status, color: lead.status === "Rented" ? "text-[var(--color-success)]" : lead.status === "Cancelled" ? "text-[var(--color-error)]" : "text-[#F4C300]" },
+          { label: "Date", value: lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00Z")) : "—", color: "text-white" },
           { label: "Insurer", value: lead.insuranceCompany ?? "—", color: "text-white" },
         ].map(({ label, value, color }) => (
           <div key={label} className="rounded-xl p-4 bg-white/5 border border-white/10">
@@ -1607,8 +1604,8 @@ function SlideSpotCheck({ frozenLeads, gmName, initialBranch }) {
       <div className="grid grid-cols-4 gap-4 mb-8">
         {[
           { label: "Total Reservations", value: stats.total, color: "text-white", filterStatus: null },
-          { label: "Rented", value: stats.rented, color: "text-[#2E7D32]", filterStatus: "Rented" },
-          { label: "Cancelled", value: stats.cancelled, color: "text-[#C62828]", filterStatus: "Cancelled" },
+          { label: "Rented", value: stats.rented, color: "text-[var(--color-success)]", filterStatus: "Rented" },
+          { label: "Cancelled", value: stats.cancelled, color: "text-[var(--color-error)]", filterStatus: "Cancelled" },
           { label: "Unused", value: stats.unused, color: "text-[#F4C300]", filterStatus: "Unused" },
         ].map(({ label, value, color, filterStatus }) => {
           const isActive = statusFilter === filterStatus || (filterStatus === null && statusFilter === null);
@@ -1681,7 +1678,7 @@ function SlideSpotCheck({ frozenLeads, gmName, initialBranch }) {
                         className="border-b border-white/5 hover:bg-white/5 cursor-pointer group transition-colors"
                       >
                         <td className="py-2.5 pr-3 text-white/50 text-xs whitespace-nowrap">
-                          {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
+                          {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00Z")) : "—"}
                         </td>
                         <td className="py-2.5 pr-3 text-white/50 text-xs font-mono">{lead.reservationId ?? lead.confirmNum ?? "—"}</td>
                         <td className="py-2.5 pr-3 text-white font-medium truncate max-w-[140px] group-hover:text-[#F4C300] transition-colors">
@@ -1692,10 +1689,10 @@ function SlideSpotCheck({ frozenLeads, gmName, initialBranch }) {
                           <span
                             className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
                               lead.status === "Rented"
-                                ? "bg-[#2E7D32]/20 text-[#2E7D32]"
+                                ? "bg-[var(--color-success)]/20 text-[var(--color-success)]"
                                 : lead.status === "Cancelled"
-                                ? "bg-[#C62828]/20 text-[#C62828]"
-                                : "bg-yellow-500/20 text-yellow-400"
+                                ? "bg-[var(--color-error)]/20 text-[var(--color-error)]"
+                                : "bg-[var(--hertz-primary)]/20 text-[var(--hertz-primary-light)]"
                             }`}
                           >
                             {lead.status}
@@ -1778,7 +1775,7 @@ export default function GMPresentationMode({
 
   return (
     <motion.div
-      className="fixed inset-0 z-[9999] flex flex-col select-none"
+      className="fixed inset-0 z-[60] flex flex-col select-none"
       style={{ background: BLACK, fontFamily: "inherit" }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}

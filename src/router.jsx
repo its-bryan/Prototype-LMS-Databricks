@@ -23,6 +23,7 @@ const InteractiveGMMeetingPrepPage = lazyWithRetry(() => import("./components/in
 const InteractiveGMActivityReportPage = lazyWithRetry(() => import("./components/interactive/InteractiveGMActivityReportPage"));
 const InteractiveGMLeaderboardPage = lazyWithRetry(() => import("./components/interactive/InteractiveGMLeaderboardPage"));
 const InteractiveGMLeadsPage = lazyWithRetry(() => import("./components/interactive/InteractiveGMLeadsPage"));
+const GMMeetingPrepAllWeeks = lazyWithRetry(() => import("./components/interactive/GMMeetingPrepAllWeeks"));
 const InteractiveUploads = lazyWithRetry(() => import("./components/interactive/InteractiveUploads"));
 const InteractiveOrgMapping = lazyWithRetry(() => import("./components/interactive/InteractiveOrgMapping"));
 const InteractiveLegend = lazyWithRetry(() => import("./components/interactive/InteractiveLegend"));
@@ -137,6 +138,7 @@ export const router = createBrowserRouter([
       { path: "/gm/overview", element: <AppViewRoute role="gm" Component={GMOverviewPage} /> },
       { path: "/gm/work", element: <AppViewRoute role="gm" Component={GMWorkPage} /> },
       { path: "/gm/meeting-prep", element: <AppViewRoute role="gm" Component={InteractiveGMMeetingPrepPage} /> },
+      { path: "/gm/meeting-prep/all", element: <AppViewRoute role="gm" Component={GMMeetingPrepAllWeeks} /> },
       { path: "/gm/activity-report", element: <AppViewRoute role="gm" Component={InteractiveGMActivityReportPage} /> },
       { path: "/gm/leaderboard", element: <AppViewRoute role="gm" Component={InteractiveGMLeaderboardPage} /> },
       { path: "/gm/leads", element: <AppViewRoute role="gm" Component={InteractiveGMLeadsPage} /> },

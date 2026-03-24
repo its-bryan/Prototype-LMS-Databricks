@@ -41,12 +41,12 @@ export default function InteractiveToDo() {
   return (
     <div>
       <div className="flex items-center gap-4 mb-1">
-        <h2 className="text-xl font-semibold text-[#1A1A1A]">My To Do</h2>
-        <span className="px-2 py-1 bg-[#C62828] text-white rounded text-xs font-medium">
+        <h2 className="text-xl font-semibold text-[var(--hertz-black)]">My To Do</h2>
+        <span className="px-2 py-1 bg-[var(--color-error)] text-white rounded text-xs font-medium">
           {total} pending
         </span>
       </div>
-      <p className="text-sm text-[#6E6E6E] mb-4">
+      <p className="text-sm text-[var(--neutral-600)] mb-4">
         Cancelled and unused leads that still need comments.
       </p>
       {loading ? (
@@ -56,7 +56,7 @@ export default function InteractiveToDo() {
           ))}
         </div>
       ) : todoLeads.length === 0 ? (
-        <div className="text-center py-12 text-[#6E6E6E]">
+        <div className="text-center py-12 text-[var(--neutral-600)]">
           All caught up — no leads need comments.
         </div>
       ) : (

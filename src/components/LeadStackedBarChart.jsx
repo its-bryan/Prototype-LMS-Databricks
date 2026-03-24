@@ -147,7 +147,7 @@ export default function LeadStackedBarChart({ total, rented, cancelled, unused, 
                         className="border-t border-[var(--neutral-100)] hover:bg-[var(--neutral-50)] transition-colors"
                       >
                         <td className="px-3 py-2 text-[var(--neutral-600)] text-xs whitespace-nowrap">
-                          {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
+                          {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00Z")) : "—"}
                         </td>
                         <td className="px-3 py-2 font-semibold text-[var(--hertz-black)] whitespace-nowrap">{lead.customer}</td>
                         <td className="px-3 py-2 font-mono text-xs text-[var(--neutral-600)]">{lead.reservationId}</td>

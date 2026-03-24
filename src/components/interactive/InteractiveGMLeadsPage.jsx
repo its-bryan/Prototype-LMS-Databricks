@@ -5,7 +5,6 @@ import { useData } from "../../context/DataContext";
 import { useAuth } from "../../context/AuthContext";
 import BackButton from "../BackButton";
 import {
-  getDateRangePresets,
   resolveGMName,
   normalizeGmName,
 } from "../../selectors/demoSelectors";
@@ -14,6 +13,7 @@ import { formatDateShort } from "../../utils/dateTime";
 import StatusBadge from "../StatusBadge";
 import ThreeColumnReview from "../ThreeColumnReview";
 import { GMLeadsPageSkeleton, usePageTransition } from "../DashboardSkeleton";
+import SelectFilter from "../observatory/SelectFilter";
 
 const STATUS_TABS = ["All", "Cancelled", "Unused", "Rented"];
 const truncateComment = (value) => {
@@ -23,10 +23,44 @@ const truncateComment = (value) => {
 };
 
 export default function InteractiveGMLeadsPage() {
-  const { loading, orgMapping, updateLeadDirective, markLeadReviewed, fetchLeadsPage, initialDataReady } = useData();
+  const { loading, orgMapping, updateLeadDirective, markLeadReviewed, fetchLeadsPage, initialDataReady, snapshot } = useData();
   const { userProfile } = useAuth();
   const navigate = useNavigate();
-  const presets = useMemo(() => getDateRangePresets(), [loading]);
+
+  const presets = useMemo(() => {
+    const toNoonUTC = (iso) => new Date(iso.length <= 10 ? iso + "T12:00:00Z" : iso);
+
+    // Latest HLES date from snapshot (the "now" anchor)
+    const latestDate = snapshot?.now ? toNoonUTC(snapshot.now) : new Date();
+
+    // T4W: use snapshot.period directly (matches summary metric tiles)
+    const t4wStart = snapshot?.period?.start ? toNoonUTC(snapshot.period.start) : null;
+    const t4wEnd = snapshot?.period?.end ? toNoonUTC(snapshot.period.end) : null;
+
+    // This Month: 1st of current month → latest HLES date
+    const thisMonthStart = new Date(Date.UTC(latestDate.getUTCFullYear(), latestDate.getUTCMonth(), 1, 12, 0, 0));
+
+    // This Year: Jan 1 → latest HLES date
+    const thisYearStart = new Date(Date.UTC(latestDate.getUTCFullYear(), 0, 1, 12, 0, 0));
+
+    // Earliest HLES date from snapshot (for All Time label)
+    const earliestDate = snapshot?.earliestDate ? toNoonUTC(snapshot.earliestDate) : null;
+
+    // This week: Saturday of the current HLES week → Friday
+    const day = latestDate.getUTCDay();
+    const satOffset = (day + 1) % 7;
+    const thisSaturday = new Date(latestDate);
+    thisSaturday.setUTCDate(latestDate.getUTCDate() - satOffset);
+    thisSaturday.setUTCHours(12, 0, 0, 0);
+
+    return [
+      { key: "this_week", label: "This week", start: thisSaturday, end: new Date(thisSaturday.getTime() + 6 * 86400000) },
+      { key: "trailing_4_weeks", label: "Trailing 4 weeks", start: t4wStart, end: t4wEnd },
+      { key: "this_month", label: "This month", start: thisMonthStart, end: latestDate },
+      { key: "this_year", label: "This Year", start: thisYearStart, end: latestDate },
+      { key: "all_time", label: "All Time", start: earliestDate, end: latestDate },
+    ];
+  }, [snapshot]);
   const pageSize = 20;
 
   const [selectedPresetKey, setSelectedPresetKey] = useState("this_week");
@@ -184,19 +218,21 @@ export default function InteractiveGMLeadsPage() {
           {/* Filters row */}
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-1.5">
-              {presets.map((p) => (
-                <button
-                  key={p.key}
-                  onClick={() => setSelectedPresetKey(p.key)}
-                  className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
-                    selectedPresetKey === p.key
-                      ? "bg-[var(--hertz-black)] text-white"
-                      : "bg-[var(--neutral-100)] text-[var(--neutral-600)] hover:bg-[var(--neutral-200)]"
-                  }`}
-                >
-                  {p.label}
-                </button>
-              ))}
+              <div className="inline-flex rounded-md border border-[var(--neutral-200)] bg-[var(--neutral-50)] p-0.5">
+                {presets.map((p) => (
+                  <button
+                    key={p.key}
+                    onClick={() => setSelectedPresetKey(p.key)}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded transition-colors cursor-pointer ${
+                      selectedPresetKey === p.key
+                        ? "bg-[var(--hertz-primary)] text-[var(--hertz-black)] shadow-sm"
+                        : "text-[var(--neutral-600)] hover:text-[var(--hertz-black)]"
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
               {currentPreset && (
                 <span className="text-xs text-[var(--neutral-400)] px-1">
                   {formatDateRange(currentPreset)}
@@ -205,49 +241,49 @@ export default function InteractiveGMLeadsPage() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Status tabs */}
-            <div className="flex rounded-lg border border-[var(--neutral-200)] overflow-hidden">
-              {STATUS_TABS.map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setStatusFilter(tab)}
-                  className={`px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
-                    statusFilter === tab
-                      ? "bg-[var(--hertz-black)] text-white"
-                      : "bg-white text-[var(--neutral-600)] hover:bg-[var(--neutral-100)]"
-                  }`}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
-
-            <select value={bmFilter} onChange={(e) => setBmFilter(e.target.value)} className="px-3 py-1.5 border border-[var(--neutral-200)] rounded-md text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[var(--hertz-primary)]">
-              <option value="All">All BMs</option>
-              {bmNames.map((n) => <option key={n} value={n}>{n}</option>)}
-            </select>
-
-            <select value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)} className="px-3 py-1.5 border border-[var(--neutral-200)] rounded-md text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[var(--hertz-primary)]">
-              <option value="All">All Branches</option>
-              {branches.map((b) => <option key={b} value={b}>{b}</option>)}
-            </select>
-
-            <select value={insuranceFilter} onChange={(e) => setInsuranceFilter(e.target.value)} className="px-3 py-1.5 border border-[var(--neutral-200)] rounded-md text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[var(--hertz-primary)]">
-              <option value="All">All Insurance</option>
-              {insuranceFilter !== "All" && !insuranceCompanies.includes(insuranceFilter) && (
-                <option value={insuranceFilter}>{insuranceFilter}</option>
-              )}
-              {insuranceCompanies.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search name or reservation..."
-              className="px-3 py-1.5 border border-[var(--neutral-200)] rounded-md text-xs bg-white w-52 focus:outline-none focus:ring-2 focus:ring-[var(--hertz-primary)]"
+          <div className="flex flex-wrap items-end gap-3">
+            <SelectFilter
+              label="Status"
+              value={statusFilter}
+              onChange={setStatusFilter}
+              options={STATUS_TABS.map((t) => ({ value: t, label: t === "All" ? "All Statuses" : t }))}
+              minWidth={160}
             />
+
+            <SelectFilter
+              label="BM"
+              value={bmFilter}
+              onChange={setBmFilter}
+              options={[{ value: "All", label: "All BMs" }, ...bmNames.map((n) => ({ value: n, label: n }))]}
+              minWidth={160}
+            />
+
+            <SelectFilter
+              label="Branch"
+              value={branchFilter}
+              onChange={setBranchFilter}
+              options={[{ value: "All", label: "All Branches" }, ...branches.map((b) => ({ value: b, label: b }))]}
+              minWidth={160}
+            />
+
+            <SelectFilter
+              label="Insurance"
+              value={insuranceFilter}
+              onChange={setInsuranceFilter}
+              options={[{ value: "All", label: "All Insurance" }, ...insuranceCompanies.map((c) => ({ value: c, label: c }))]}
+              minWidth={160}
+            />
+
+            <div className="relative" style={{ minWidth: 160 }}>
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--neutral-600)]">Search</span>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search name or reservation..."
+                className="mt-1 w-full px-3 py-2 border border-[var(--neutral-200)] rounded-md bg-white text-sm text-[var(--hertz-black)] focus:outline-none focus:ring-2 focus:ring-[var(--hertz-primary)] hover:border-[var(--neutral-400)] transition-colors"
+              />
+            </div>
           </div>
 
           <div className="mt-1 flex items-center justify-between text-xs text-[var(--neutral-600)] px-1">
@@ -276,22 +312,33 @@ export default function InteractiveGMLeadsPage() {
 
           {/* Table */}
           <div className="border border-[var(--neutral-200)] rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm table-fixed">
+              <colgroup>
+                <col className="w-[7%]" />
+                <col className="w-[11%]" />
+                <col className="w-[8%]" />
+                <col className="w-[10%]" />
+                <col className="w-[14%]" />
+                <col className="w-[11%]" />
+                <col className="w-[13%]" />
+                <col className="w-[26%]" />
+              </colgroup>
               <thead>
                 <tr className="bg-[var(--hertz-black)]">
-                  <th className="text-left text-white text-xs font-semibold px-4 py-3">Date</th>
-                  <th className="text-left text-white text-xs font-semibold px-4 py-3">Customer's last name</th>
-                  <th className="text-left text-white text-xs font-semibold px-4 py-3">Status</th>
-                  <th className="text-left text-white text-xs font-semibold px-4 py-3">Branch</th>
-                  <th className="text-left text-white text-xs font-semibold px-4 py-3">BM</th>
-                  <th className="text-left text-white text-xs font-semibold px-4 py-3">Insurance</th>
-                  <th className="text-left text-white text-xs font-semibold px-4 py-3">BM Comment</th>
+                  <th className="text-center text-white text-xs font-semibold px-2 py-3">Date</th>
+                  <th className="text-left text-white text-xs font-semibold px-2 py-3">Confirmation #</th>
+                  <th className="text-left text-white text-xs font-semibold px-2 py-3">Last Name</th>
+                  <th className="text-center text-white text-xs font-semibold px-2 py-3">Status</th>
+                  <th className="text-left text-white text-xs font-semibold px-2 py-3">Branch</th>
+                  <th className="text-left text-white text-xs font-semibold px-2 py-3">BM</th>
+                  <th className="text-left text-white text-xs font-semibold px-2 py-3">Insurance</th>
+                  <th className="text-center text-white text-xs font-semibold px-2 py-3">BM Comment</th>
                 </tr>
               </thead>
               <tbody>
                 {!pageLoading && pagedLeads.length === 0 && (
                   <tr>
-                    <td colSpan="7" className="px-4 py-8 text-center text-[var(--neutral-500)]">
+                    <td colSpan="8" className="px-4 py-8 text-center text-[var(--neutral-500)]">
                       No leads match the current filters
                     </td>
                   </tr>
@@ -299,13 +346,14 @@ export default function InteractiveGMLeadsPage() {
                 {pageLoading &&
                   Array.from({ length: 8 }).map((_, idx) => (
                     <tr key={`loading-${idx}`} className="border-b border-[var(--neutral-100)] animate-pulse">
-                      <td className="px-4 py-3"><div className="h-3 w-16 rounded bg-[var(--neutral-200)]" /></td>
-                      <td className="px-4 py-3"><div className="h-3 w-28 rounded bg-[var(--neutral-200)]" /></td>
-                      <td className="px-4 py-3"><div className="h-5 w-16 rounded-full bg-[var(--neutral-200)]" /></td>
-                      <td className="px-4 py-3"><div className="h-3 w-20 rounded bg-[var(--neutral-200)]" /></td>
-                      <td className="px-4 py-3"><div className="h-3 w-20 rounded bg-[var(--neutral-200)]" /></td>
-                      <td className="px-4 py-3"><div className="h-3 w-20 rounded bg-[var(--neutral-200)]" /></td>
-                      <td className="px-4 py-3"><div className="h-3 w-32 rounded bg-[var(--neutral-200)]" /></td>
+                      <td className="px-2 py-3"><div className="h-3 w-14 mx-auto rounded bg-[var(--neutral-200)]" /></td>
+                      <td className="px-2 py-3"><div className="h-3 w-20 rounded bg-[var(--neutral-200)]" /></td>
+                      <td className="px-2 py-3"><div className="h-3 w-20 rounded bg-[var(--neutral-200)]" /></td>
+                      <td className="px-2 py-3"><div className="h-5 w-16 mx-auto rounded-full bg-[var(--neutral-200)]" /></td>
+                      <td className="px-2 py-3"><div className="h-3 w-20 rounded bg-[var(--neutral-200)]" /></td>
+                      <td className="px-2 py-3"><div className="h-3 w-20 rounded bg-[var(--neutral-200)]" /></td>
+                      <td className="px-2 py-3"><div className="h-3 w-20 rounded bg-[var(--neutral-200)]" /></td>
+                      <td className="px-2 py-3"><div className="h-3 w-28 mx-auto rounded bg-[var(--neutral-200)]" /></td>
                     </tr>
                   ))}
                 {pagedLeads.map((lead) => (
@@ -318,19 +366,17 @@ export default function InteractiveGMLeadsPage() {
                         : "hover:bg-[var(--neutral-50)]"
                     }`}
                   >
-                    <td className="px-4 py-3 text-[var(--neutral-600)] text-xs">
-                      {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
+                    <td className="px-2 py-3 text-center text-[var(--neutral-600)] text-xs">
+                      {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00Z")) : "—"}
                     </td>
-                    <td className="px-4 py-3 font-medium text-[var(--hertz-black)]">
-                      <div>{lead.customer}</div>
-                      <div className="text-xs text-[var(--neutral-500)] font-mono">{lead.reservationId}</div>
-                    </td>
-                    <td className="px-4 py-3"><StatusBadge status={lead.status} /></td>
-                    <td className="px-4 py-3 text-[var(--neutral-600)]">{lead.branch}</td>
-                    <td className="px-4 py-3 text-[var(--neutral-600)]">{lead.bmName ?? "—"}</td>
-                    <td className="px-4 py-3 text-[var(--neutral-600)]">{lead.insuranceCompany ?? "—"}</td>
+                    <td className="px-2 py-3 font-mono text-[var(--neutral-600)] truncate">{lead.reservationId}</td>
+                    <td className="px-2 py-3 font-medium text-[var(--hertz-black)] truncate">{lead.customer}</td>
+                    <td className="px-2 py-3 text-center"><StatusBadge status={lead.status} /></td>
+                    <td className="px-2 py-3 text-[var(--neutral-600)] truncate">{lead.branch}</td>
+                    <td className="px-2 py-3 text-[var(--neutral-600)] truncate">{lead.bmName ?? "—"}</td>
+                    <td className="px-2 py-3 text-[var(--neutral-600)] truncate">{lead.insuranceCompany ?? "—"}</td>
                     <td
-                      className="px-4 py-3 text-[var(--neutral-600)] max-w-[240px] truncate"
+                      className="px-2 py-3 text-center text-[var(--neutral-600)] truncate"
                       title={lead.enrichment?.reason ?? lead.enrichment?.notes ?? ""}
                     >
                       {truncateComment(lead.enrichment?.reason || lead.enrichment?.notes)}

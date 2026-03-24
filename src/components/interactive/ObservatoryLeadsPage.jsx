@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { useData } from "../../context/DataContext";
 import MultiSelectFilter from "../observatory/MultiSelectFilter";
 import ObservatoryBarChart from "../observatory/ObservatoryBarChart";
+import ViewToggle from "../observatory/ViewToggle";
+import useObservatoryViewToggle from "../observatory/useObservatoryViewToggle";
 import { buildTrendPoints, listFilters } from "../observatory/observatoryUtils";
 
 export default function ObservatoryLeadsPage() {
@@ -12,6 +14,13 @@ export default function ObservatoryLeadsPage() {
   const [selectedGms, setSelectedGms] = useState([]);
   const [selectedAms, setSelectedAms] = useState([]);
   const [selectedHertzZones, setSelectedHertzZones] = useState([]);
+
+  const { viewMode, setViewMode, myFilters } = useObservatoryViewToggle({
+    setSelectedZones,
+    setSelectedGms,
+    setSelectedAms,
+    setSelectedHertzZones,
+  });
 
   const filters = useMemo(() => listFilters(observatorySnapshot), [observatorySnapshot]);
 
@@ -37,22 +46,24 @@ export default function ObservatoryLeadsPage() {
       </div>
 
       <div className="rounded-xl border border-[var(--neutral-200)] bg-white p-4 space-y-3">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <ViewToggle viewMode={viewMode} setViewMode={setViewMode} disabled={!myFilters} />
+          <div className="w-px h-5 bg-[var(--neutral-200)]" />
           <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--neutral-600)]">Timeline</span>
           <div className="inline-flex rounded-md border border-[var(--neutral-200)] bg-[var(--neutral-50)] p-0.5">
             <button
               type="button"
-              onClick={() => setGranularity("month")}
-              className={`px-3 py-1.5 text-xs font-semibold rounded ${granularity === "month" ? "bg-white text-[var(--hertz-black)] shadow-sm" : "text-[var(--neutral-600)]"}`}
+              onClick={() => setGranularity("week")}
+              className={`px-3 py-1.5 text-xs font-semibold rounded ${granularity === "week" ? "bg-[var(--hertz-primary)] text-[var(--hertz-black)] shadow-sm" : "text-[var(--neutral-600)]"}`}
             >
-              Month by month
+              Week by week
             </button>
             <button
               type="button"
-              onClick={() => setGranularity("week")}
-              className={`px-3 py-1.5 text-xs font-semibold rounded ${granularity === "week" ? "bg-white text-[var(--hertz-black)] shadow-sm" : "text-[var(--neutral-600)]"}`}
+              onClick={() => setGranularity("month")}
+              className={`px-3 py-1.5 text-xs font-semibold rounded ${granularity === "month" ? "bg-[var(--hertz-primary)] text-[var(--hertz-black)] shadow-sm" : "text-[var(--neutral-600)]"}`}
             >
-              Week by week
+              Month by month
             </button>
           </div>
         </div>

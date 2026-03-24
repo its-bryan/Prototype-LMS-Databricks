@@ -1,45 +1,67 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useData } from "../../context/DataContext";
 import { useAuth } from "../../context/AuthContext";
 import BackButton from "../BackButton";
 import {
-  getDateRangePresets,
   resolveGMName,
   normalizeGmName,
+  getGMBranchLeaderboard,
+  getBranchesForGM,
 } from "../../selectors/demoSelectors";
+import { formatDateRange } from "../../utils/dashboardHelpers";
 import BranchDetailPane from "./BranchDetailPane";
 import { GMLeaderboardSkeleton, usePageTransition } from "../DashboardSkeleton";
+import SelectFilter from "../observatory/SelectFilter";
 
 function getMetricColor(val, meta) {
   if (meta?.value === "total" || val == null) return "var(--hertz-black)";
   if (val >= 70) return "var(--color-success)";
   if (val >= 65) return "var(--hertz-black)";
-  return "#C62828";
+  return "var(--color-error)";
 }
 
-const SORT_METRICS = [
+const METRIC_OPTIONS = [
+  { value: "conversionRate", label: "Conversion Rate", suffix: "%" },
+  { value: "commentRate", label: "Comment Compliance %", suffix: "%" },
+  { value: "branchHrdPct", label: "Branch Contact %", suffix: "%" },
+  { value: "total", label: "Total Leads", suffix: "" },
+];
+
+const SORT_DIRECTIONS = [
+  { value: "high_low", label: "Highest to Lowest" },
+  { value: "low_high", label: "Lowest to Highest" },
+  { value: "a_z", label: "A to Z" },
+  { value: "z_a", label: "Z to A" },
+];
+
+// Keep full list for table columns (includes pctWithin30 & mostImproved)
+const TABLE_METRICS = [
   { value: "conversionRate", label: "Conversion Rate", suffix: "%" },
   { value: "pctWithin30", label: "% < 30 min", suffix: "%" },
-  { value: "commentRate", label: "Comment Rate", suffix: "%" },
+  { value: "commentRate", label: "Comment Compliance %", suffix: "%" },
   { value: "branchHrdPct", label: "Branch Contact %", suffix: "%" },
   { value: "total", label: "Total Leads", suffix: "" },
   { value: "mostImproved", label: "Most Improved", suffix: " pp" },
 ];
 
-function fmtMD(d) {
-  if (!d) return "";
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }).replace(" ", "/");
-}
+const BENCHMARK_METRICS = ["conversionRate", "pctWithin30", "commentRate", "branchHrdPct"];
 
 export default function InteractiveGMLeaderboardPage() {
-  const { loading, initialDataReady, snapshot, orgMapping, leads } = useData();
+  const { initialDataReady, snapshot, orgMapping, leads, fetchLeadsPage } = useData();
   const { userProfile } = useAuth();
   const navigate = useNavigate();
 
   const [sortMetric, setSortMetric] = useState("conversionRate");
+  const [sortDirection, setSortDirection] = useState("high_low");
   const [selectedBranch, setSelectedBranch] = useState(null);
+  const [bmFilter, setBmFilter] = useState("All");
+  const [branchFilter, setBranchFilter] = useState("All");
+  const [zoneFilter, setZoneFilter] = useState("All");
+  const [selectedPresetKey, setSelectedPresetKey] = useState("trailing_4_weeks");
+  const [periodLeads, setPeriodLeads] = useState(null);
+  const [periodLoading, setPeriodLoading] = useState(false);
 
   // Resolve the logged-in GM's canonical name from orgMapping (must match
   // the casing stored in the snapshot, which is ALL CAPS from the DB).
@@ -52,44 +74,102 @@ export default function InteractiveGMLeaderboardPage() {
     return resolveGMName(name, userProfile?.id);
   }, [userProfile?.displayName, userProfile?.id, orgMapping]);
 
-  // Use snapshot.period for the T4W date range (matches summary metrics exactly);
-  // fall back to JS-derived preset only when snapshot is unavailable.
-  const presets = useMemo(() => getDateRangePresets(), [loading]);
-  const trailing4wPreset = presets.find((p) => p.key === "trailing_4_weeks");
-  const dateRange = useMemo(() => {
-    if (snapshot?.period?.start && snapshot?.period?.end) {
-      return {
-        start: new Date(snapshot.period.start + "T12:00:00Z"),
-        end: new Date(snapshot.period.end + "T12:00:00Z"),
-      };
-    }
-    return trailing4wPreset ? { start: trailing4wPreset.start, end: trailing4wPreset.end } : null;
-  }, [snapshot?.period, trailing4wPreset]);
+  const presets = useMemo(() => {
+    const toNoonUTC = (iso) => new Date(iso.length <= 10 ? iso + "T12:00:00Z" : iso);
+    const latestDate = snapshot?.now ? toNoonUTC(snapshot.now) : new Date();
+    const t4wStart = snapshot?.period?.start ? toNoonUTC(snapshot.period.start) : null;
+    const t4wEnd = snapshot?.period?.end ? toNoonUTC(snapshot.period.end) : null;
+    const thisMonthStart = new Date(Date.UTC(latestDate.getUTCFullYear(), latestDate.getUTCMonth(), 1, 12, 0, 0));
+    const thisYearStart = new Date(Date.UTC(latestDate.getUTCFullYear(), 0, 1, 12, 0, 0));
+    const earliestDate = snapshot?.earliestDate ? toNoonUTC(snapshot.earliestDate) : null;
+    const day = latestDate.getUTCDay();
+    const satOffset = (day + 1) % 7;
+    const thisSaturday = new Date(latestDate);
+    thisSaturday.setUTCDate(latestDate.getUTCDate() - satOffset);
+    thisSaturday.setUTCHours(12, 0, 0, 0);
 
-  // Comparison period for "Change" column header.
-  // Prefer snapshot.comparison (reflects actual HLES data dates); fall back to calendar-derived.
-  const comparisonDateRange = useMemo(() => {
-    if (snapshot?.comparison?.start && snapshot?.comparison?.end) {
-      return {
-        start: new Date(snapshot.comparison.start + "T12:00:00Z"),
-        end: new Date(snapshot.comparison.end + "T12:00:00Z"),
-      };
+    return [
+      { key: "this_week", label: "This week", start: thisSaturday, end: new Date(thisSaturday.getTime() + 6 * 86400000) },
+      { key: "trailing_4_weeks", label: "Trailing 4 weeks", start: t4wStart, end: t4wEnd },
+      { key: "this_month", label: "This month", start: thisMonthStart, end: latestDate },
+      { key: "this_year", label: "This Year", start: thisYearStart, end: latestDate },
+      { key: "all_time", label: "All Time", start: earliestDate, end: latestDate },
+    ];
+  }, [snapshot]);
+
+  const currentPreset = presets.find((p) => p.key === selectedPresetKey);
+  const dateRange = useMemo(
+    () => (currentPreset ? { start: currentPreset.start, end: currentPreset.end } : null),
+    [currentPreset],
+  );
+
+  const isDefaultPeriod = selectedPresetKey === "trailing_4_weeks";
+
+  // Fetch leads for non-default time periods so we can recompute metrics client-side.
+  const gmBranches = useMemo(() => getBranchesForGM(gmName), [gmName]);
+
+  useEffect(() => {
+    if (isDefaultPeriod || !dateRange?.start || !dateRange?.end || !gmBranches.length) {
+      setPeriodLeads(null);
+      setPeriodLoading(false);
+      return;
     }
-    if (!trailing4wPreset) return null;
-    const end = new Date(trailing4wPreset.end);
-    end.setDate(end.getDate() - 7);
-    end.setHours(23, 59, 59, 999);
-    const start = new Date(end);
-    start.setDate(end.getDate() - 27);
-    start.setHours(0, 0, 0, 0);
-    return { start, end };
-  }, [snapshot?.comparison, trailing4wPreset]);
+    let cancelled = false;
+    setPeriodLoading(true);
+    const toISODate = (d) => {
+      if (!d) return null;
+      return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+    };
+    fetchLeadsPage({
+      branches: gmBranches.join(","),
+      startDate: toISODate(dateRange.start),
+      endDate: toISODate(dateRange.end),
+      limit: 5000,
+      offset: 0,
+    }).then((result) => {
+      if (!cancelled) {
+        setPeriodLeads(result.items ?? []);
+        setPeriodLoading(false);
+      }
+    }).catch(() => {
+      if (!cancelled) {
+        setPeriodLeads([]);
+        setPeriodLoading(false);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [isDefaultPeriod, dateRange, gmBranches, fetchLeadsPage]);
 
   // snapshot.leaderboard filtered to GM's branches, re-sorted client-side.
-  // If snapshot is not ready, show an empty leaderboard (no full leads array).
-  const useSnapshot = !!(snapshot?.leaderboard?.length);
+  // For the default trailing-4-weeks period, use pre-computed snapshot data.
+  // For other periods, recompute from fetched leads.
+  const useSnapshot = isDefaultPeriod && !!(snapshot?.leaderboard?.length);
 
   const leaderboard = useMemo(() => {
+    // Non-default period: recompute from fetched leads
+    if (!isDefaultPeriod && periodLeads != null) {
+      const { sorted: rawSorted, benchmark: rawBench } = getGMBranchLeaderboard(
+        periodLeads, dateRange, sortMetric, "my_branches", gmName,
+      );
+
+      // Re-sort according to current sortDirection (getGMBranchLeaderboard always sorts high-to-low)
+      const sortKey = sortMetric === "mostImproved" ? "improvementDelta" : sortMetric;
+      let sorted;
+      if (sortDirection === "a_z") {
+        sorted = [...rawSorted].sort((a, b) => (a.branch ?? "").localeCompare(b.branch ?? ""));
+      } else if (sortDirection === "z_a") {
+        sorted = [...rawSorted].sort((a, b) => (b.branch ?? "").localeCompare(a.branch ?? ""));
+      } else if (sortDirection === "low_high") {
+        sorted = [...rawSorted].sort((a, b) => (a[sortKey] ?? -1) - (b[sortKey] ?? -1));
+      } else {
+        sorted = [...rawSorted];
+      }
+      sorted.forEach((r, i) => { r.rank = i + 1; });
+
+      const avgTotal = sorted.length > 0 ? Math.round((rawBench.total ?? 0) / sorted.length) : 0;
+      return { sorted, benchmark: { ...rawBench, avgTotal } };
+    }
+
     if (useSnapshot) {
       const nmGm = normalizeGmName(gmName);
       const rows = snapshot.leaderboard
@@ -97,7 +177,16 @@ export default function InteractiveGMLeaderboardPage() {
         .map((r) => ({ ...r, isMyBranch: true }));
 
       const sortKey = sortMetric === "mostImproved" ? "improvementDelta" : sortMetric;
-      const sorted = [...rows].sort((a, b) => (b[sortKey] ?? -1) - (a[sortKey] ?? -1));
+      let sorted;
+      if (sortDirection === "a_z") {
+        sorted = [...rows].sort((a, b) => (a.branch ?? "").localeCompare(b.branch ?? ""));
+      } else if (sortDirection === "z_a") {
+        sorted = [...rows].sort((a, b) => (b.branch ?? "").localeCompare(a.branch ?? ""));
+      } else if (sortDirection === "low_high") {
+        sorted = [...rows].sort((a, b) => (a[sortKey] ?? -1) - (b[sortKey] ?? -1));
+      } else {
+        sorted = [...rows].sort((a, b) => (b[sortKey] ?? -1) - (a[sortKey] ?? -1));
+      }
       sorted.forEach((r, i) => { r.rank = i + 1; });
 
       const benchTotal = rows.reduce((s, r) => s + (r.total ?? 0), 0);
@@ -123,6 +212,7 @@ export default function InteractiveGMLeaderboardPage() {
         branchHrdPct: benchBcTotal > 0 ? Math.round((benchBcTotal / benchTotal) * 100) : null,
         commentRate: benchActionable > 0 ? Math.round((benchCr / benchActionable) * 100) : null,
         total: benchTotal,
+        avgTotal: rows.length > 0 ? Math.round(benchTotal / rows.length) : 0,
       };
 
       return { sorted, benchmark };
@@ -136,9 +226,22 @@ export default function InteractiveGMLeaderboardPage() {
         branchHrdPct: null,
         commentRate: null,
         total: 0,
+        avgTotal: 0,
       },
     };
-  }, [useSnapshot, snapshot, gmName, sortMetric]);
+  }, [isDefaultPeriod, periodLeads, useSnapshot, snapshot, gmName, dateRange, sortMetric, sortDirection]);
+
+  const bmNames = useMemo(() => [...new Set(leaderboard.sorted.map((r) => r.bmName).filter(Boolean))].sort(), [leaderboard.sorted]);
+  const branchNames = useMemo(() => [...new Set(leaderboard.sorted.map((r) => r.branch).filter(Boolean))].sort(), [leaderboard.sorted]);
+  const zoneNames = useMemo(() => [...new Set(leaderboard.sorted.map((r) => r.zone).filter(Boolean))].sort(), [leaderboard.sorted]);
+
+  const filteredRows = useMemo(() => {
+    let rows = leaderboard.sorted;
+    if (bmFilter !== "All") rows = rows.filter((r) => r.bmName === bmFilter);
+    if (branchFilter !== "All") rows = rows.filter((r) => r.branch === branchFilter);
+    if (zoneFilter !== "All") rows = rows.filter((r) => r.zone === zoneFilter);
+    return rows;
+  }, [leaderboard.sorted, bmFilter, branchFilter, zoneFilter]);
 
   const pageReady = usePageTransition();
   if (!initialDataReady || !pageReady) return <GMLeaderboardSkeleton />;
@@ -148,90 +251,121 @@ export default function InteractiveGMLeaderboardPage() {
       <BackButton onClick={() => navigate("/gm/work")} label="Back to Work" />
       <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--hertz-black)]">Leaderboard</h1>
+          <h1 className="text-2xl font-bold text-[var(--hertz-black)]">Team Leaderboard</h1>
           <p className="text-sm text-[var(--neutral-600)] mt-0.5">
-            My branches — trailing 4 weeks — {leaderboard.sorted.length} branches
+            My branches — {currentPreset?.label ?? "trailing 4 weeks"} — {filteredRows.length} branches
           </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-[var(--neutral-600)] font-medium">Sort by</label>
-          <select
-            value={sortMetric}
-            onChange={(e) => setSortMetric(e.target.value)}
-            className="px-3 py-1.5 border border-[var(--neutral-200)] rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[var(--hertz-primary)]"
-          >
-            {SORT_METRICS.map((m) => (
-              <option key={m.value} value={m.value}>{m.label}</option>
-            ))}
-          </select>
         </div>
       </div>
 
-      {/* Benchmark bar */}
-      {leaderboard.benchmark.total > 0 && (
-        <div className="bg-[var(--neutral-50)] rounded-xl px-5 py-3 flex items-center justify-between">
-          <span className="text-xs font-bold text-[var(--neutral-600)] uppercase tracking-wide">
-            My Branches Benchmark
-          </span>
-          <div className="flex items-center gap-6">
-            {SORT_METRICS.filter((m) => m.value !== "total").map((m) => (
-              <div key={m.value} className="text-center">
-                <p className={`text-lg font-bold ${m.value === sortMetric ? "text-[var(--hertz-black)]" : "text-[var(--neutral-500)]"}`}>
-                  {leaderboard.benchmark[m.value] ?? "—"}{m.suffix}
-                </p>
-                <p className="text-xs text-[var(--neutral-500)]">{m.label}</p>
-              </div>
-            ))}
-            <div className="text-center">
-              <p className="text-lg font-bold text-[var(--neutral-500)]">{leaderboard.benchmark.total}</p>
-              <p className="text-xs text-[var(--neutral-500)]">Total</p>
-            </div>
-          </div>
+      {/* Time period toggle */}
+      <div className="flex items-center gap-1.5">
+        <div className="inline-flex rounded-md border border-[var(--neutral-200)] bg-[var(--neutral-50)] p-0.5">
+          {presets.map((p) => (
+            <button
+              key={p.key}
+              onClick={() => setSelectedPresetKey(p.key)}
+              className={`px-3 py-1.5 text-xs font-semibold rounded transition-colors cursor-pointer ${
+                selectedPresetKey === p.key
+                  ? "bg-[var(--hertz-primary)] text-[var(--hertz-black)] shadow-sm"
+                  : "text-[var(--neutral-600)] hover:text-[var(--hertz-black)]"
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
         </div>
-      )}
+        {currentPreset && (
+          <span className="text-xs text-[var(--neutral-400)] px-1">
+            {formatDateRange(currentPreset)}
+          </span>
+        )}
+      </div>
+
+      {/* Filters row */}
+      <div className="flex flex-wrap items-end gap-3">
+        <SelectFilter
+          label="Metric"
+          value={sortMetric}
+          onChange={setSortMetric}
+          options={METRIC_OPTIONS.map((m) => ({ value: m.value, label: m.label }))}
+          minWidth={160}
+        />
+        <SelectFilter
+          label="Sort By"
+          value={sortDirection}
+          onChange={setSortDirection}
+          options={SORT_DIRECTIONS.map((d) => ({ value: d.value, label: d.label }))}
+          minWidth={170}
+        />
+        <SelectFilter
+          label="BM"
+          value={bmFilter}
+          onChange={setBmFilter}
+          options={[{ value: "All", label: "All BMs" }, ...bmNames.map((n) => ({ value: n, label: n }))]}
+          minWidth={160}
+        />
+        <SelectFilter
+          label="Branch"
+          value={branchFilter}
+          onChange={setBranchFilter}
+          options={[{ value: "All", label: "All Branches" }, ...branchNames.map((b) => ({ value: b, label: b }))]}
+          minWidth={160}
+        />
+        <SelectFilter
+          label="Zone"
+          value={zoneFilter}
+          onChange={setZoneFilter}
+          options={[{ value: "All", label: "All Zones" }, ...zoneNames.map((z) => ({ value: z, label: z }))]}
+          minWidth={160}
+        />
+      </div>
 
       {/* Leaderboard table */}
-      <div className="border border-[var(--neutral-200)] rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="border border-[var(--neutral-200)] rounded-xl overflow-x-auto">
+        <table className="w-full text-sm" style={{ minWidth: 1100 }}>
           <thead>
             <tr className="bg-[var(--hertz-black)]">
               <th className="text-center text-white text-xs font-semibold px-4 py-3 w-12">#</th>
               <th className="text-left text-white text-xs font-semibold px-4 py-3">Branch</th>
               <th className="text-left text-white text-xs font-semibold px-4 py-3">BM</th>
               <th className="text-center text-white text-xs font-semibold px-4 py-3">Zone</th>
-              {SORT_METRICS.filter((m) => m.value !== "mostImproved").map((m) => (
-                <th
-                  key={m.value}
-                  onClick={() => setSortMetric(m.value)}
-                  className={`text-center text-xs font-semibold px-4 py-3 cursor-pointer transition-colors ${
-                    sortMetric === m.value ? "text-[var(--hertz-primary)]" : "text-white hover:text-[var(--neutral-300)]"
-                  }`}
-                >
-                  {m.label} {sortMetric === m.value && "▼"}
-                </th>
+              {TABLE_METRICS.filter((m) => m.value !== "mostImproved").map((m) => (
+                <React.Fragment key={m.value}>
+                  <th
+                    onClick={() => setSortMetric(m.value)}
+                    className="text-center text-xs font-semibold px-4 py-3 cursor-pointer transition-colors text-white hover:text-[var(--neutral-300)]"
+                  >
+                    {m.label}
+                  </th>
+                  {BENCHMARK_METRICS.includes(m.value) && (
+                    <th className="text-center text-xs font-semibold px-3 py-3 text-white">
+                      vs. Benchmark
+                    </th>
+                  )}
+                </React.Fragment>
               ))}
-              <th
-                onClick={() => setSortMetric("mostImproved")}
-                className={`text-center text-xs font-semibold px-4 py-3 cursor-pointer transition-colors ${
-                  sortMetric === "mostImproved" ? "text-[var(--hertz-primary)]" : "text-white hover:text-[var(--neutral-300)]"
-                }`}
-              >
-                {comparisonDateRange
-                  ? `Change from ${fmtMD(comparisonDateRange.start)}–${fmtMD(comparisonDateRange.end)}`
-                  : "Change"}
-                {sortMetric === "mostImproved" && " ▼"}
+              <th className="text-center text-xs font-semibold px-4 py-3 text-white">
+                vs. Benchmark
               </th>
             </tr>
           </thead>
           <tbody>
-            {leaderboard.sorted.length === 0 && (
+            {periodLoading && (
               <tr>
-                <td colSpan={10} className="px-4 py-8 text-center text-[var(--neutral-500)]">
+                <td colSpan={14} className="px-4 py-8 text-center text-[var(--neutral-500)]">
+                  Loading data…
+                </td>
+              </tr>
+            )}
+            {!periodLoading && filteredRows.length === 0 && (
+              <tr>
+                <td colSpan={14} className="px-4 py-8 text-center text-[var(--neutral-500)]">
                   No data for this period
                 </td>
               </tr>
             )}
-            {leaderboard.sorted.map((row, i) => (
+            {!periodLoading && filteredRows.map((row, i) => (
                 <motion.tr
                   key={row.branch}
                   initial={{ opacity: 0, y: 10 }}
@@ -250,27 +384,70 @@ export default function InteractiveGMLeaderboardPage() {
                   <td className="px-4 py-3 text-left font-medium text-[var(--hertz-black)]">{row.branch}</td>
                   <td className="px-4 py-3 text-left text-[var(--neutral-600)]">{row.bmName}</td>
                   <td className="px-4 py-3 text-center text-[var(--neutral-600)]">{row.zone}</td>
-                  {SORT_METRICS.filter((m) => m.value !== "mostImproved").map((m) => {
+                  {TABLE_METRICS.filter((m) => m.value !== "mostImproved").map((m) => {
                     const val = row[m.value];
+                    const hasBench = BENCHMARK_METRICS.includes(m.value);
+                    const diff = hasBench && val != null && leaderboard.benchmark[m.value] != null
+                      ? val - leaderboard.benchmark[m.value]
+                      : null;
                     return (
-                      <td key={m.value} className={`px-4 py-3 text-center font-medium ${
-                        m.value === sortMetric ? "text-[var(--hertz-black)]" : "text-[var(--neutral-600)]"
-                      }`}>
-                        {val != null ? `${val}${m.suffix}` : "—"}
-                      </td>
+                      <React.Fragment key={m.value}>
+                        <td className={`px-4 py-3 text-center font-medium ${
+                          m.value === sortMetric ? "text-[var(--hertz-black)]" : "text-[var(--neutral-600)]"
+                        }`}>
+                          {val != null ? `${val}${m.suffix}` : "—"}
+                        </td>
+                        {hasBench && (
+                          <td className="px-3 py-3 text-center text-xs font-semibold bg-[var(--hertz-primary)]/10">
+                            {diff != null ? (
+                              <span className={diff > 0 ? "text-[var(--color-success)]" : diff < 0 ? "text-[var(--color-error)]" : "text-[var(--neutral-500)]"}>
+                                {diff > 0 ? "+" : ""}{diff} pp
+                              </span>
+                            ) : "—"}
+                          </td>
+                        )}
+                      </React.Fragment>
                     );
                   })}
-                  <td className="px-4 py-3 text-center">
-                    {row.improvementDelta != null ? (
-                      <span className={`text-xs font-semibold ${
-                        row.improvementDelta > 0 ? "text-emerald-700" : row.improvementDelta < 0 ? "text-red-700" : "text-[var(--neutral-500)]"
-                      }`}>
-                        {row.improvementDelta > 0 ? "+" : ""}{row.improvementDelta} pp
-                      </span>
-                    ) : "—"}
-                  </td>
+                  {(() => {
+                    const diff = row.total != null && leaderboard.benchmark.avgTotal
+                      ? row.total - leaderboard.benchmark.avgTotal
+                      : null;
+                    return (
+                      <td className="px-3 py-3 text-center text-xs font-semibold bg-[var(--hertz-primary)]/10">
+                        {diff != null ? (
+                          <span className={diff > 0 ? "text-[var(--color-success)]" : diff < 0 ? "text-[var(--color-error)]" : "text-[var(--neutral-500)]"}>
+                            {diff > 0 ? "+" : ""}{diff}
+                          </span>
+                        ) : "—"}
+                      </td>
+                    );
+                  })()}
                 </motion.tr>
             ))}
+            {!periodLoading && filteredRows.length > 0 && (
+              <tr className="border-t-2 border-[var(--neutral-300)] bg-[var(--neutral-100)]">
+                <td className="px-4 py-3" />
+                <td className="px-4 py-3 text-left font-bold text-xs uppercase tracking-wide text-[var(--neutral-600)]" colSpan={3}>
+                  Benchmark
+                </td>
+                {TABLE_METRICS.filter((m) => m.value !== "mostImproved").map((m) => {
+                  const val = leaderboard.benchmark[m.value];
+                  const hasBench = BENCHMARK_METRICS.includes(m.value);
+                  return (
+                    <React.Fragment key={m.value}>
+                      <td className="px-4 py-3 text-center font-bold text-[var(--neutral-700)]">
+                        {m.value === "total" ? "" : val != null ? `${val}${m.suffix}` : "—"}
+                      </td>
+                      {hasBench && <td className="px-3 py-3" />}
+                    </React.Fragment>
+                  );
+                })}
+                <td className="px-3 py-3 text-center font-bold text-[var(--neutral-700)]">
+                  {leaderboard.benchmark.avgTotal}
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

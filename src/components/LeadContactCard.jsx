@@ -85,13 +85,13 @@ export default function LeadContactCard({ lead }) {
   return (
     <div className="mb-6">
       <div className="flex items-center justify-between gap-2 mb-3">
-        <h3 className="text-xs font-bold text-[#6E6E6E] uppercase tracking-wider">Contact Details</h3>
+        <h3 className="text-xs font-bold text-[var(--neutral-600)] uppercase tracking-wider">Contact Details</h3>
         {!isEditing && (
           <button
             type="button"
             data-onboarding="contact-edit"
             onClick={() => setIsEditing(true)}
-            className="p-1.5 rounded text-[#6E6E6E] hover:bg-gray-100 hover:text-[#1A1A1A] transition-colors"
+            className="p-1.5 rounded text-[var(--neutral-600)] hover:bg-[var(--neutral-100)] hover:text-[var(--hertz-black)] transition-colors"
             aria-label="Edit contact details"
           >
             <PencilIcon />
@@ -163,7 +163,7 @@ export default function LeadContactCard({ lead }) {
                 type="button"
                 onClick={handleCancel}
                 disabled={saving}
-                className="px-3 py-1.5 border border-[var(--neutral-200)] rounded text-sm font-medium text-[#6E6E6E] hover:bg-gray-50 disabled:opacity-60 cursor-pointer"
+                className="px-3 py-1.5 border border-[var(--neutral-200)] rounded text-sm font-medium text-[var(--neutral-600)] hover:bg-[var(--neutral-50)] disabled:opacity-60 cursor-pointer"
               >
                 Cancel
               </button>
@@ -175,11 +175,11 @@ export default function LeadContactCard({ lead }) {
       ) : (
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
-            <p className="text-[#6E6E6E] text-xs uppercase">Email</p>
+            <p className="text-[var(--neutral-600)] text-xs uppercase">Email</p>
             <p className="font-medium truncate" title={lead?.email ?? undefined}>{lead?.email ?? "—"}</p>
           </div>
           <div>
-            <p className="text-[#6E6E6E] text-xs uppercase">Phone</p>
+            <p className="text-[var(--neutral-600)] text-xs uppercase">Phone</p>
             {lead?.phone ? (
               <div className="flex items-baseline gap-2">
                 <span className="font-medium">{flagForCode(parsedPhone.countryCode)} {parsedPhone.countryCode}</span>

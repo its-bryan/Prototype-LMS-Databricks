@@ -9,10 +9,10 @@ export default function ThreeColumnReview({ lead, showMismatchWarning = false })
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <h2 className="text-xl font-bold text-[#1A1A1A]">{lead.customer}</h2>
+        <h2 className="text-xl font-bold text-[var(--hertz-black)]">{lead.customer}</h2>
         <StatusBadge status={lead.status} />
-        <span className="text-sm text-[#6E6E6E] font-mono">{lead.reservationId}</span>
-        {lead.bmName && <span className="text-sm text-[#6E6E6E]">• {lead.bmName}</span>}
+        <span className="text-sm text-[var(--neutral-600)] font-mono">{lead.reservationId}</span>
+        {lead.bmName && <span className="text-sm text-[var(--neutral-600)]">• {lead.bmName}</span>}
       </div>
 
       {showMismatchWarning && mismatchReason && (
@@ -20,18 +20,18 @@ export default function ThreeColumnReview({ lead, showMismatchWarning = false })
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
-          className="px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg text-sm flex items-start gap-3"
+          className="px-4 py-3 bg-[var(--color-warning-light)] border border-[var(--color-warning)]/40 rounded-lg text-sm flex items-start gap-3"
         >
           <motion.span
             animate={{ opacity: [1, 0.3, 1] }}
             transition={{ repeat: Infinity, duration: 1.5 }}
-            className="text-amber-600 text-lg shrink-0"
+            className="text-[var(--color-warning)] text-lg shrink-0"
           >
             ⚠
           </motion.span>
           <div>
-            <p className="font-medium text-amber-900">Data mismatch — needs review</p>
-            <p className="text-amber-800 mt-0.5">{mismatchReason}</p>
+            <p className="font-medium text-[var(--color-warning)]">Data mismatch — needs review</p>
+            <p className="text-[var(--color-warning)] mt-0.5">{mismatchReason}</p>
           </div>
         </motion.div>
       )}
@@ -41,13 +41,13 @@ export default function ThreeColumnReview({ lead, showMismatchWarning = false })
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="border border-[#E6E6E6] rounded-lg p-4"
+          className="border border-[var(--neutral-200)] rounded-lg p-4"
         >
-          <h3 className="text-xs font-semibold text-[#6E6E6E] uppercase tracking-wide mb-3">
+          <h3 className="text-xs font-semibold text-[var(--neutral-600)] uppercase tracking-wide mb-3">
             HLES Reason
           </h3>
-          <p className="text-sm font-medium text-[#C62828]">{lead.hlesReason || "—"}</p>
-          <div className="mt-3 text-xs text-[#6E6E6E] space-y-1">
+          <p className="text-sm font-medium text-[var(--color-error)]">{lead.hlesReason || "—"}</p>
+          <div className="mt-3 text-xs text-[var(--neutral-600)] space-y-1">
             <p>Time to 1st contact: {lead.timeToFirstContact}</p>
             {lead.timeToCancel && <p>Time to cancellation: {lead.timeToCancel}</p>}
           </div>
@@ -57,7 +57,7 @@ export default function ThreeColumnReview({ lead, showMismatchWarning = false })
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="border border-[#E6E6E6] rounded-lg p-4"
+          className="border border-[var(--neutral-200)] rounded-lg p-4"
         >
           <TranslogTimeline events={lead.translog} enrichmentLog={lead.enrichmentLog} />
         </motion.div>
@@ -66,20 +66,20 @@ export default function ThreeColumnReview({ lead, showMismatchWarning = false })
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="border border-[#E6E6E6] rounded-lg p-4"
+          className="border border-[var(--neutral-200)] rounded-lg p-4"
         >
-          <h3 className="text-xs font-semibold text-[#6E6E6E] uppercase tracking-wide mb-3">
+          <h3 className="text-xs font-semibold text-[var(--neutral-600)] uppercase tracking-wide mb-3">
             BM Comments
           </h3>
           {lead.enrichment?.reason ? (
             <div className="space-y-2 text-sm">
-              <p><span className="text-[#6E6E6E]">Reason:</span> {lead.enrichment.reason}</p>
+              <p><span className="text-[var(--neutral-600)]">Reason:</span> {lead.enrichment.reason}</p>
               {lead.enrichment.notes && (
-                <p><span className="text-[#6E6E6E]">Notes:</span> {lead.enrichment.notes}</p>
+                <p><span className="text-[var(--neutral-600)]">Notes:</span> {lead.enrichment.notes}</p>
               )}
             </div>
           ) : (
-            <p className="text-sm text-[#6E6E6E] italic">No comments recorded</p>
+            <p className="text-sm text-[var(--neutral-600)] italic">No comments recorded</p>
           )}
         </motion.div>
       </div>

@@ -53,7 +53,7 @@ export default function LoginScreen() {
       {/* Left: Login form — extra padding to clear diagonal, scrollable if needed */}
       <div className="flex-1 md:flex-none md:w-[50%] flex flex-col justify-center px-6 sm:px-10 md:px-12 xl:px-16 md:pr-[12rem] bg-white min-h-screen relative pt-14 md:pt-0 pb-12 md:pb-16 shrink-0 min-w-0 overflow-y-auto overflow-x-hidden">
         {/* Mobile: Compact Hertz header */}
-        <div className="md:hidden absolute top-0 left-0 right-0 h-14 bg-[#272425] flex items-center justify-center px-4 z-10">
+        <div className="md:hidden absolute top-0 left-0 right-0 h-14 bg-[var(--hertz-black)] flex items-center justify-center px-4 z-10">
           <img
             src="/hertz-logo.svg"
             alt="Hertz"
@@ -63,23 +63,23 @@ export default function LoginScreen() {
         <div className="w-full max-w-md mx-auto md:ml-0 md:mr-auto">
           <div className="hidden md:block mb-8">
             <img src="/hertz-logo.svg" alt="Hertz" className="h-11" />
-            <h1 className="text-xl md:text-2xl font-extrabold text-[#272425] tracking-tight mt-4 whitespace-nowrap">
+            <h1 className="text-xl md:text-2xl font-extrabold text-[var(--hertz-black)] tracking-tight mt-4 whitespace-nowrap">
               LEO: Your Lead Management System
             </h1>
-            <p className="text-[#6E6E6E] text-base mt-2">
+            <p className="text-[var(--neutral-600)] text-base mt-2">
               Turning leads into happy customers
             </p>
-            <div className="w-16 h-1.5 bg-[#FFD100] mt-3" />
+            <div className="w-16 h-1.5 bg-[var(--hertz-primary)] mt-3" />
           </div>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2, ease: [0.4, 0, 0.2, 1] }}
           >
-            <h2 className="text-2xl md:text-3xl font-bold text-[#272425] tracking-tight mb-2">
+            <h2 className="text-2xl md:text-3xl font-bold text-[var(--hertz-black)] tracking-tight mb-2">
               Sign in
             </h2>
-            <p className="text-[#666] text-base mb-8">
+            <p className="text-[var(--neutral-600)] text-base mb-8">
               Access your view with your Hertz credentials
             </p>
 
@@ -87,7 +87,7 @@ export default function LoginScreen() {
               <div>
                 <label
                   htmlFor="email"
-                  className="block text-base font-semibold text-[#272425] mb-2"
+                  className="block text-base font-semibold text-[var(--hertz-black)] mb-2"
                 >
                   Email
                 </label>
@@ -99,13 +99,13 @@ export default function LoginScreen() {
                   placeholder="you@hertz.com"
                   required
                   autoComplete="email"
-                  className="w-full h-14 px-4 border-2 border-[#E5E5E5] rounded-xl text-[#272425] placeholder:text-[#888] focus:outline-none focus:border-[#272425] focus:ring-4 focus:ring-[#FFD100]/20 transition-all duration-200 text-base"
+                  className="w-full h-14 px-4 border-2 border-[var(--neutral-200)] rounded-xl text-[var(--hertz-black)] placeholder:text-[var(--neutral-500)] focus:outline-none focus:border-[var(--hertz-black)] focus:ring-4 focus:ring-[var(--hertz-primary)]/20 transition-all duration-200 text-base"
                 />
               </div>
               <div>
                 <label
                   htmlFor="password"
-                  className="block text-base font-semibold text-[#272425] mb-2"
+                  className="block text-base font-semibold text-[var(--hertz-black)] mb-2"
                 >
                   Password
                 </label>
@@ -117,18 +117,18 @@ export default function LoginScreen() {
                   required
                   autoComplete="current-password"
                   placeholder="••••••••"
-                  className="w-full h-14 px-4 border-2 border-[#E5E5E5] rounded-xl text-[#272425] placeholder:text-[#888] focus:outline-none focus:border-[#272425] focus:ring-4 focus:ring-[#FFD100]/20 transition-all duration-200 text-base"
+                  className="w-full h-14 px-4 border-2 border-[var(--neutral-200)] rounded-xl text-[var(--hertz-black)] placeholder:text-[var(--neutral-500)] focus:outline-none focus:border-[var(--hertz-black)] focus:ring-4 focus:ring-[var(--hertz-primary)]/20 transition-all duration-200 text-base"
                 />
               </div>
               {(error || profileError) && (
-                <p className="text-base font-medium text-[#C62828] bg-[#FFEBEE] px-5 py-3 rounded-xl">
+                <p className="text-base font-medium text-[var(--color-error)] bg-[#FFEBEE] px-5 py-3 rounded-xl">
                   {profileError || error}
                 </p>
               )}
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full h-14 bg-[#FFD100] text-[#272425] font-bold rounded-xl hover:bg-[#E6BC00] active:bg-[#CC9F00] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-[0_4px_12px_rgba(255,209,0,0.35)] active:scale-[0.99] text-base"
+                className="w-full h-14 bg-[var(--hertz-primary)] text-[var(--hertz-black)] font-bold rounded-xl hover:bg-[var(--hertz-primary-hover)] active:bg-[var(--hertz-primary-active)] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-[var(--shadow-md)] active:scale-[0.99] text-base"
               >
                 {submitting ? "Signing in…" : "Sign in"}
               </button>
@@ -141,7 +141,7 @@ export default function LoginScreen() {
 
       {/* Right: Rotating Hertz branded images — diagonal cut via clip-path */}
       <div
-        className="hidden md:flex md:flex-1 md:min-w-0 md:min-h-screen relative overflow-hidden bg-[#272425]"
+        className="hidden md:flex md:flex-1 md:min-w-0 md:min-h-screen relative overflow-hidden bg-[var(--hertz-black)]"
         style={{
           clipPath: "polygon(10rem 0, 100% 0, 100% 100%, 0 100%)",
           marginLeft: "-10rem",
@@ -163,7 +163,7 @@ export default function LoginScreen() {
               style={HERTZ_IMAGES[imageIndex].objectPosition ? { objectPosition: HERTZ_IMAGES[imageIndex].objectPosition } : undefined}
             />
             <div
-              className="absolute inset-0 bg-gradient-to-t from-[#272425]/80 via-[#272425]/20 to-transparent"
+              className="absolute inset-0 bg-gradient-to-t from-[var(--hertz-black)]/80 via-[var(--hertz-black)]/20 to-transparent"
               aria-hidden
             />
           </motion.div>

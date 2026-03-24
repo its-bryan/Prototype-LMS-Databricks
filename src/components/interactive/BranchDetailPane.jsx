@@ -126,7 +126,7 @@ export default function BranchDetailPane({ branchRow, dateRange, leads, onClose 
                 <p className="text-xl font-bold text-[var(--hertz-black)]">{branchRow.branchHrdPct ?? "—"}%</p>
               </div>
               <div className="bg-[var(--neutral-50)] rounded-lg px-4 py-3">
-                <p className="text-xs font-bold text-[var(--neutral-600)] uppercase tracking-wider">Comment Rate</p>
+                <p className="text-xs font-bold text-[var(--neutral-600)] uppercase tracking-wider">Comment Compliance %</p>
                 <p className="text-xl font-bold text-[var(--hertz-black)]">{branchRow.commentRate ?? "—"}%</p>
               </div>
             </div>
@@ -170,7 +170,7 @@ export default function BranchDetailPane({ branchRow, dateRange, leads, onClose 
                             className="border-t border-[var(--neutral-100)] hover:bg-[var(--neutral-50)] transition-colors"
                           >
                             <td className="px-4 py-3 text-[var(--neutral-600)] text-xs">
-                              {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00")) : "—"}
+                              {lead.initDtFinal ? formatDateShort(new Date(lead.initDtFinal + "T12:00:00Z")) : "—"}
                             </td>
                             <td className="px-4 py-3 font-medium text-[var(--hertz-black)]">{lead.customer ?? "—"}</td>
                             <td className="px-4 py-3 text-center font-mono text-xs text-[var(--neutral-600)]">{lead.reservationId ?? "—"}</td>
