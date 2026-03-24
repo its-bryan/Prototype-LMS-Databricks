@@ -24,9 +24,9 @@ SCREENSHOT_DIR = Path("docs/frontend-test-results")
 SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
 
 CREDS = {
-    "admin": ("admin.leo@hertz.com", "LeoAdmin123"),
-    "gm": ("adamfrankel.leo@hertz.com", "AdamF123"),
-    "bm": ("jonathanhoover.leo@hertz.com", "JonathanH123"),
+    "admin": (os.environ.get("E2E_ADMIN_EMAIL", "admin.leo@hertz.com"), os.environ["E2E_ADMIN_PASSWORD"]),
+    "gm": (os.environ.get("E2E_GM_EMAIL", "adamfrankel.leo@hertz.com"), os.environ["E2E_GM_PASSWORD"]),
+    "bm": (os.environ.get("E2E_BM_EMAIL", "jonathanhoover.leo@hertz.com"), os.environ["E2E_BM_PASSWORD"]),
 }
 
 TS = datetime.now().strftime("%Y%m%d_%H%M%S")

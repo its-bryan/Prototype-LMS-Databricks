@@ -7,11 +7,13 @@
 
 ## 1. Test Credentials
 
-| Role   | Email                            | Password       | Default View      |
-|--------|----------------------------------|----------------|-------------------|
-| Admin  | `admin.leo@hertz.com`            | `LeoAdmin123`  | admin-dashboard   |
-| GM     | `adamfrankel.leo@hertz.com`      | `AdamF123`     | gm-overview       |
-| BM     | `jonathanhoover.leo@hertz.com`   | `JonathanH123` | bm-dashboard      |
+Credentials are loaded from environment variables. Copy `.env.test.example` to `.env.test` and fill in your values.
+
+| Role   | Email Env Var          | Password Env Var        | Default View      |
+|--------|------------------------|-------------------------|-------------------|
+| Admin  | `E2E_ADMIN_EMAIL`      | `E2E_ADMIN_PASSWORD`    | admin-dashboard   |
+| GM     | `E2E_GM_EMAIL`         | `E2E_GM_PASSWORD`       | gm-overview       |
+| BM     | `E2E_BM_EMAIL`         | `E2E_BM_PASSWORD`       | bm-dashboard      |
 
 ---
 

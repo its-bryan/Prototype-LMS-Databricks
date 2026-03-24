@@ -1,13 +1,13 @@
 import { type Page } from "@playwright/test";
 
-const GM_EMAIL = "rachel.leo@hertz.com";
-const GM_PASSWORD = "demo123";
+const GM_EMAIL = process.env.E2E_GM_EMAIL ?? "rachel.leo@hertz.com";
+const GM_PASSWORD = process.env.E2E_GM_PASSWORD ?? "";
 
-const BM_EMAIL = "jeri.leo@hertz.com";
-const BM_PASSWORD = "demo123";
+const BM_EMAIL = process.env.E2E_BM_EMAIL ?? "jeri.leo@hertz.com";
+const BM_PASSWORD = process.env.E2E_BM_PASSWORD ?? "";
 
-const ADMIN_EMAIL = "admin.leo@hertz.com";
-const ADMIN_PASSWORD = "LeoAdmin123";
+const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL ?? "admin.leo@hertz.com";
+const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD ?? "";
 
 /**
  * Log in as the GM test user.

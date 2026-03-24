@@ -1,4 +1,9 @@
 import { defineConfig } from "@playwright/test";
+import { config } from "dotenv";
+import { resolve } from "path";
+
+// Load test credentials from .env.test (gitignored)
+config({ path: resolve(__dirname, "../.env.test") });
 
 export default defineConfig({
   testDir: ".",

@@ -8,6 +8,7 @@ Tests validate endpoint responses, pagination envelopes, hard caps,
 date bounds, and new filters introduced in the 800K architecture.
 """
 
+import os
 import sys
 import time
 import json
@@ -17,9 +18,9 @@ BASE_URL = "https://hertz-leo-leadsmgmtsystem-1957546315544672.aws.databricksapp
 API = f"{BASE_URL}/api"
 
 CREDENTIALS = {
-    "admin": {"email": "admin.leo@hertz.com", "password": "LeoAdmin123"},
-    "gm": {"email": "adamfrankel.leo@hertz.com", "password": "AdamF123"},
-    "bm": {"email": "jonathanhoover.leo@hertz.com", "password": "JonathanH123"},
+    "admin": {"email": os.environ.get("E2E_ADMIN_EMAIL", "admin.leo@hertz.com"), "password": os.environ["E2E_ADMIN_PASSWORD"]},
+    "gm": {"email": os.environ.get("E2E_GM_EMAIL", "adamfrankel.leo@hertz.com"), "password": os.environ["E2E_GM_PASSWORD"]},
+    "bm": {"email": os.environ.get("E2E_BM_EMAIL", "jonathanhoover.leo@hertz.com"), "password": os.environ["E2E_BM_PASSWORD"]},
 }
 
 passed = 0

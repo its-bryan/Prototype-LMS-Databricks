@@ -13,6 +13,7 @@ dist-ssr
 .env
 .env.local
 .env.staging
+.env.test
 local-uploads/
 
 # Editor directories and files
@@ -56,6 +57,10 @@ vercel.json
 
 # Frontend visual test artifacts
 docs/frontend-test-results/
+
+# Playwright test artifacts
+test-results/
+playwright-report/
 
 # Local machine temp artifacts (Windows/browser)
 .tmp-localappdata/
