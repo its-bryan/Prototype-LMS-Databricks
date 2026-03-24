@@ -646,7 +646,6 @@ export function GMDashboardPage({ navigateTo }) {
               branchesSnapshot={snapshot?.branches ?? null}
               zonesSnapshot={snapshot?.zones ?? null}
               gmZone={snapshotGM?.zone ?? null}
-              gmName={gmName}
             />
           );
         })()}

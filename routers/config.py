@@ -34,53 +34,6 @@ async def get_org_mapping():
     return query("SELECT * FROM org_mapping ORDER BY zone, branch")
 
 
-@router.post("/config/org-mapping/seed-from-prodfiles")
-async def seed_org_mapping_from_prodfiles():
-    """Re-build org_mapping from the prodfiles on disk (employee listing + HLES).
-
-    Returns a summary of how many rows were upserted and how many branches
-    received a BM assignment.
-    """
-    import sys
-    from pathlib import Path
-
-    repo_root = Path(__file__).parent.parent
-    scripts_dir = str(repo_root / "scripts")
-    if scripts_dir not in sys.path:
-        sys.path.insert(0, scripts_dir)
-
-    try:
-        from seed_org_mapping_from_prodfiles import build_org_mapping, upsert_org_mapping
-    except ImportError as exc:
-        raise HTTPException(status_code=500, detail=f"Could not import seed script: {exc}")
-
-    prodfiles = repo_root / "prodfiles"
-    hles_candidates = sorted(prodfiles.glob("All IR Detail*.xlsx"))
-    emp_candidates = sorted(prodfiles.glob("March 2026 employee listing*.xlsx"))
-
-    if not hles_candidates:
-        raise HTTPException(status_code=422, detail="No HLES file found in prodfiles/ (expected 'All IR Detail*.xlsx')")
-    if not emp_candidates:
-        raise HTTPException(status_code=422, detail="No employee listing found in prodfiles/ (expected 'March 2026 employee listing*.xlsx')")
-
-    hles_path = hles_candidates[-1]
-    emp_path = emp_candidates[-1]
-
-    try:
-        rows = build_org_mapping(hles_path, emp_path)
-        upsert_org_mapping(rows)
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
-
-    assigned = sum(1 for r in rows if r["bm"])
-    return {
-        "ok": True,
-        "total": len(rows),
-        "bm_assigned": assigned,
-        "hles_file": hles_path.name,
-        "employee_file": emp_path.name,
-    }
-
 @router.patch("/config/org-mapping/{branch}/bm")
 async def update_org_mapping_bm(branch: str, body: dict):
     """Manually update the BM for a single branch."""
