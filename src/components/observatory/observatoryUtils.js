@@ -94,12 +94,14 @@ export function buildTrendPoints({
       return {
         label: p.label,
         rawLabel: p.rawLabel,
-        value: Number(value.toFixed(1)),
-        unusedPct: Number(unusedPct.toFixed(1)),
+        value: value != null ? Number(value.toFixed(1)) : null,
+        unusedPct: unusedPct != null ? Number(unusedPct.toFixed(1)) : null,
         rented: p.rented,
         unused: p.unused,
         total: p.total,
-        tooltip: `${p.label}: ${value.toFixed(1)}% conversion, ${unusedPct.toFixed(1)}% unused (${p.rented}R / ${p.unused}U / ${p.total || 0}T)`,
+        tooltip: value != null
+          ? `${p.label}: ${value.toFixed(1)}% conversion, ${(unusedPct ?? 0).toFixed(1)}% unused (${p.rented}R / ${p.unused}U / ${p.total || 0}T)`
+          : `${p.label}: — (${p.total || 0} leads)`,
       };
     });
   }
@@ -158,7 +160,7 @@ function aggregateRows(rows) {
 function metricValue(metricKey, stats) {
   if (metricKey === "conversion") return safeDivide(stats.rented, stats.total);
   if (metricKey === "branchContact") return safeDivide(stats.branchContact, stats.total);
-  if (metricKey === "within30") return safeDivide(stats.within30, stats.total);
+  if (metricKey === "within30") return safeDivide(stats.within30, stats.w30Pool ?? stats.total);
   return 0;
 }
 
@@ -217,7 +219,7 @@ export function buildGMLeaderboard({
 
     const metric = metricValue(metricKey, current);
     const prevMetric = metricValue(metricKey, prev);
-    const delta = Math.round(metric - prevMetric);
+    const delta = (metric != null && prevMetric != null) ? Math.round(metric - prevMetric) : null;
 
     rows.push({
       gm: entry.gm,

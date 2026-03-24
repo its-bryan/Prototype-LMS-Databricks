@@ -9,6 +9,7 @@ import {
   normalizeGmName,
   getGMBranchLeaderboard,
   getBranchesForGM,
+  pctRound,
 } from "../../selectors/demoSelectors";
 import { formatDateRange } from "../../utils/dashboardHelpers";
 import BranchDetailPane from "./BranchDetailPane";
@@ -207,10 +208,10 @@ export default function InteractiveGMLeaderboardPage() {
       const benchActionable = rows.reduce((s, r) => s + ((r.cancelled ?? 0) + (r.unused ?? 0)), 0);
 
       const benchmark = {
-        conversionRate: benchTotal ? Math.round((benchRented / benchTotal) * 100) : null,
-        pctWithin30: benchTotal ? Math.round((benchW30 / benchTotal) * 100) : null,
-        branchHrdPct: benchBcTotal > 0 ? Math.round((benchBcTotal / benchTotal) * 100) : null,
-        commentRate: benchActionable > 0 ? Math.round((benchCr / benchActionable) * 100) : null,
+        conversionRate: benchTotal ? pctRound((benchRented / benchTotal) * 100) : null,
+        pctWithin30: benchTotal ? pctRound((benchW30 / benchTotal) * 100) : null,
+        branchHrdPct: benchTotal > 0 ? pctRound((benchBcTotal / benchTotal) * 100) : null,
+        commentRate: benchActionable > 0 ? pctRound((benchCr / benchActionable) * 100) : null,
         total: benchTotal,
         avgTotal: rows.length > 0 ? Math.round(benchTotal / rows.length) : 0,
       };

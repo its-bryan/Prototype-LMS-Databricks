@@ -137,6 +137,7 @@ def _empty_metrics() -> dict:
         "cancelled": 0,
         "unused": 0,
         "within30": 0,
+        "w30Pool": 0,
         "branchContact": 0,
         "totalContact": 0,
     }
@@ -145,13 +146,22 @@ def _empty_metrics() -> dict:
 def _accumulate(bucket: dict, lead: dict) -> None:
     bucket["total"] += 1
     st = lead.get("status")
+    cr = lead.get("contact_range") or ""
     if st == "Rented":
         bucket["rented"] += 1
     elif st == "Cancelled":
         bucket["cancelled"] += 1
     elif st == "Unused":
         bucket["unused"] += 1
-    if (lead.get("contact_range") or "") == "(a)<30min":
+    # W30 pool: exclude Rented leads with no contact
+    is_rented_no_contact = (
+        st == "Rented"
+        and cr in ("NO CONTACT", "")
+        and not lead.get("time_to_first_contact")
+    )
+    if not is_rented_no_contact:
+        bucket["w30Pool"] += 1
+    if cr == "(a)<30min":
         bucket["within30"] += 1
     fc = lead.get("first_contact_by") or ""
     if fc == "branch":

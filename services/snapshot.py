@@ -195,11 +195,20 @@ def _resolve_bm_name(org_row: dict | None, branch_leads: list[dict]) -> str:
 # ---------------------------------------------------------------------------
 
 def _parse_time_to_minutes(s) -> float | None:
+    if s is not None and isinstance(s, (int, float)):
+        return float(s) if s > 0 else None
     if not s or not isinstance(s, str):
         return None
     s = s.strip()
     if not s or s == "—":
         return None
+    # Try bare numeric value first (e.g. "5.0", "39")
+    try:
+        n = float(s)
+        if n > 0:
+            return n
+    except ValueError:
+        pass
     total = 0
     d = re.search(r"(\d+)\s*d", s)
     h = re.search(r"(\d+)\s*h", s)
@@ -249,6 +258,14 @@ def _bm_stats(filtered: list[dict]) -> dict:
         if (l.get("enrichment") or {}).get("reason") or (l.get("enrichment") or {}).get("notes")
     ]
     enrichment_rate = round(len(with_comments) / len(actionable) * 100, 1) if actionable else (100 if total else None)
+    minutes = [
+        m for m in (
+            _parse_time_to_minutes(l.get("time_to_first_contact"))
+            for l in filtered
+        )
+        if m is not None
+    ]
+    avg_ttc = round(sum(minutes) / len(minutes)) if minutes else None
     return {
         "total": total,
         "enriched": len(with_comments),
@@ -257,6 +274,7 @@ def _bm_stats(filtered: list[dict]) -> dict:
         "rented": rented,
         "enrichmentRate": enrichment_rate,
         "conversionRate": round(rented / total * 100, 1) if total else 0,
+        "avgTimeToContactMin": avg_ttc,
     }
 
 
@@ -352,11 +370,12 @@ def _weekly_chart_data(
     for lead in filtered:
         # Use week_of (HLES-defined Sat–Fri week, stored as Monday label) when available
         # so chart buckets align with the HLES week definition instead of Mon–Sun boundaries.
+        # week_of is stored as a Monday date; convert to Saturday to match period keys.
         wk = _to_date(lead.get("week_of"))
-        pk = wk.isoformat() if wk else None
+        pk = _get_saturday(wk).isoformat() if wk else None
         if pk is None:
             ld = _lead_date(lead)
-            pk = _get_monday(ld).isoformat() if ld else None
+            pk = _get_saturday(ld).isoformat() if ld else None
         if pk and pk in period_map:
             period_map[pk]["leads"].append(lead)
 
@@ -375,10 +394,10 @@ def _weekly_chart_data(
         if not lead:
             continue
         wk = _to_date(lead.get("week_of"))
-        pk = wk.isoformat() if wk else None
+        pk = _get_saturday(wk).isoformat() if wk else None
         if pk is None:
             ld = _lead_date(lead)
-            pk = _get_monday(ld).isoformat() if ld else None
+            pk = _get_saturday(ld).isoformat() if ld else None
         if pk and pk in task_period_map:
             task_period_map[pk].append(t)
 
@@ -515,7 +534,7 @@ def _task_stats(tasks: list[dict], lead_by_id: dict, branch: str | None, start: 
 
     return {
         "open": open_count,
-        "completionRate": round(done_count / total * 100) if total else 0,
+        "completionRate": round(done_count / total * 100, 1) if total else None,
         "avgTimeToContactMin": round(sum(minutes) / len(minutes)) if minutes else 0,
     }
 
@@ -571,7 +590,7 @@ def _build_leaderboard(
 
         bc = sum(1 for l in bl if (l.get("first_contact_by") or "") == "branch")
         hc = sum(1 for l in bl if (l.get("first_contact_by") or "") == "hrd")
-        branch_hrd_pct = round(bc / (bc + hc) * 100, 1) if (bc + hc) > 0 else None
+        branch_hrd_pct = round(bc / total * 100, 1) if total else None
 
         actionable = [l for l in bl if l.get("status") in ("Cancelled", "Unused")]
         with_comments = [
@@ -692,7 +711,7 @@ def _build_leaderboard_indexed(
 
         bc = sum(1 for l in bl if (l.get("first_contact_by") or "") == "branch")
         hc = sum(1 for l in bl if (l.get("first_contact_by") or "") == "hrd")
-        branch_hrd_pct = round(bc / (bc + hc) * 100, 1) if (bc + hc) > 0 else None
+        branch_hrd_pct = round(bc / total * 100, 1) if total else None
 
         actionable = [l for l in bl if l.get("status") in ("Cancelled", "Unused")]
         with_comments = [

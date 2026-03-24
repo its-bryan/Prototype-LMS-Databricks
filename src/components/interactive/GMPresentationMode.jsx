@@ -22,6 +22,7 @@ import {
   getBranchesForGM,
   leadBranchMatches,
   orgMapping,
+  pctRound,
 } from "../../selectors/demoSelectors";
 import { formatDateShort } from "../../utils/dateTime";
 
@@ -70,7 +71,7 @@ function StackedBarsChart({ weeks, maxBarHeightPx = 200 }) {
         const rentedPct = w.total > 0 ? (w.rented / w.total) * 100 : 0;
         const cancelledPct = w.total > 0 ? (w.cancelled / w.total) * 100 : 0;
         const unusedPct = w.total > 0 ? (w.unused / w.total) * 100 : 0;
-        const convRate = w.total > 0 ? Math.round((w.rented / w.total) * 100) : null;
+        const convRate = w.total > 0 ? pctRound((w.rented / w.total) * 100) : null;
 
         const rentedH = (rentedPct / 100) * barH;
         const cancelledH = (cancelledPct / 100) * barH;
@@ -176,9 +177,9 @@ function InsurerStackedBarChart({ data, onInsurerClick }) {
         const unusedW = (d.unused / maxTotal) * 100;
         const isStateFarm = d.insurer === "State Farm";
         const convText = d.conversionRate !== null ? `${d.conversionRate}%` : "—";
-        const rentedPct = d.total ? Math.round((d.rented / d.total) * 100) : 0;
-        const cancelledPct = d.total ? Math.round((d.cancelled / d.total) * 100) : 0;
-        const unusedPct = d.total ? Math.round((d.unused / d.total) * 100) : 0;
+        const rentedPct = d.total ? pctRound((d.rented / d.total) * 100) : 0;
+        const cancelledPct = d.total ? pctRound((d.cancelled / d.total) * 100) : 0;
+        const unusedPct = d.total ? pctRound((d.unused / d.total) * 100) : 0;
 
         return (
           <div
@@ -202,7 +203,7 @@ function InsurerStackedBarChart({ data, onInsurerClick }) {
                         <span className="text-white/60">Rented</span>
                       </span>
                       <span className="text-white font-semibold">
-                        {d.rented} <span className="text-white/40 font-normal">({d.total ? Math.round((d.rented / d.total) * 100) : 0}%)</span>
+                        {d.rented} <span className="text-white/40 font-normal">({d.total ? pctRound((d.rented / d.total) * 100) : 0}%)</span>
                       </span>
                     </div>
                     <div className="flex items-center justify-between gap-4">
@@ -211,7 +212,7 @@ function InsurerStackedBarChart({ data, onInsurerClick }) {
                         <span className="text-white/60">Cancelled</span>
                       </span>
                       <span className="text-white font-semibold">
-                        {d.cancelled} <span className="text-white/40 font-normal">({d.total ? Math.round((d.cancelled / d.total) * 100) : 0}%)</span>
+                        {d.cancelled} <span className="text-white/40 font-normal">({d.total ? pctRound((d.cancelled / d.total) * 100) : 0}%)</span>
                       </span>
                     </div>
                     <div className="flex items-center justify-between gap-4">
@@ -220,7 +221,7 @@ function InsurerStackedBarChart({ data, onInsurerClick }) {
                         <span className="text-white/60">Unused</span>
                       </span>
                       <span className="text-white font-semibold">
-                        {d.unused} <span className="text-white/40 font-normal">({d.total ? Math.round((d.unused / d.total) * 100) : 0}%)</span>
+                        {d.unused} <span className="text-white/40 font-normal">({d.total ? pctRound((d.unused / d.total) * 100) : 0}%)</span>
                       </span>
                     </div>
                   </div>
@@ -456,9 +457,9 @@ function CombinedStackedBarLineChart({ items, height = 600, maxBars = 10, onBarC
       {/* Bar hover tooltip */}
       {hoveredBarIdx !== null && data[hoveredBarIdx] && (() => {
         const d = data[hoveredBarIdx];
-        const rentedPct = d.total ? Math.round((d.rented / d.total) * 100) : 0;
-        const cancelledPct = d.total ? Math.round((d.cancelled / d.total) * 100) : 0;
-        const unusedPct = d.total ? Math.round((d.unused / d.total) * 100) : 0;
+        const rentedPct = d.total ? pctRound((d.rented / d.total) * 100) : 0;
+        const cancelledPct = d.total ? pctRound((d.cancelled / d.total) * 100) : 0;
+        const unusedPct = d.total ? pctRound((d.unused / d.total) * 100) : 0;
         const convText = d.conversionRate !== null ? `${d.conversionRate}%` : "—";
         const tooltipX = (xFor(hoveredBarIdx) / svgW) * 100;
         return (
@@ -633,7 +634,7 @@ function BranchLeadDetailPanel({ branch, leads, leaderboardRow, onBack }) {
     const rented = filtered.filter((l) => l.status === "Rented").length;
     const cancelled = filtered.filter((l) => l.status === "Cancelled").length;
     const unused = filtered.filter((l) => l.status === "Unused").length;
-    const convRate = total > 0 ? Math.round((rented / total) * 100) : null;
+    const convRate = total > 0 ? pctRound((rented / total) * 100) : null;
     return { total, rented, cancelled, unused, convRate };
   }, [filtered]);
 
@@ -886,7 +887,7 @@ function InsurerLeadDetailPanel({ insurer, leads, onBack }) {
     const rented = filtered.filter((l) => l.status === "Rented").length;
     const cancelled = filtered.filter((l) => l.status === "Cancelled").length;
     const unused = filtered.filter((l) => l.status === "Unused").length;
-    const convRate = total > 0 ? Math.round((rented / total) * 100) : null;
+    const convRate = total > 0 ? pctRound((rented / total) * 100) : null;
     return { total, rented, cancelled, unused, convRate };
   }, [filtered]);
 
@@ -1163,7 +1164,7 @@ function BodyShopLeadDetailPanel({ bodyShop, leads, onBack }) {
     const rented = filtered.filter((l) => l.status === "Rented").length;
     const cancelled = filtered.filter((l) => l.status === "Cancelled").length;
     const unused = filtered.filter((l) => l.status === "Unused").length;
-    const convRate = total > 0 ? Math.round((rented / total) * 100) : null;
+    const convRate = total > 0 ? pctRound((rented / total) * 100) : null;
     return { total, rented, cancelled, unused, convRate };
   }, [filtered]);
 

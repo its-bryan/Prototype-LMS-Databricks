@@ -1026,17 +1026,20 @@ export default function GMMetricDrilldownModal({
     } else if (metricKey === "cancelled_unreviewed") {
       t4wValues = rows.map((_, i) => {
         const win = t4wWindow(i);
-        return win.reduce((s, r) => s + (r.cancelledUnreviewed ?? 0), 0) || null;
+        const hasData = win.some((r) => (r.totalLeads ?? 0) > 0);
+        return hasData ? win.reduce((s, r) => s + (r.cancelledUnreviewed ?? 0), 0) : null;
       });
     } else if (metricKey === "unused_overdue") {
       t4wValues = rows.map((_, i) => {
         const win = t4wWindow(i);
-        return win.reduce((s, r) => s + (r.unusedOverdue ?? 0), 0) || null;
+        const hasData = win.some((r) => (r.totalLeads ?? 0) > 0);
+        return hasData ? win.reduce((s, r) => s + (r.unusedOverdue ?? 0), 0) : null;
       });
     } else if (metricKey === "no_contact_attempt") {
       t4wValues = rows.map((_, i) => {
         const win = t4wWindow(i);
-        return win.reduce((s, r) => s + (r.noContact ?? 0), 0) || null;
+        const hasData = win.some((r) => (r.totalLeads ?? 0) > 0);
+        return hasData ? win.reduce((s, r) => s + (r.noContact ?? 0), 0) : null;
       });
     }
 

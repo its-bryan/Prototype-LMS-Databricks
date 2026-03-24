@@ -771,15 +771,16 @@ export default function MetricDrilldownModal({
         const fallback = getTaskCompletionRate(currentTasks);
         return taskStatsCurrent.completionRate ?? (fallback ?? 0);
       }
-      if (metricKey === "avg_time_to_contact") return taskStatsCurrent.avgTimeToContactMin ?? null;
       return config.getValue(null, currentTasks);
     }
     const stats = currentStats ?? {};
     if (metricKey === "total_leads") return stats.total ?? 0;
     if (metricKey === "conversion_rate") return stats.conversionRate ?? safeRate(stats.rented ?? 0, stats.total ?? 0);
     if (metricKey === "comment_rate") return stats.enrichmentRate ?? safeRate(stats.enriched ?? 0, stats.total ?? 0);
-    return currentLeadsPage.total;
-  }, [isLeadMetric, metricKey, taskStatsCurrent, currentTasks, config, currentStats, currentLeadsPage.total]);
+    if (metricKey === "avg_time_to_contact") return stats.avgTimeToContactMin ?? null;
+    // Remaining lead-based metrics: compute from fetched leads
+    return config.getValue(currentLeadsPage.items);
+  }, [isLeadMetric, metricKey, taskStatsCurrent, currentTasks, config, currentStats, currentLeadsPage]);
 
   const previousValue = useMemo(() => {
     if (!isLeadMetric) {
@@ -788,15 +789,16 @@ export default function MetricDrilldownModal({
         const fallback = getTaskCompletionRate(previousTasks);
         return taskStatsPrevious.completionRate ?? (fallback ?? 0);
       }
-      if (metricKey === "avg_time_to_contact") return taskStatsPrevious.avgTimeToContactMin ?? null;
       return config.getValue(null, previousTasks);
     }
     const stats = previousStats ?? {};
     if (metricKey === "total_leads") return stats.total ?? 0;
     if (metricKey === "conversion_rate") return stats.conversionRate ?? safeRate(stats.rented ?? 0, stats.total ?? 0);
     if (metricKey === "comment_rate") return stats.enrichmentRate ?? safeRate(stats.enriched ?? 0, stats.total ?? 0);
-    return previousLeadsPage.total;
-  }, [isLeadMetric, metricKey, taskStatsPrevious, previousTasks, config, previousStats, previousLeadsPage.total]);
+    if (metricKey === "avg_time_to_contact") return stats.avgTimeToContactMin ?? null;
+    // Remaining lead-based metrics: compute from fetched leads
+    return config.getValue(previousLeadsPage.items);
+  }, [isLeadMetric, metricKey, taskStatsPrevious, previousTasks, config, previousStats, previousLeadsPage]);
 
   const currentDisplayData = isLeadMetric
     ? currentLeadsPage.items

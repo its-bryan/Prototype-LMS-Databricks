@@ -16,6 +16,7 @@ import {
   relChange,
   formatMinutesToDisplay,
   normalizeBranchKey,
+  pctRound,
 } from "../../selectors/demoSelectors";
 import { roleMeta, roleUsers, roleDefaults } from "../../config/navigation";
 import { OBSERVATORY_TILES } from "../../config/observatoryTiles";
@@ -175,9 +176,9 @@ export function BMDashboard({ navigateTo }) {
     ? snapshotBranch.comparison
     : EMPTY_BM_DASHBOARD_STATS;
 
-  const convRate = stats.conversionRate ?? (stats.total ? Math.round((stats.rented / stats.total) * 100) : 0);
-  const prevConvRate = comparisonStats.conversionRate ?? (comparisonStats.total ? Math.round((comparisonStats.rented / comparisonStats.total) * 100) : 0);
-  const prevCommentRate = comparisonStats.enrichmentRate ?? 0;
+  const convRate = stats.conversionRate ?? (stats.total ? pctRound((stats.rented / stats.total) * 100) : null);
+  const prevConvRate = comparisonStats.conversionRate ?? (comparisonStats.total ? pctRound((comparisonStats.rented / comparisonStats.total) * 100) : null);
+  const prevCommentRate = comparisonStats.enrichmentRate ?? null;
 
   // Tasks in date range for period-over-period comparison (consistent with other metrics)
   const tasksInPeriod = tasksInDateRange(branchTasks, dateRange);
@@ -195,17 +196,15 @@ export function BMDashboard({ navigateTo }) {
 
   const openTasksCount = _snapshotTasks ? _snapshotTasks.open : (dateRange ? openInPeriod : getOpenTasksCount(branchTasks));
   const taskCompletionRate = _snapshotTasks ? _snapshotTasks.completionRate : (dateRange && tasksInPeriod.length > 0 ? completionInPeriod : getTaskCompletionRate(branchTasks));
-  const avgTimeToContact = useSnapshotData
-    ? (_snapshotTasks?.avgTimeToContactMin ? formatMinutesToDisplay(_snapshotTasks.avgTimeToContactMin) : null)
-    : null;
-  const avgTimeToContactMin = _snapshotTasks?.avgTimeToContactMin ?? null;
-  const prevAvgTimeToContactMin = _snapshotCompTasks?.avgTimeToContactMin ?? null;
+  const avgTimeToContactMin = useSnapshotData ? (stats.avgTimeToContactMin ?? null) : null;
+  const prevAvgTimeToContactMin = useSnapshotData ? (comparisonStats.avgTimeToContactMin ?? null) : null;
+  const avgTimeToContact = avgTimeToContactMin != null ? formatMinutesToDisplay(avgTimeToContactMin) : null;
 
   const relChangeOpenTasks = comparisonRange != null && openInComparison > 0
     ? Math.round(((openInComparison - openInPeriod) / openInComparison) * 100) // fewer = better
     : null;
   const relChangeCompletion = comparisonRange != null && completionInComparison != null && completionInPeriod != null
-    ? Math.round((completionInPeriod ?? 0) - completionInComparison)
+    ? Math.round(completionInPeriod - completionInComparison)
     : null;
   const relChangeAvgTime = comparisonRange != null && prevAvgTimeToContactMin != null && prevAvgTimeToContactMin > 0 && avgTimeToContactMin != null
     ? Math.round(((prevAvgTimeToContactMin - avgTimeToContactMin) / prevAvgTimeToContactMin) * 100) // lower = better

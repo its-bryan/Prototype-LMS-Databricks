@@ -7,7 +7,7 @@ import {
 import { formatDateShort, formatWeekday, formatMonthYear, daysSinceInitDateString } from "../utils/dateTime";
 
 /** Round to 1 decimal place for percentage metrics. */
-function pctRound(val) {
+export function pctRound(val) {
   return Math.round(val * 10) / 10;
 }
 
@@ -636,12 +636,21 @@ export function getLeadsForBranchAndWeek(leads, branch, weekOf) {
   });
 }
 
-/** % contacted within 30 min (contact_range = (a)<30min) */
+/** W30 pool: excludes Rented leads with NO CONTACT (converted without contact attempt). */
+export function getW30Pool(leads) {
+  return (leads ?? []).filter((l) => !(
+    l.status === "Rented"
+    && ((l.contactRange ?? l.contact_range ?? "") === "NO CONTACT" || !(l.contactRange ?? l.contact_range))
+    && !l.timeToFirstContact && !l.time_to_first_contact
+  ));
+}
+
+/** % contacted within 30 min (contact_range = (a)<30min) — uses W30 pool denominator */
 export function getPctContactedWithin30Min(leads) {
-  const list = leads ?? [];
-  if (list.length === 0) return null;
-  const within30 = list.filter((l) => (l.contactRange ?? l.contact_range) === "(a)<30min").length;
-  return pctRound((within30 / list.length) * 100);
+  const pool = getW30Pool(leads);
+  if (pool.length === 0) return null;
+  const within30 = pool.filter((l) => (l.contactRange ?? l.contact_range) === "(a)<30min").length;
+  return pctRound((within30 / pool.length) * 100);
 }
 
 /** Branch vs HRD split for first_contact_by. Returns { branch: n, hrd: n } */
@@ -1052,8 +1061,8 @@ export function buildRolling4WeekChartData(leads, branchTasks, branch, numWeeks 
     const rented = filtered.filter((l) => l.status === "Rented").length;
     const actionable = filtered.filter((l) => l.status === "Cancelled" || l.status === "Unused");
     const withComments = actionable.filter((l) => l.enrichment?.reason || l.enrichment?.notes);
-    const conversionRate = total > 0 ? pctRound((rented / total) * 100) : 0;
-    const commentRate = actionable.length > 0 ? pctRound((withComments.length / actionable.length) * 100) : (total > 0 ? 100 : 0);
+    const conversionRate = total > 0 ? pctRound((rented / total) * 100) : null;
+    const commentRate = actionable.length > 0 ? pctRound((withComments.length / actionable.length) * 100) : (total > 0 ? 100 : null);
 
     const windowTasks = tasksInDateRange(branchTasks, dateRange);
     const openTasks = getOpenTasksCount(windowTasks);
@@ -1766,8 +1775,9 @@ export function getGMDashboardStats(leads, dateRange = null, gmName = null) {
   const rented = filtered.filter((l) => l.status === "Rented").length;
   const conversionRate = total ? pctRound((rented / total) * 100) : 0;
 
-  const within30 = filtered.filter((l) => (l.contactRange ?? l.contact_range) === "(a)<30min").length;
-  const pctWithin30 = total ? pctRound((within30 / total) * 100) : 0;
+  const w30Pool = getW30Pool(filtered);
+  const within30 = w30Pool.filter((l) => (l.contactRange ?? l.contact_range) === "(a)<30min").length;
+  const pctWithin30 = w30Pool.length ? pctRound((within30 / w30Pool.length) * 100) : null;
 
   const branchContact = filtered.filter((l) => (l.firstContactBy ?? l.first_contact_by) === "branch").length;
   const hrdContact = filtered.filter((l) => (l.firstContactBy ?? l.first_contact_by) === "hrd").length;
@@ -1914,8 +1924,10 @@ export function getGMMetricTrendByWeek(leads, opts = {}) {
       return pctRound((withComments.length / actionable.length) * 100);
     }
     if (metricKey === "contacted_within_30_min") {
-      const w30 = weekLeads.filter((l) => (l.contactRange ?? l.contact_range) === "(a)<30min").length;
-      return pctRound((w30 / weekLeads.length) * 100);
+      const pool = getW30Pool(weekLeads);
+      if (pool.length === 0) return null;
+      const w30 = pool.filter((l) => (l.contactRange ?? l.contact_range) === "(a)<30min").length;
+      return pctRound((w30 / pool.length) * 100);
     }
     if (metricKey === "branch_vs_hrd_split") {
       const withContact = weekLeads.filter((l) => {
@@ -1997,8 +2009,9 @@ export function getGMBranchLeaderboard(leads, dateRange, sortMetric = "conversio
     const unused = branchLeads.filter((l) => l.status === "Unused").length;
     const conversionRate = total ? pctRound((rented / total) * 100) : null;
 
-    const w30 = branchLeads.filter((l) => (l.contactRange ?? l.contact_range) === "(a)<30min").length;
-    const pctWithin30 = total ? pctRound((w30 / total) * 100) : null;
+    const w30Pool = getW30Pool(branchLeads);
+    const w30 = w30Pool.filter((l) => (l.contactRange ?? l.contact_range) === "(a)<30min").length;
+    const pctWithin30 = w30Pool.length ? pctRound((w30 / w30Pool.length) * 100) : null;
 
     const bc = branchLeads.filter((l) => (l.firstContactBy ?? l.first_contact_by) === "branch").length;
     const hc = branchLeads.filter((l) => (l.firstContactBy ?? l.first_contact_by) === "hrd").length;
