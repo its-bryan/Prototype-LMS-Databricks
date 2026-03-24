@@ -912,6 +912,7 @@ export function AdminDashboard({ navigateTo }) {
         {cards.map((card, i) => (
           <motion.button
             key={card.view}
+            data-testid={`admin-card-${card.view.split("/").pop()}`}
             {...cardAnim(i)}
             onClick={() => navigateTo(card.view)}
             className="border border-[var(--neutral-200)] rounded-xl p-5 text-left hover:border-[var(--hertz-primary)] hover:shadow-sm transition-all cursor-pointer group"

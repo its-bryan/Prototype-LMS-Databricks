@@ -6,6 +6,9 @@ const GM_PASSWORD = "demo123";
 const BM_EMAIL = "jeri.leo@hertz.com";
 const BM_PASSWORD = "demo123";
 
+const ADMIN_EMAIL = "admin.leo@hertz.com";
+const ADMIN_PASSWORD = "LeoAdmin123";
+
 /**
  * Log in as the GM test user.
  *
@@ -80,6 +83,43 @@ export async function bmLogin(
   const skipBtn = page.getByText("Skip");
   if (await skipBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
     await skipBtn.click();
+  }
+
+  return { token, user };
+}
+
+/**
+ * Log in as the Admin test user.
+ *
+ * Same pattern as gmLogin but for the Admin role.
+ * Each test must call this helper in its beforeEach.
+ */
+export async function adminLogin(
+  page: Page,
+  /** Optional path to navigate to instead of /admin.
+   *  Pass `false` to skip navigation entirely (auth-only). */
+  targetPath?: string | false,
+): Promise<{ token: string; user: Record<string, unknown> }> {
+  const res = await page.request.post("/api/auth/login", {
+    data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
+  });
+  if (!res.ok()) throw new Error(`Admin Login failed: ${res.status()}`);
+  const body = await res.json();
+  const { token, user } = body;
+
+  await page.addInitScript((t: string) => {
+    sessionStorage.setItem("leo_token", t);
+  }, token);
+
+  if (targetPath !== false) {
+    const path = targetPath ?? "/admin";
+    await page.goto(path);
+    await page.waitForSelector("nav", { timeout: 45_000 });
+  }
+
+  const adminSkipBtn = page.getByText("Skip");
+  if (await adminSkipBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
+    await adminSkipBtn.click();
   }
 
   return { token, user };

@@ -1,0 +1,16 @@
+CONFIRM_NUM,KNUM,RENTER_LAST,RENT_LOC,RENT_IND,CANCEL_ID,UNUSED_IND,CDP NAME,Week Of,INIT_DT_FINAL,New Contact Group,MIN_DIF,CANCEL REASON,BODY SHOP,HTZREGION,SET_STATE,ZONE,AREA_MGR,GENERAL_MGR
+TEST_E2E_001,TEST_E2E_001,Smith,"93156-02   - GOLDEN TRIANGLE AP HLE",1,0,0,State Farm,03/15/2026,03/14/2026,0-2 Hrs HRD,45,,Caliber Collision,Southeast,FL,SPAC,Jane Area,Rachel Leo
+TEST_E2E_002,TEST_E2E_002,Johnson,"93156-02   - GOLDEN TRIANGLE AP HLE",0,1,0,GEICO,03/15/2026,03/14/2026,0-2 Hrs Branch,120,Customer found other rental,Maaco,Southeast,FL,SPAC,Jane Area,Rachel Leo
+TEST_E2E_003,TEST_E2E_003,Williams,"90129-01   - MIAMI INTL AP HLE",1,0,0,Progressive,03/15/2026,03/13/2026,2+ Hrs Branch,200,,Gerber Collision,Southeast,FL,SPAC,Jane Area,Rachel Leo
+TEST_E2E_004,TEST_E2E_004,Brown,"90129-01   - MIAMI INTL AP HLE",0,0,1,Allstate,03/15/2026,03/13/2026,No Contact,0,,,,FL,SPAC,Jane Area,Rachel Leo
+TEST_E2E_005,TEST_E2E_005,Davis,"93350-01   - FORT LAUDERDALE AP HLE",1,0,0,USAA,03/15/2026,03/12/2026,0-2 Hrs Branch,30,,Service King,Southeast,FL,SPAC,Jane Area,Rachel Leo
+TEST_E2E_006,TEST_E2E_006,Miller,"93350-01   - FORT LAUDERDALE AP HLE",0,1,0,State Farm,03/15/2026,03/12/2026,2+ Hrs HRD,180,Vehicle not available,,,FL,SPAC,Jane Area,Rachel Leo
+TEST_E2E_007,TEST_E2E_007,Wilson,"93156-02   - GOLDEN TRIANGLE AP HLE",1,0,0,Liberty Mutual,03/15/2026,03/11/2026,0-2 Hrs Branch,60,,,Southeast,FL,SPAC,Jane Area,Rachel Leo
+TEST_E2E_008,TEST_E2E_008,Moore,"90129-01   - MIAMI INTL AP HLE",0,0,1,Nationwide,03/15/2026,03/11/2026,No Contact,0,,,,FL,SPAC,Jane Area,Rachel Leo
+TEST_E2E_009,TEST_E2E_009,Taylor,"93350-01   - FORT LAUDERDALE AP HLE",1,0,0,Farmers,03/15/2026,03/10/2026,0-2 Hrs HRD,90,,Fix Auto,Southeast,FL,SPAC,Jane Area,Rachel Leo
+TEST_E2E_010,TEST_E2E_010,Anderson,"93156-02   - GOLDEN TRIANGLE AP HLE",0,1,0,Erie Insurance,03/15/2026,03/10/2026,2+ Hrs Branch,240,Price too high,,,FL,SPAC,Jane Area,Rachel Leo
+TEST_E2E_011,TEST_E2E_011,Thomas,"90129-01   - MIAMI INTL AP HLE",1,0,0,Hartford,03/15/2026,03/09/2026,0-2 Hrs Branch,15,,Caliber Collision,Southeast,FL,SPAC,Jane Area,Rachel Leo
+TEST_E2E_012,TEST_E2E_012,Jackson,"93350-01   - FORT LAUDERDALE AP HLE",0,0,1,Travelers,03/15/2026,03/09/2026,No Contact,0,,,,FL,SPAC,Jane Area,Rachel Leo
+TEST_E2E_013,TEST_E2E_013,White,"93156-02   - GOLDEN TRIANGLE AP HLE",1,0,0,American Family,03/15/2026,03/08/2026,0-2 Hrs HRD,55,,Maaco,Southeast,FL,SPAC,Jane Area,Rachel Leo
+TEST_E2E_014,TEST_E2E_014,Harris,"90129-01   - MIAMI INTL AP HLE",0,1,0,State Farm,03/15/2026,03/08/2026,2+ Hrs HRD,300,Repairs completed,Gerber Collision,Southeast,FL,SPAC,Jane Area,Rachel Leo
+TEST_E2E_015,TEST_E2E_015,Martin,"93350-01   - FORT LAUDERDALE AP HLE",1,0,0,GEICO,03/15/2026,03/07/2026,0-2 Hrs Branch,25,,Service King,Southeast,FL,SPAC,Jane Area,Rachel Leo

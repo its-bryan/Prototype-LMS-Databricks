@@ -45,12 +45,12 @@ const STEPS = [
 function StepIndicator({ currentStep }) {
   const idx = STEPS.findIndex((s) => s.key === currentStep);
   return (
-    <div className="flex items-center gap-1 mb-8">
+    <div data-testid="upload-step-indicator" className="flex items-center gap-1 mb-8">
       {STEPS.map((step, i) => {
         const isActive = i === idx;
         const isDone = i < idx;
         return (
-          <div key={step.key} className="flex items-center">
+          <div key={step.key} data-testid={`upload-step-${step.key}`} className="flex items-center">
             <div className="flex items-center gap-2">
               <div
                 className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-colors ${
@@ -100,7 +100,7 @@ function ingestionBadge(status) {
 // ---------------------------------------------------------------------------
 // File drop zone
 // ---------------------------------------------------------------------------
-function FileDropZone({ label, accept, file, onFileSelect, disabled }) {
+function FileDropZone({ label, accept, file, onFileSelect, disabled, testId }) {
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef(null);
 
@@ -120,6 +120,7 @@ function FileDropZone({ label, accept, file, onFileSelect, disabled }) {
       onDragLeave={() => setDragOver(false)}
       onDrop={handleDrop}
       onClick={() => !disabled && inputRef.current?.click()}
+      data-testid={testId}
       className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${
         dragOver
           ? "border-[var(--hertz-primary)] bg-[var(--hertz-primary-subtle)]"
@@ -132,6 +133,7 @@ function FileDropZone({ label, accept, file, onFileSelect, disabled }) {
         ref={inputRef}
         type="file"
         accept={accept}
+        data-testid="upload-file-input"
         className="hidden"
         onChange={(e) => e.target.files?.[0] && onFileSelect(e.target.files[0])}
       />
@@ -143,11 +145,12 @@ function FileDropZone({ label, accept, file, onFileSelect, disabled }) {
             </svg>
           </div>
           <div className="text-left">
-            <p className="text-sm font-semibold text-[var(--hertz-black)]">{file.name}</p>
+            <p data-testid="upload-file-name" className="text-sm font-semibold text-[var(--hertz-black)]">{file.name}</p>
             <p className="text-xs text-[var(--neutral-500)]">{(file.size / 1024).toFixed(1)} KB</p>
           </div>
           <button
             onClick={(e) => { e.stopPropagation(); onFileSelect(null); }}
+            data-testid="upload-file-remove"
             className="ml-2 text-xs text-[var(--neutral-500)] hover:text-[var(--color-error)] cursor-pointer"
           >
             Remove
@@ -174,6 +177,7 @@ function ValidateStepLoader({ progress }) {
   return (
     <div
       className="border border-[var(--neutral-200)] rounded-lg p-6 bg-[var(--neutral-100)] shadow-sm"
+      data-testid="upload-validate-loader"
       role="status"
       aria-live="polite"
       aria-label="Validating upload"
@@ -204,7 +208,7 @@ function ValidateStepLoader({ progress }) {
 // ---------------------------------------------------------------------------
 // Validation summary card
 // ---------------------------------------------------------------------------
-function ValidationCard({ title, stats, errors, isLoading }) {
+function ValidationCard({ title, stats, errors, isLoading, testId }) {
   const [showErrors, setShowErrors] = useState(false);
 
   if (isLoading) {
@@ -225,6 +229,7 @@ function ValidationCard({ title, stats, errors, isLoading }) {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
+      data-testid={testId}
       className="border border-[var(--neutral-200)] rounded-lg p-5"
     >
       <p className="text-sm font-semibold text-[var(--hertz-black)] mb-3">{title}</p>
@@ -312,7 +317,7 @@ function PreviewTable({ reconciliation }) {
   return (
     <div>
       {/* Summary tiles */}
-      <div className="grid grid-cols-5 gap-3 mb-2">
+      <div data-testid="upload-preview-tiles" className="grid grid-cols-5 gap-3 mb-2">
         {[
           { label: "Total Rows", value: summary.total, bg: "bg-[var(--neutral-100)]", text: "text-[var(--hertz-black)]" },
           { label: "New Leads", value: summary.new, bg: "bg-[var(--neutral-100)]", text: "text-[var(--hertz-black)]" },
@@ -320,7 +325,7 @@ function PreviewTable({ reconciliation }) {
           { label: "Conflicts", value: summary.conflicts, bg: summary.conflicts > 0 ? "bg-[#FFF3E0] alert-pulse" : "bg-[var(--neutral-100)]", text: summary.conflicts > 0 ? "text-[#E65100]" : "text-[var(--hertz-black)]" },
           { label: "Orphaned", value: summary.orphaned, bg: summary.orphaned > 0 ? "bg-[#FFF3E0] alert-pulse" : "bg-[var(--neutral-100)]", text: summary.orphaned > 0 ? "text-[#E65100]" : "text-[var(--hertz-black)]" },
         ].map((tile) => (
-          <div key={tile.label} className={`${tile.bg} rounded-lg p-3`}>
+          <div key={tile.label} data-testid={`upload-tile-${tile.label.toLowerCase().replace(/\s+/g, "-")}`} className={`${tile.bg} rounded-lg p-3`}>
             <p className={`text-2xl font-bold ${tile.text}`}>{tile.value}</p>
             <p className={`text-xs ${tile.text} opacity-70`}>{tile.label}</p>
           </div>
@@ -342,10 +347,11 @@ function PreviewTable({ reconciliation }) {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-4 border-b border-[var(--neutral-200)]">
+      <div data-testid="upload-tabs" className="flex gap-1 mb-4 border-b border-[var(--neutral-200)]">
         {tabs.map((tab) => (
           <button
             key={tab.key}
+            data-testid={`upload-tab-${tab.key}`}
             onClick={() => setActiveTab(tab.key)}
             className={`px-3 py-2 text-xs font-medium border-b-2 transition-colors cursor-pointer ${
               activeTab === tab.key
@@ -360,7 +366,7 @@ function PreviewTable({ reconciliation }) {
       </div>
 
       {/* Table */}
-      <div className="border border-[var(--neutral-200)] rounded-lg overflow-hidden max-h-80 overflow-y-auto">
+      <div data-testid="upload-preview-table" className="border border-[var(--neutral-200)] rounded-lg overflow-hidden max-h-80 overflow-y-auto">
         <table className="w-full text-xs">
           <thead className="bg-[var(--hertz-black)] text-white sticky top-0">
             <tr>
@@ -422,7 +428,7 @@ function ConflictResolver({ conflicts, resolutions, onResolve }) {
   if (!conflicts?.length) return null;
 
   return (
-    <div className="space-y-4">
+    <div data-testid="upload-conflicts" className="space-y-4">
       <div className="flex items-center justify-between mb-2">
         <div>
           <p className="text-sm font-semibold text-[var(--hertz-black)]">
@@ -435,12 +441,14 @@ function ConflictResolver({ conflicts, resolutions, onResolve }) {
         </div>
         <div className="flex gap-2">
           <button
+            data-testid="upload-conflicts-keep-all"
             onClick={() => conflicts.forEach((_, i) => onResolve(i, "keep_enriched"))}
             className="px-3 py-1.5 text-xs font-medium border border-[var(--neutral-300)] rounded hover:bg-[var(--neutral-50)] cursor-pointer"
           >
             Keep All Enriched
           </button>
           <button
+            data-testid="upload-conflicts-source-all"
             onClick={() => conflicts.forEach((_, i) => onResolve(i, "use_source"))}
             className="px-3 py-1.5 text-xs font-medium border border-[var(--neutral-300)] rounded hover:bg-[var(--neutral-50)] cursor-pointer"
           >
@@ -524,7 +532,7 @@ function OrphanActionSelector({ orphanedLeads, orphanAction, onOrphanAction }) {
   if (!orphanedLeads?.length) return null;
 
   return (
-    <div className="border border-[#FFEBEE] rounded-lg p-5 bg-[#FFF8F8]">
+    <div data-testid="upload-orphan-selector" className="border border-[#FFEBEE] rounded-lg p-5 bg-[#FFF8F8]">
       <p className="text-sm font-semibold text-[var(--hertz-black)] mb-1">
         {orphanedLeads.length} Orphaned Lead{orphanedLeads.length !== 1 ? "s" : ""}
       </p>
@@ -543,6 +551,7 @@ function OrphanActionSelector({ orphanedLeads, orphanAction, onOrphanAction }) {
         ].map((opt) => (
           <button
             key={opt.value}
+            data-testid={`upload-orphan-${opt.value}`}
             onClick={() => onOrphanAction(opt.value)}
             className={`flex-1 p-3 rounded-lg border text-left transition-colors cursor-pointer ${
               orphanAction === opt.value
@@ -862,10 +871,12 @@ export default function InteractiveUploads() {
                     accept=".csv,.xlsx"
                     file={hlesFile}
                     onFileSelect={setHlesFile}
+                    testId="upload-dropzone-hles"
                   />
                 </div>
                 <div className="flex justify-end">
                   <button
+                    data-testid="upload-validate-btn"
                     onClick={handleValidate}
                     disabled={!hlesFile}
                     className="px-5 py-2.5 bg-[var(--hertz-primary)] text-[var(--hertz-black)] rounded-lg text-sm font-semibold hover:bg-[var(--hertz-primary-hover)] transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
@@ -894,6 +905,7 @@ export default function InteractiveUploads() {
                 <div className="max-w-md">
                   <ValidationCard
                     title="HLES Conversion Data"
+                    testId="upload-validation-card"
                     isLoading={false}
                     stats={
                       hlesParsed
@@ -916,6 +928,7 @@ export default function InteractiveUploads() {
                     Back
                   </button>
                   <button
+                    data-testid="upload-continue-preview"
                     onClick={() => setStep("preview")}
                     className="px-5 py-2.5 bg-[var(--hertz-primary)] text-[var(--hertz-black)] rounded-lg text-sm font-semibold hover:bg-[var(--hertz-primary-hover)] transition-colors cursor-pointer"
                   >
@@ -970,6 +983,7 @@ export default function InteractiveUploads() {
                 Back
               </button>
               <button
+                data-testid="upload-commit-btn"
                 onClick={handleCommit}
                 disabled={!canProceedFromPreview}
                 className="px-5 py-2.5 bg-[var(--hertz-primary)] text-[var(--hertz-black)] rounded-lg text-sm font-semibold hover:bg-[var(--hertz-primary-hover)] transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
@@ -997,7 +1011,7 @@ export default function InteractiveUploads() {
         {/* ---- STEP: COMMIT ---- */}
         {step === "commit" && (
           <motion.div key="commit" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <div className="py-12 max-w-md mx-auto">
+            <div data-testid="upload-commit-progress" className="py-12 max-w-md mx-auto">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-8 h-8 border-2 border-[var(--hertz-primary)] border-t-transparent rounded-full animate-spin shrink-0" />
                 <div>
@@ -1078,8 +1092,8 @@ export default function InteractiveUploads() {
                       <div className="w-8 h-8 border-2 border-[var(--hertz-primary)] border-t-transparent rounded-full animate-spin" />
                     )}
                   </div>
-                  <h3 className="text-lg font-bold text-[var(--hertz-black)] text-center">{title}</h3>
-                  <p className="text-sm text-[var(--neutral-500)] mt-1 text-center">{subtitle}</p>
+                  <h3 data-testid="upload-summary-title" className="text-lg font-bold text-[var(--hertz-black)] text-center">{title}</h3>
+                  <p data-testid="upload-summary-subtitle" className="text-sm text-[var(--neutral-500)] mt-1 text-center">{subtitle}</p>
 
                   <div className="mt-6 border border-[var(--neutral-200)] rounded-lg p-4 bg-white space-y-4">
                     {/* Step 1: DB write */}
@@ -1144,7 +1158,7 @@ export default function InteractiveUploads() {
             })()}
 
             {commitResult.hles && (
-              <div className="border border-[var(--neutral-200)] rounded-lg p-5 mb-8 max-w-md">
+              <div data-testid="upload-hles-results" className="border border-[var(--neutral-200)] rounded-lg p-5 mb-8 max-w-md">
                 <p className="text-sm font-semibold text-[var(--hertz-black)] mb-3">HLES Results</p>
                 <div className="space-y-2">
                   {[
@@ -1210,12 +1224,14 @@ export default function InteractiveUploads() {
 
             <div className="flex justify-center gap-3">
               <button
+                data-testid="upload-reset-btn"
                 onClick={handleReset}
                 className="px-5 py-2.5 bg-[var(--hertz-primary)] text-[var(--hertz-black)] rounded-lg text-sm font-semibold hover:bg-[var(--hertz-primary-hover)] transition-colors cursor-pointer"
               >
                 Start New Upload
               </button>
               <button
+                data-testid="upload-back-dashboard"
                 onClick={() => navigate("/admin")}
                 className="px-5 py-2.5 border border-[var(--neutral-300)] text-[var(--hertz-black)] rounded-lg text-sm font-semibold hover:bg-[var(--neutral-50)] transition-colors cursor-pointer"
               >
@@ -1227,7 +1243,7 @@ export default function InteractiveUploads() {
       </AnimatePresence>
 
       {/* Upload history: placed below the upload workflow */}
-      <section className="mt-10">
+      <section data-testid="upload-history" className="mt-10">
         <h3 className="text-sm font-semibold text-[var(--hertz-black)] mb-3">Upload history</h3>
         {historyLoading ? (
           <p className="text-sm text-[var(--neutral-500)]">Loading history…</p>
@@ -1236,7 +1252,7 @@ export default function InteractiveUploads() {
         ) : (
           <div className="border border-[var(--neutral-200)] rounded-lg overflow-hidden">
             <div className="overflow-x-auto max-h-[280px] overflow-y-auto">
-              <table className="w-full text-sm">
+              <table data-testid="upload-history-table" className="w-full text-sm">
                 <thead className="bg-[var(--neutral-100)] sticky top-0">
                   <tr>
                     <th className="text-left py-2 px-3 font-medium text-[var(--neutral-600)]">Date</th>

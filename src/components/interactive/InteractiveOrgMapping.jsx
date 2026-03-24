@@ -74,10 +74,10 @@ export default function InteractiveOrgMapping() {
   };
 
   return (
-    <div>
+    <div data-testid="org-mapping-page">
       <div className="flex items-start justify-between mb-4">
         <div>
-          <h2 className="text-xl font-bold text-[var(--hertz-black)]">Organisation Mapping</h2>
+          <h2 data-testid="org-mapping-title" className="text-xl font-bold text-[var(--hertz-black)]">Organisation Mapping</h2>
           <p className="text-sm text-[var(--neutral-500)] mt-1">
             Branch, AM, GM, and Zone are sourced from the HLES file. BM names come from the March 2026 employee listing.
             Click any BM cell to edit manually.
@@ -88,6 +88,7 @@ export default function InteractiveOrgMapping() {
             <motion.span
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
+              data-testid="org-mapping-saved-toast"
               className="text-[var(--color-success)] text-sm font-medium"
             >
               Saved
@@ -123,6 +124,7 @@ export default function InteractiveOrgMapping() {
         <div className="flex items-center gap-2">
           <label className="text-xs font-medium text-[var(--neutral-500)]">Zone</label>
           <select
+            data-testid="org-mapping-zone-filter"
             value={filterZone}
             onChange={(e) => { setFilterZone(e.target.value); setPage(0); }}
             className="text-sm border border-[var(--neutral-200)] rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:border-[var(--hertz-primary)]"
@@ -133,6 +135,7 @@ export default function InteractiveOrgMapping() {
           </select>
         </div>
         <button
+          data-testid="org-mapping-unassigned-filter"
           onClick={() => { setFilterUnassigned(!filterUnassigned); setPage(0); }}
           className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors cursor-pointer ${
             filterUnassigned
@@ -143,14 +146,14 @@ export default function InteractiveOrgMapping() {
           <span className={`w-2 h-2 rounded-full ${unassignedCount > 0 ? "bg-[var(--color-error)]" : "bg-[var(--neutral-300)]"}`} />
           {unassignedCount} Unassigned
         </button>
-        <span className="text-xs text-[var(--neutral-400)]">
+        <span data-testid="org-mapping-count" className="text-xs text-[var(--neutral-400)]">
           {filteredRows.length} of {rows.length} branches
         </span>
       </div>
 
       {/* Table */}
       <div className="border border-[var(--neutral-200)] rounded-lg overflow-hidden">
-        <table className="w-full text-sm">
+        <table data-testid="org-mapping-table" className="w-full text-sm">
           <thead>
             <tr className="bg-[var(--hertz-black)] text-white text-xs uppercase tracking-wide">
               <th className="px-4 py-2.5 text-left font-medium">Branch Manager</th>
@@ -176,6 +179,7 @@ export default function InteractiveOrgMapping() {
               return (
                 <motion.tr
                   key={row.branch}
+                  data-testid={`org-mapping-row-${row.branch}`}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: i * 0.02 }}
@@ -192,6 +196,7 @@ export default function InteractiveOrgMapping() {
                       <div className="flex items-center gap-2">
                         <input
                           type="text"
+                          data-testid="org-mapping-bm-input"
                           value={editBmValue}
                           onChange={(e) => setEditBmValue(e.target.value)}
                           onKeyDown={(e) => {
@@ -203,12 +208,14 @@ export default function InteractiveOrgMapping() {
                           autoFocus
                         />
                         <button
+                          data-testid="org-mapping-bm-save"
                           onClick={() => handleEditSave(row.branch)}
                           className="text-xs font-medium text-[var(--hertz-black)] bg-[var(--hertz-primary)] px-2 py-1 rounded hover:bg-[var(--hertz-primary-hover)] cursor-pointer"
                         >
                           Save
                         </button>
                         <button
+                          data-testid="org-mapping-bm-cancel"
                           onClick={() => { setEditingRow(null); setEditBmValue(""); }}
                           className="text-xs text-[var(--neutral-500)] hover:text-[var(--hertz-black)] cursor-pointer"
                         >
@@ -217,6 +224,7 @@ export default function InteractiveOrgMapping() {
                       </div>
                     ) : isUnassigned ? (
                       <button
+                        data-testid={`org-mapping-bm-${row.branch}`}
                         onClick={() => handleEditStart(row)}
                         className="text-[var(--color-error)] italic cursor-pointer hover:underline text-sm"
                       >
@@ -224,6 +232,7 @@ export default function InteractiveOrgMapping() {
                       </button>
                     ) : (
                       <button
+                        data-testid={`org-mapping-bm-${row.branch}`}
                         onClick={() => handleEditStart(row)}
                         className="cursor-pointer hover:text-[var(--hertz-primary)] transition-colors text-sm font-medium"
                       >
@@ -240,7 +249,7 @@ export default function InteractiveOrgMapping() {
             })}
             {filteredRows.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-[var(--neutral-400)] text-sm">
+                <td colSpan={5} data-testid="org-mapping-empty" className="px-4 py-8 text-center text-[var(--neutral-400)] text-sm">
                   No branches match the current filters
                 </td>
               </tr>
@@ -251,12 +260,13 @@ export default function InteractiveOrgMapping() {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-3">
-          <span className="text-xs text-[var(--neutral-500)]">
+        <div data-testid="org-mapping-pagination" className="flex items-center justify-between mt-3">
+          <span data-testid="org-mapping-page-info" className="text-xs text-[var(--neutral-500)]">
             Showing {safePage * PAGE_SIZE + 1}–{Math.min((safePage + 1) * PAGE_SIZE, filteredRows.length)} of {filteredRows.length}
           </span>
           <div className="flex items-center gap-1">
             <button
+              data-testid="org-mapping-page-first"
               onClick={() => setPage(0)}
               disabled={safePage === 0}
               className="px-2 py-1 text-xs rounded border border-[var(--neutral-200)] hover:bg-[var(--neutral-50)] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
@@ -264,16 +274,18 @@ export default function InteractiveOrgMapping() {
               First
             </button>
             <button
+              data-testid="org-mapping-page-prev"
               onClick={() => setPage((p) => Math.max(0, p - 1))}
               disabled={safePage === 0}
               className="px-2 py-1 text-xs rounded border border-[var(--neutral-200)] hover:bg-[var(--neutral-50)] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
               Prev
             </button>
-            <span className="px-2 text-xs font-medium text-[var(--hertz-black)]">
+            <span data-testid="org-mapping-page-indicator" className="px-2 text-xs font-medium text-[var(--hertz-black)]">
               {safePage + 1} / {totalPages}
             </span>
             <button
+              data-testid="org-mapping-page-next"
               onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
               disabled={safePage >= totalPages - 1}
               className="px-2 py-1 text-xs rounded border border-[var(--neutral-200)] hover:bg-[var(--neutral-50)] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
@@ -281,6 +293,7 @@ export default function InteractiveOrgMapping() {
               Next
             </button>
             <button
+              data-testid="org-mapping-page-last"
               onClick={() => setPage(totalPages - 1)}
               disabled={safePage >= totalPages - 1}
               className="px-2 py-1 text-xs rounded border border-[var(--neutral-200)] hover:bg-[var(--neutral-50)] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
