@@ -27,6 +27,7 @@ const GMMeetingPrepAllWeeks = lazyWithRetry(() => import("./components/interacti
 const InteractiveUploads = lazyWithRetry(() => import("./components/interactive/InteractiveUploads"));
 const InteractiveOrgMapping = lazyWithRetry(() => import("./components/interactive/InteractiveOrgMapping"));
 const InteractiveLegend = lazyWithRetry(() => import("./components/interactive/InteractiveLegend"));
+const InteractiveTranslogAdmin = lazyWithRetry(() => import("./components/interactive/InteractiveTranslogAdmin"));
 const ProfileView = lazyWithRetry(() => import("./components/ProfileView"));
 const ObservatoryConversionPage = lazyWithRetry(() => import("./components/interactive/ObservatoryConversionPage"));
 const ObservatoryLeadsPage = lazyWithRetry(() => import("./components/interactive/ObservatoryLeadsPage"));
@@ -148,6 +149,7 @@ export const router = createBrowserRouter([
       { path: "/admin/uploads", element: <AppViewRoute role="admin" Component={InteractiveUploads} /> },
       { path: "/admin/org-mapping", element: <AppViewRoute role="admin" Component={InteractiveOrgMapping} /> },
       { path: "/admin/legend", element: <AppViewRoute role="admin" Component={InteractiveLegend} /> },
+      { path: "/admin/translog", element: <AppViewRoute role="admin" Component={InteractiveTranslogAdmin} /> },
       { path: "/profile", element: <AppViewRoute Component={ProfileView} /> },
       { path: "/feedback", element: <AppViewRoute Component={FeedbackPage} /> },
       { path: "/observatory", element: <AppViewRoute Component={ObservatoryLandingPage} /> },

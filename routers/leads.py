@@ -17,7 +17,7 @@ _LEAD_LIST_COLS = """
     time_to_first_contact, first_contact_by, time_to_cancel,
     hles_reason, last_activity, enrichment, init_dt_final, week_of,
     contact_range, last_upload_id, cdp_name, htz_region, set_state,
-    zone, area_mgr, general_mgr, rent_loc, created_at
+    zone, area_mgr, general_mgr, rent_loc, mmr, created_at
 """.strip()
 
 

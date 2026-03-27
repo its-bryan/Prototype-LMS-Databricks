@@ -849,7 +849,7 @@ export default function MetricDrilldownModal({
         {/* Header */}
         <div className="px-6 py-4 border-b border-[var(--neutral-200)] flex items-center justify-between shrink-0">
           <div>
-            <h3 className="text-lg font-bold text-[var(--hertz-black)]">{config.label}</h3>
+            <h2 className="text-lg font-extrabold text-[var(--hertz-black)] tracking-tight leading-snug">{config.label}</h2>
             <p className="text-xs text-[var(--neutral-600)] mt-0.5">{config.description}</p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[var(--neutral-100)] text-[var(--neutral-600)] transition-colors">

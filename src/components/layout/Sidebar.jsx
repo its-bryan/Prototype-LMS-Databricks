@@ -273,7 +273,7 @@ export default function Sidebar() {
 
           // Navigation target: parent items scroll to first child section
           let navTarget = item.id;
-          if (item.id === "bm-work") navTarget = "bm-meeting-prep";
+          if (item.id === "bm-work") navTarget = "bm-work";
           if (item.id === "gm-overview") navTarget = "gm-overview";
           if (item.id === "gm-todos") navTarget = "gm-todos";
           const targetPath = viewPaths[navTarget];

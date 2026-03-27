@@ -93,8 +93,9 @@ test.describe("Observatory Conversion", () => {
   });
 
   test("should display multi-select filter dropdowns", async ({ page }) => {
+    // Filter labels are rendered by MultiSelectFilter as uppercase <span> elements
     for (const filterLabel of ["Zone", "GM", "AM"]) {
-      const filter = page.getByText(filterLabel, { exact: false });
+      const filter = page.locator("span").filter({ hasText: new RegExp(`^${filterLabel}$`, "i") });
       expect(await filter.count()).toBeGreaterThan(0);
     }
   });
@@ -200,8 +201,9 @@ test.describe("Observatory Total Leads", () => {
   });
 
   test("should have working filter dropdowns", async ({ page }) => {
+    // Filter labels are rendered by MultiSelectFilter as uppercase <span> elements
     for (const label of ["Zone", "Hertz Zone", "GM", "AM"]) {
-      const filter = page.getByText(label, { exact: false });
+      const filter = page.locator("span").filter({ hasText: new RegExp(`^${label}$`, "i") });
       expect(await filter.count()).toBeGreaterThan(0);
     }
   });

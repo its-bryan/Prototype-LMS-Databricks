@@ -96,6 +96,7 @@ def _row_to_tuple(row, confirm_num):
         _val(row, "week_of"), _val(row, "contact_range"),
         _val(row, "first_contact_by"),
         _val(row, "time_to_first_contact"),
+        _val(row, "mmr"),
     )
 
 
@@ -111,6 +112,7 @@ def _row_to_update_tuple(row, confirm_num):
         _val(row, "week_of"), _val(row, "contact_range"),
         _val(row, "first_contact_by"),
         _val(row, "time_to_first_contact"),
+        _val(row, "mmr"),
     )
 
 
@@ -162,11 +164,36 @@ def _set_ingestion_status(upload_id, state: str, error: str | None = None, count
     execute("UPDATE upload_summary SET hles = %s::jsonb WHERE id = %s", (json.dumps(hles), str(upload_id)))
 
 
+def _relink_translog_events():
+    """Re-link orphan translog_events to leads after new HLES upload."""
+    try:
+        rows = query("""
+            WITH matched AS (
+                UPDATE translog_events te
+                SET lead_id = l.id
+                FROM leads l
+                WHERE te.lead_id IS NULL
+                  AND (
+                      (te.knum IS NOT NULL AND te.knum = l.knum)
+                      OR (te.rez_num IS NOT NULL AND te.rez_num = l.confirm_num)
+                  )
+                RETURNING te.id
+            )
+            SELECT COUNT(*) AS cnt FROM matched
+        """)
+        count = rows[0]["cnt"] if rows else 0
+        if count > 0:
+            print(f"[upload] re-linked {count} orphan translog events to leads", flush=True)
+    except Exception as exc:
+        print(f"[upload] translog re-link failed (non-fatal): {exc}", flush=True)
+
+
 def _run_post_upload_jobs(upload_id, counts: dict | None = None):
     try:
         compute_and_store_snapshot()
         compute_observatory_snapshot()
         refresh_days_open()
+        _relink_translog_events()
         _set_ingestion_status(upload_id, "success", counts=counts)
         print(f"[upload] post-upload ingestion succeeded for {upload_id}", flush=True)
     except Exception as exc:
@@ -275,13 +302,13 @@ async def upload_hles(
             # 3) Batch INSERT
             cols = (
                 "customer, reservation_id, status, branch, bm_name, insurance_company, hles_reason, init_dt_final, "
-                "confirm_num, knum, body_shop, cdp_name, htz_region, set_state, zone, area_mgr, general_mgr, rent_loc, week_of, contact_range, first_contact_by, time_to_first_contact"
+                "confirm_num, knum, body_shop, cdp_name, htz_region, set_state, zone, area_mgr, general_mgr, rent_loc, week_of, contact_range, first_contact_by, time_to_first_contact, mmr"
             )
             for i in range(0, len(to_insert), HLES_INSERT_BATCH):
                 batch = to_insert[i : i + HLES_INSERT_BATCH]
                 values_tuples = [_row_to_tuple(r, c) for c, r in batch]
                 n = len(values_tuples)
-                one = "(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+                one = "(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
                 placeholders = ",".join([one] * n)
                 sql = f"INSERT INTO leads ({cols}) VALUES {placeholders}"
                 cur.execute(sql, tuple(x for t in values_tuples for x in t))
@@ -292,7 +319,7 @@ async def upload_hles(
                 batch = to_update[i : i + HLES_UPDATE_BATCH]
                 values_tuples = [_row_to_update_tuple(r, c) for c, r in batch]
                 n = len(values_tuples)
-                one = "(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+                one = "(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
                 placeholders = ",".join([one] * n)
                 sql = f"""UPDATE leads SET
                     customer = v.customer, status = v.status, branch = v.branch, bm_name = v.bm_name,
@@ -300,8 +327,8 @@ async def upload_hles(
                     confirm_num = v.confirm_num, reservation_id = v.reservation_id, knum = v.knum, body_shop = v.body_shop,
                     cdp_name = v.cdp_name, htz_region = v.htz_region, set_state = v.set_state,
                     zone = v.zone, area_mgr = v.area_mgr, general_mgr = v.general_mgr, rent_loc = v.rent_loc,
-                    week_of = v.week_of, contact_range = v.contact_range, first_contact_by = v.first_contact_by, time_to_first_contact = v.time_to_first_contact, updated_at = now()
-                FROM (VALUES {placeholders}) AS v(confirm_num, customer, status, branch, bm_name, insurance_company, hles_reason, init_dt_final, confirm_num2, reservation_id, knum, body_shop, cdp_name, htz_region, set_state, zone, area_mgr, general_mgr, rent_loc, week_of, contact_range, first_contact_by, time_to_first_contact)
+                    week_of = v.week_of, contact_range = v.contact_range, first_contact_by = v.first_contact_by, time_to_first_contact = v.time_to_first_contact, mmr = v.mmr, updated_at = now()
+                FROM (VALUES {placeholders}) AS v(confirm_num, customer, status, branch, bm_name, insurance_company, hles_reason, init_dt_final, confirm_num2, reservation_id, knum, body_shop, cdp_name, htz_region, set_state, zone, area_mgr, general_mgr, rent_loc, week_of, contact_range, first_contact_by, time_to_first_contact, mmr)
                 WHERE leads.confirm_num = v.confirm_num"""
                 cur.execute(sql, tuple(x for t in values_tuples for x in t))
                 stats["updated"] += n
@@ -331,58 +358,152 @@ async def upload_hles(
         print("[upload] HLES ETL done — fallback background tasks queued", flush=True)
     return {**stats, "uploadId": upload_id}
 
+TRANSLOG_INSERT_BATCH = 500
+
 @router.post("/upload/translog")
 async def upload_translog(file: UploadFile = File(...)):
-    """Upload TRANSLOG Excel file -> land in Volume (if configured) -> match events to leads."""
+    """Upload TRANSLOG file (CSV or Excel) -> land in Volume -> ETL -> insert into translog_events table."""
     contents = await file.read()
     if len(contents) > MAX_UPLOAD_SIZE:
         raise HTTPException(
             status_code=413,
             detail=(
                 f"File too large ({len(contents) / 1024 / 1024:.1f} MB). Maximum is 50 MB. "
-                "For historical bulk loads, use the admin CLI."
+                "For historical bulk loads, use: python scripts/load_translog_csv.py"
             ),
         )
-    # Land raw file in Unity Catalog Volume (datalabs.lab_lms_prod.translog_landing_prod)
     landed_path = _land_file_in_volume(
         contents, file.filename or "translog.xlsx", TRANSLOG_LANDING_VOLUME_PATH
     )
-    df = pd.read_excel(io.BytesIO(contents), engine="openpyxl")
+
+    # Detect format: CSV or Excel
+    fname = (file.filename or "").lower()
+    if fname.endswith(".csv"):
+        df = pd.read_csv(io.BytesIO(contents), dtype=str, keep_default_na=False)
+    else:
+        df = pd.read_excel(io.BytesIO(contents), engine="openpyxl", dtype=str)
 
     df_clean = clean_translog_data(df)
 
-    stats = {"eventsParsed": len(df), "matched": 0, "orphan": 0}
+    stats = {"eventsParsed": len(df), "matched": 0, "orphan": 0, "inserted": 0}
     if landed_path:
         stats["landedPath"] = landed_path
 
-    rows_events: list[tuple[str, dict]] = []
+    # Detect if this is raw Databricks format or legacy
+    is_raw = "knum" in df_clean.columns or "system_date" in df_clean.columns
+
+    if is_raw:
+        stats = _upload_translog_raw(df_clean, stats)
+    else:
+        stats = _upload_translog_legacy(df_clean, stats)
+
+    return stats
+
+
+def _upload_translog_raw(df_clean, stats):
+    """Insert raw translog events into translog_events table."""
+    print(f"[upload] TRANSLOG (raw) processing {len(df_clean)} rows...", flush=True)
+    t_start = _time.monotonic()
+
+    # Build knum → lead_id and rez_num → lead_id lookups
+    knum_to_lead = {}
+    unique_knums = [k for k in df_clean["knum"].dropna().unique() if k]
+    unique_rez_nums = [r for r in df_clean["rez_num"].dropna().unique() if r] if "rez_num" in df_clean.columns else []
+    with with_connection() as conn:
+        with conn.cursor() as cur:
+            # Match by knum → leads.knum
+            for i in range(0, len(unique_knums), HLES_SELECT_CHUNK):
+                chunk = list(unique_knums[i : i + HLES_SELECT_CHUNK])
+                if not chunk:
+                    continue
+                placeholders = ",".join(["%s"] * len(chunk))
+                cur.execute(
+                    f"SELECT id, knum FROM leads WHERE knum IN ({placeholders})",
+                    tuple(chunk),
+                )
+                for lead in cur.fetchall():
+                    if lead["knum"]:
+                        knum_to_lead[lead["knum"]] = lead["id"]
+            # Match by rez_num → leads.confirm_num (fallback for rows without knum match)
+            for i in range(0, len(unique_rez_nums), HLES_SELECT_CHUNK):
+                chunk = list(unique_rez_nums[i : i + HLES_SELECT_CHUNK])
+                if not chunk:
+                    continue
+                placeholders = ",".join(["%s"] * len(chunk))
+                cur.execute(
+                    f"SELECT id, confirm_num FROM leads WHERE confirm_num IN ({placeholders})",
+                    tuple(chunk),
+                )
+                for lead in cur.fetchall():
+                    if lead["confirm_num"] and lead["confirm_num"] not in knum_to_lead:
+                        knum_to_lead[lead["confirm_num"]] = lead["id"]
+
+    # Build insert rows
+    db_cols = [
+        "source_id", "lead_id", "knum", "rez_num", "confirm_num", "loc_code",
+        "system_date", "application_date", "event_type", "bgn01", "stat_flag",
+        "sf_trans", "msg1", "msg2", "msg3", "msg4", "msg5", "msg6", "msg7",
+        "msg8", "msg9", "msg10", "emp_code", "emp_lname", "emp_fname",
+        "requested_days", "timezone_offset", "load_date", "source_system",
+        "source_region",
+    ]
+
+    def _val_or_none(row, col):
+        v = row.get(col)
+        if v is None or (isinstance(v, float) and pd.isna(v)):
+            return None
+        if isinstance(v, str) and v.strip() in ("", "null"):
+            return None
+        return v
+
+    rows_to_insert = []
+    for _, row in df_clean.iterrows():
+        knum = _val_or_none(row, "knum")
+        rez_num = _val_or_none(row, "rez_num")
+        lead_id = knum_to_lead.get(knum) if knum else None
+        if not lead_id and rez_num:
+            lead_id = knum_to_lead.get(rez_num)
+        if lead_id:
+            stats["matched"] += 1
+        else:
+            stats["orphan"] += 1
+
+        rows_to_insert.append(tuple(_val_or_none(row, col) if col != "lead_id" else lead_id for col in db_cols))
+
+    # Batch insert
+    if rows_to_insert:
+        placeholders = ",".join(["%s"] * len(db_cols))
+        sql = f"INSERT INTO translog_events ({', '.join(db_cols)}) VALUES ({placeholders})"
+        with with_connection() as conn:
+            with conn.cursor() as cur:
+                for i in range(0, len(rows_to_insert), TRANSLOG_INSERT_BATCH):
+                    batch = rows_to_insert[i : i + TRANSLOG_INSERT_BATCH]
+                    cur.executemany(sql, batch)
+            stats["inserted"] = len(rows_to_insert)
+
+    print(f"[upload] TRANSLOG (raw) done in {_time.monotonic() - t_start:.2f}s — {stats['inserted']} inserted", flush=True)
+    return stats
+
+
+def _upload_translog_legacy(df_clean, stats):
+    """Legacy path: insert simplified events into translog_events with msg1 as event description."""
+    print(f"[upload] TRANSLOG (legacy) processing {len(df_clean)} rows...", flush=True)
+    t_start = _time.monotonic()
+
+    rows_events = []
     for _, row in df_clean.iterrows():
         key = _norm_translog_key(row.get("confirm_num") or row.get("reservation_id"))
         if not key:
             stats["orphan"] += 1
             continue
-        rows_events.append(
-            (
-                key,
-                {
-                    "time": str(row.get("event_time", "")),
-                    "event": row.get("event_type", ""),
-                    "outcome": row.get("outcome", ""),
-                },
-            )
-        )
+        rows_events.append((key, row))
 
     if not rows_events:
         return stats
 
+    # Build key → lead_id lookup
     unique_keys = list(dict.fromkeys(k for k, _ in rows_events))
-    print(f"[upload] TRANSLOG processing {len(df_clean)} rows...", flush=True)
-    t_start = _time.monotonic()
-
-    confirm_map: dict[str, dict] = {}
-    res_map: dict[str, dict] = {}
-    leads_by_id: dict = {}
-
+    knum_to_lead = {}
     with with_connection() as conn:
         with conn.cursor() as cur:
             for i in range(0, len(unique_keys), HLES_SELECT_CHUNK):
@@ -391,44 +512,48 @@ async def upload_translog(file: UploadFile = File(...)):
                     continue
                 placeholders = ",".join(["%s"] * len(chunk))
                 cur.execute(
-                    f"""SELECT id, confirm_num, reservation_id, translog FROM leads
+                    f"""SELECT id, confirm_num, reservation_id FROM leads
                         WHERE confirm_num IN ({placeholders}) OR reservation_id IN ({placeholders})""",
                     tuple(chunk) + tuple(chunk),
                 )
                 for lead in cur.fetchall():
-                    lid = lead["id"]
-                    leads_by_id[lid] = lead
-                    c = _norm_translog_key(lead.get("confirm_num"))
-                    r = _norm_translog_key(lead.get("reservation_id"))
-                    if c and c not in confirm_map:
-                        confirm_map[c] = lead
-                    if r and r not in res_map:
-                        res_map[r] = lead
+                    if lead.get("confirm_num"):
+                        knum_to_lead[lead["confirm_num"]] = lead["id"]
+                    if lead.get("reservation_id"):
+                        knum_to_lead[lead["reservation_id"]] = lead["id"]
 
-            lead_events = defaultdict(list)
-            for key, evt in rows_events:
-                lead = confirm_map.get(key) or res_map.get(key)
-                if not lead:
-                    stats["orphan"] += 1
-                    continue
-                lead_events[lead["id"]].append(evt)
-                stats["matched"] += 1
+    # Insert into translog_events
+    insert_rows = []
+    for key, row in rows_events:
+        lead_id = knum_to_lead.get(key)
+        if lead_id:
+            stats["matched"] += 1
+        else:
+            stats["orphan"] += 1
 
-            for lead_id, new_events in lead_events.items():
-                lead = leads_by_id[lead_id]
-                current_log = list(lead.get("translog") or [])
-                current_log.extend(new_events)
-                cur.execute(
-                    """UPDATE leads SET
-                        translog = %s::jsonb,
-                        last_activity = now(),
-                        updated_at = now()
-                    WHERE id = %s""",
-                    (json.dumps(current_log), lead_id),
-                )
+        event_time = row.get("event_time")
+        if event_time is not None and not pd.isna(event_time):
+            event_time = str(event_time)
+        else:
+            event_time = None
 
-    print(f"[upload] TRANSLOG done in {_time.monotonic() - t_start:.2f}s", flush=True)
+        insert_rows.append((
+            lead_id,
+            key,  # knum
+            event_time,  # system_date
+            None,  # event_type (numeric)
+            row.get("event_type", ""),  # msg1 (text description)
+            row.get("outcome", ""),  # msg2
+        ))
 
+    if insert_rows:
+        sql = "INSERT INTO translog_events (lead_id, knum, system_date, event_type, msg1, msg2) VALUES (%s, %s, %s, %s, %s, %s)"
+        with with_connection() as conn:
+            with conn.cursor() as cur:
+                cur.executemany(sql, insert_rows)
+            stats["inserted"] = len(insert_rows)
+
+    print(f"[upload] TRANSLOG (legacy) done in {_time.monotonic() - t_start:.2f}s — {stats.get('inserted', 0)} inserted", flush=True)
     return stats
 
 

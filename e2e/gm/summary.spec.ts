@@ -245,8 +245,8 @@ test.describe("GM Summary — /gm/overview", () => {
     // Modal overlay appears
     const modal = page.locator(".fixed.inset-0");
     await expect(modal.first()).toBeVisible({ timeout: 5000 });
-    // Title contains metric name
-    const title = page.locator("h2");
+    // Title contains metric name (renders as h3)
+    const title = page.locator("h3");
     await expect(title.first()).toContainText("Conversion Rate");
   });
 
@@ -298,9 +298,9 @@ test.describe("GM Summary — /gm/overview", () => {
       );
       await page.waitForTimeout(300);
 
-      // Read branch names from the leaderboard
+      // Read branch names from the leaderboard (branch names use font-medium)
       const branchLabels = page.locator(
-        'p.font-semibold, span.font-semibold',
+        'span.font-medium.truncate',
       );
       const names: string[] = [];
       const count = await branchLabels.count();

@@ -253,7 +253,9 @@ test.describe("BM Summary — /bm/summary", () => {
     await tile(page, "CONVERSION RATE").click();
     const modal = page.locator(".fixed.inset-0");
     await expect(modal.first()).toBeVisible({ timeout: 5000 });
-    const title = page.locator("h2");
+    // Modal content panel (white rounded box) contains the metric title
+    const modalPanel = page.locator(".fixed.inset-0 .bg-white.rounded-xl, .fixed.inset-0 .bg-white.rounded-lg");
+    const title = modalPanel.first().locator("h2, h3");
     await expect(title.first()).toContainText("Conversion Rate");
 
     // Close on backdrop click

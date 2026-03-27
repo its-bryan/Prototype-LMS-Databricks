@@ -21,8 +21,8 @@ test.describe("GM Lead Profile — /gm/leads/:leadId", () => {
         if (leadId) {
           leadUrl = `/gm/leads/${leadId}`;
           await page.goto(leadUrl);
-          // Wait for lead profile to render (customer name heading)
-          await page.waitForSelector('h1', { timeout: 30_000 });
+          // Wait for lead profile to render (customer name heading — renders as h2)
+          await page.waitForSelector('h2', { timeout: 30_000 });
           return;
         }
       }

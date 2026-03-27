@@ -126,6 +126,7 @@ function leadFromRow(r) {
     areaMgr: r.area_mgr ?? null,
     generalMgr: r.general_mgr ?? null,
     rentLoc: r.rent_loc ?? null,
+    mmr: r.mmr ?? null,
   };
 }
 
@@ -870,4 +871,79 @@ export async function toggleFeatureRequestUpvote(id) {
     userHasUpvoted: !!result?.user_has_upvoted,
     upvoteCount: result?.upvote_count ?? 0,
   };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Translog Events
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Fetch translog events for a specific lead.
+ *  role: "bm"|"gm" → only LMS-relevant events; "admin" → all events.
+ */
+export async function fetchLeadTranslog(leadId, { limit = 100, offset = 0, role = "bm" } = {}) {
+  const q = buildQuery({ limit, offset, role });
+  const result = await apiGet(`/leads/${leadId}/translog${q}`);
+  return {
+    total: result?.total ?? 0,
+    events: (result?.events ?? []).map((ev) => ({
+      id: ev.id,
+      sourceId: ev.sourceId,
+      knum: ev.knum,
+      rezNum: ev.rezNum,
+      locCode: ev.locCode,
+      systemDate: ev.systemDate,
+      applicationDate: ev.applicationDate,
+      eventType: ev.eventType,
+      bgn01: ev.bgn01,
+      statFlag: ev.statFlag,
+      category: ev.category,
+      msg1: ev.msg1,
+      msg2: ev.msg2,
+      msg3: ev.msg3,
+      msg4: ev.msg4,
+      msg5: ev.msg5,
+      msg6: ev.msg6,
+      msg10: ev.msg10,
+      empCode: ev.empCode,
+      empName: ev.empName,
+      requestedDays: ev.requestedDays,
+    })),
+  };
+}
+
+/** Fetch translog stats for admin dashboard. */
+export async function fetchTranslogStats() {
+  return apiGet("/translog/stats");
+}
+
+/** Fetch orphan knums for admin reconciliation. */
+export async function fetchTranslogOrphans({ limit = 100, offset = 0, search = null } = {}) {
+  const q = buildQuery({ limit, offset, search });
+  return apiGet(`/translog/orphans${q}`);
+}
+
+/** Fetch events for a specific orphan knum. */
+export async function fetchOrphanEvents(knum, { limit = 50 } = {}) {
+  const q = buildQuery({ limit });
+  return apiGet(`/translog/orphans/${encodeURIComponent(knum)}/events${q}`);
+}
+
+/** Map all orphan events for a knum to a lead. Permanent. */
+export async function mapOrphanToLead(knum, leadId) {
+  return apiFetch(`/translog/orphans/${encodeURIComponent(knum)}/map`, {
+    method: "PUT",
+    body: JSON.stringify({ leadId }),
+  });
+}
+
+/** Delete all orphan events for a knum. Permanent. */
+export async function deleteOrphanEvents(knum) {
+  return apiFetch(`/translog/orphans/${encodeURIComponent(knum)}`, {
+    method: "DELETE",
+  });
+}
+
+/** Re-run knum → lead linkage for all orphan events. Call after HLES upload. */
+export async function relinkTranslogEvents() {
+  return apiPost("/translog/relink", {});
 }

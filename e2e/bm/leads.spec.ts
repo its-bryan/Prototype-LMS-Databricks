@@ -113,11 +113,11 @@ test.describe("BM My Leads — /bm/leads", () => {
   });
 
   test("should navigate to lead detail on row click", async ({ page }) => {
-    const rows = page.locator("table tbody tr, div.border-b.cursor-pointer");
+    const rows = page.locator("table tbody tr.cursor-pointer");
+    await expect(rows.first()).toBeVisible({ timeout: 30_000 });
     if ((await rows.count()) > 0) {
       await rows.first().click();
-      await page.waitForTimeout(2000);
-      await expect(page).toHaveURL(/\/bm\/leads\/.+/);
+      await page.waitForURL(/\/bm\/leads\/.+/, { timeout: 10_000 });
     }
   });
 

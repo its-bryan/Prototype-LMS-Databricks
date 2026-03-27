@@ -6,7 +6,7 @@ test.describe("BM Meeting Prep — /bm/meeting-prep", () => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await bmLogin(page);
     await page.goto("/bm/meeting-prep");
-    await page.waitForTimeout(3000);
+    await page.waitForSelector("h1, h2, h3, table, [class*='card']", { timeout: 30_000 });
   });
 
   test("should load meeting prep page with heading", async ({ page }) => {

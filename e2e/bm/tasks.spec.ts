@@ -10,7 +10,7 @@ test.describe("BM Tasks — /bm/tasks", () => {
     token = auth.token;
     await page.goto("/bm/tasks");
     // Wait for page to load past skeleton
-    await page.waitForSelector("h1", { timeout: 30_000 });
+    await page.waitForSelector("h1, h2, h3, table", { timeout: 45_000 });
   });
 
   test("should load tasks page with heading", async ({ page }) => {

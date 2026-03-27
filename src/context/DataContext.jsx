@@ -58,6 +58,13 @@ const {
   createComplianceTasksForBranch: apiCreateComplianceTasksForBranch,
   fetchWinsLearnings: apiFetchWinsLearnings,
   submitWinsLearning: apiSubmitWinsLearning,
+  fetchLeadTranslog: apiFetchLeadTranslog,
+  fetchTranslogStats: apiFetchTranslogStats,
+  fetchTranslogOrphans: apiFetchTranslogOrphans,
+  fetchOrphanEvents: apiFetchOrphanEvents,
+  mapOrphanToLead: apiMapOrphanToLead,
+  deleteOrphanEvents: apiDeleteOrphanEvents,
+  relinkTranslogEvents: apiRelinkTranslogEvents,
 } = dataModule;
 
 import { setOrgMappingSource, setBranchManagersSource, setWeeklyTrendsSource, setNowFromDate } from "../selectors/demoSelectors";
@@ -712,6 +719,13 @@ export function DataProvider({ children }) {
     branchManagers,
     weeklyTrends,
     leaderboardData,
+    fetchLeadTranslog: apiFetchLeadTranslog,
+    fetchTranslogStats: apiFetchTranslogStats,
+    fetchTranslogOrphans: apiFetchTranslogOrphans,
+    fetchOrphanEvents: apiFetchOrphanEvents,
+    mapOrphanToLead: apiMapOrphanToLead,
+    deleteOrphanEvents: apiDeleteOrphanEvents,
+    relinkTranslogEvents: apiRelinkTranslogEvents,
   };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

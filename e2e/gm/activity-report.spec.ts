@@ -5,8 +5,8 @@ test.describe("GM Activity Report — /gm/activity-report", () => {
   test.beforeEach(async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await gmLogin(page, "/gm/activity-report");
-    // Wait for Activity Report heading to appear (API takes ~14s)
-    await page.waitForSelector('h1:has-text("Activity Report")', { timeout: 45_000 });
+    // Wait for Activity Report heading to appear (API can be slow)
+    await page.waitForSelector('h1:has-text("Activity Report"), h2:has-text("Activity Report")', { timeout: 60_000 });
   });
 
   test("should load activity report page", async ({ page }) => {

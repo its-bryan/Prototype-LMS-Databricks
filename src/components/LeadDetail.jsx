@@ -4,13 +4,15 @@ import StatusBadge from "./StatusBadge";
 import TranslogTimeline from "./TranslogTimeline";
 import { getHierarchyForBranch, getMismatchReason } from "../selectors/demoSelectors";
 
-export default function LeadDetail({ lead, enrichmentSlot, contactSlot, contactButtonsSlot, tasksSlot, upcomingCommsSlot, contactActivities = [] }) {
+export default function LeadDetail({ lead, enrichmentSlot, contactSlot, contactButtonsSlot, tasksSlot, upcomingCommsSlot, contactActivities = [], translogEvents = [], userRole = "bm" }) {
   const hierarchy = getHierarchyForBranch(lead.branch);
   const mismatchReason = getMismatchReason(lead);
   const [translogExpanded, setTranslogExpanded] = useState(false);
 
-  const hasActivity = (lead.translog?.length ?? 0) > 0 || (lead.enrichmentLog?.length ?? 0) > 0 || (contactActivities?.length ?? 0) > 0;
-  const activityCount = (lead.translog?.length ?? 0) + (lead.enrichmentLog?.length ?? 0) + (contactActivities?.length ?? 0);
+  // Prefer translogEvents from the dedicated table; fall back to legacy lead.translog JSONB
+  const resolvedTranslog = translogEvents.length > 0 ? translogEvents : (lead.translog ?? []);
+  const hasActivity = resolvedTranslog.length > 0 || (lead.enrichmentLog?.length ?? 0) > 0 || (contactActivities?.length ?? 0) > 0;
+  const activityCount = resolvedTranslog.length + (lead.enrichmentLog?.length ?? 0) + (contactActivities?.length ?? 0);
 
   return (
     <motion.div
@@ -87,6 +89,18 @@ export default function LeadDetail({ lead, enrichmentSlot, contactSlot, contactB
                 )}
               </div>
             </div>
+            {lead.mmr && (
+              <div>
+                <p className="text-[var(--neutral-600)] text-xs uppercase">MMR</p>
+                <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded border ${
+                  lead.mmr.toUpperCase() === "Y"
+                    ? "bg-[var(--color-success-light)] text-[var(--color-success)] border-[var(--color-success)]/40"
+                    : "bg-[var(--neutral-100)] text-[var(--neutral-600)] border-[var(--neutral-200)]"
+                }`}>
+                  {lead.mmr.toUpperCase() === "Y" ? "MMR Completed" : lead.mmr}
+                </span>
+              </div>
+            )}
             {lead.timeToCancel && (
               <div>
                 <p className="text-[var(--neutral-600)] text-xs uppercase">Time to Cancellation</p>
@@ -166,7 +180,7 @@ export default function LeadDetail({ lead, enrichmentSlot, contactSlot, contactB
                 className="overflow-hidden"
               >
                 <div className="px-5 pb-5 pt-1 border-t border-[var(--neutral-200)]">
-                  <TranslogTimeline events={lead.translog} enrichmentLog={lead.enrichmentLog} contactActivities={contactActivities} showHeader={false} />
+                  <TranslogTimeline events={resolvedTranslog} enrichmentLog={lead.enrichmentLog} contactActivities={contactActivities} showHeader={false} userRole={userRole} rentLoc={lead.rentLoc} />
                 </div>
               </motion.div>
             )}

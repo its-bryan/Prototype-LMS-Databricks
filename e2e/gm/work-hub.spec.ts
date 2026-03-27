@@ -15,30 +15,31 @@ test.describe("GM Work Hub — /gm/work", () => {
   });
 
   test("should display correct tile labels", async ({ page }) => {
+    const tiles = page.locator("button.border-2.rounded-xl");
     for (const label of [
       "Meeting Prep",
       "My Leads",
       "Team Leaderboard",
       "Activity Report",
     ]) {
-      await expect(page.getByText(label, { exact: false })).toBeVisible();
+      await expect(tiles.filter({ hasText: label })).toHaveCount(1);
     }
   });
 
   test("should navigate to Meeting Prep on tile click", async ({ page }) => {
-    await page.getByText("Meeting Prep").click();
+    await page.locator("button.border-2.rounded-xl").filter({ hasText: "Meeting Prep" }).click();
     await expect(page).toHaveURL(/\/gm\/meeting-prep/);
   });
 
   test("should navigate to My Leads on tile click", async ({ page }) => {
-    await page.getByText("My Leads").click();
+    await page.locator("button.border-2.rounded-xl").filter({ hasText: "My Leads" }).click();
     await expect(page).toHaveURL(/\/gm\/leads/);
   });
 
   test("should navigate to Team Leaderboard on tile click", async ({
     page,
   }) => {
-    await page.getByText("Team Leaderboard").click();
+    await page.locator("button.border-2.rounded-xl").filter({ hasText: "Team Leaderboard" }).click();
     await expect(page).toHaveURL(/\/gm\/leaderboard/);
   });
 });

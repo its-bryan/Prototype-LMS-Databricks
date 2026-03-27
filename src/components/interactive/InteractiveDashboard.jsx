@@ -893,6 +893,17 @@ export function AdminDashboard({ navigateTo }) {
       accent: "bg-[var(--hertz-black)]",
     },
     {
+      label: "Translog Management",
+      desc: "Review unassigned translog events — map to leads or delete",
+      view: "/admin/translog",
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+        </svg>
+      ),
+      accent: "bg-[var(--color-warning-light)]",
+    },
+    {
       label: "Cancellation Reasons",
       desc: "Configure the reason categories BMs use for cancelled leads",
       view: "/admin/legend",
@@ -907,7 +918,7 @@ export function AdminDashboard({ navigateTo }) {
 
   return (
     <div>
-      <div className="grid grid-cols-3 gap-5">
+      <div className="grid grid-cols-4 gap-5">
         {cards.map((card, i) => (
           <motion.button
             key={card.view}

@@ -13,12 +13,15 @@ export default function InteractiveLeadDetail() {
   const { pathname } = useLocation();
   const { leadId } = useParams();
   const isGMContext = pathname.startsWith("/gm/");
+  const isAdminContext = pathname.startsWith("/admin/");
+  const userRole = isAdminContext ? "admin" : isGMContext ? "gm" : "bm";
   const backLabel = isGMContext ? "Back to Lead Review" : "Back to leads";
-  const { fetchLeadById, fetchTasksForLead, updateTaskStatus, initialDataReady } = useData();
+  const { fetchLeadById, fetchTasksForLead, updateTaskStatus, fetchLeadTranslog, initialDataReady } = useData();
   const resolvedLeadId = Number.isNaN(Number(leadId)) ? leadId : Number(leadId);
   const [lead, setLead] = useState(null);
   const [leadLoading, setLeadLoading] = useState(true);
   const [leadTasks, setLeadTasks] = useState([]);
+  const [translogEvents, setTranslogEvents] = useState([]);
 
   /* eslint-disable react-hooks/set-state-in-effect -- fetch lead + tasks on id change */
   useEffect(() => {
@@ -50,6 +53,15 @@ export default function InteractiveLeadDetail() {
   useEffect(() => {
     void loadTasks();
   }, [loadTasks]);
+
+  useEffect(() => {
+    if (!lead?.id || !fetchLeadTranslog) return;
+    let cancelled = false;
+    fetchLeadTranslog(lead.id, { limit: 200, role: userRole })
+      .then((result) => { if (!cancelled) setTranslogEvents(result?.events ?? []); })
+      .catch(() => { if (!cancelled) setTranslogEvents([]); });
+    return () => { cancelled = true; };
+  }, [lead?.id, fetchLeadTranslog, userRole]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const pageReady = usePageTransition();
@@ -69,6 +81,8 @@ export default function InteractiveLeadDetail() {
       <BackButton onClick={() => navigate(-1)} label={backLabel} />
       <LeadDetail
         lead={lead}
+        translogEvents={translogEvents}
+        userRole={userRole}
         contactSlot={<LeadContactCard lead={lead} />}
         enrichmentSlot={
           isGMContext

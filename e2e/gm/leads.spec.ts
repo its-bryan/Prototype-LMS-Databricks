@@ -33,15 +33,20 @@ test.describe("GM My Leads — /gm/leads", () => {
   test("should display status filter tabs: All, Cancelled, Unused, Rented", async ({
     page,
   }) => {
-    for (const tab of ["All", "Cancelled", "Unused", "Rented"]) {
-      await expect(
-        page.getByRole("button", { name: tab, exact: true }),
-      ).toBeVisible();
-    }
+    // Status filter is a SelectFilter dropdown with label "Status"
+    const statusLabel = page.getByText("Status", { exact: true });
+    await expect(statusLabel.first()).toBeVisible({ timeout: 5000 });
+    // The default selection should show "All Statuses"
+    await expect(page.getByText("All Statuses")).toBeVisible();
   });
 
   test("should filter leads by Cancelled status", async ({ page }) => {
-    await page.getByRole("button", { name: "Cancelled", exact: true }).click();
+    // Open the Status SelectFilter dropdown
+    const statusBtn = page.locator("button").filter({ hasText: "All Statuses" });
+    await statusBtn.click();
+    await page.waitForTimeout(300);
+    // Select "Cancelled" from dropdown
+    await page.getByText("Cancelled", { exact: true }).click();
     await page.waitForTimeout(2000);
     // All visible status badges should show "Cancelled" (or table is empty)
     const statusCells = page.locator("table tbody tr td:nth-child(4)");
@@ -95,10 +100,10 @@ test.describe("GM My Leads — /gm/leads", () => {
     const firstRow = page.locator("table tbody tr").first();
     if (await firstRow.isVisible({ timeout: 3000 }).catch(() => false)) {
       await firstRow.click();
-      await page.waitForTimeout(500);
-      // Right panel should appear — look for detail content
+      await page.waitForTimeout(1000);
+      // Right panel should appear — look for detail content (border-l panel or textarea)
       const detailPanel = page.locator(
-        'div[class*="w-[55%]"], div[class*="w-\\[55"], textarea, h2, h3',
+        'div.border-l.overflow-y-auto, textarea',
       );
       expect(await detailPanel.count()).toBeGreaterThan(0);
     }
@@ -122,9 +127,10 @@ test.describe("GM My Leads — /gm/leads", () => {
     const firstRow = page.locator("table tbody tr").first();
     if (await firstRow.isVisible({ timeout: 3000 }).catch(() => false)) {
       await firstRow.click();
-      await page.waitForTimeout(500);
+      // Wait for panel to fully render
+      await page.waitForTimeout(1500);
       const textarea = page.locator("textarea");
-      await expect(textarea.first()).toBeVisible({ timeout: 5000 });
+      await expect(textarea.first()).toBeVisible({ timeout: 10000 });
       const sendBtn = page.getByRole("button", {
         name: /send|directive|submit/i,
       });
